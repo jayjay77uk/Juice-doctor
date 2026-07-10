@@ -10,6 +10,8 @@ Designed now so media references in the content model (`ImageRef.src`, `PodcastE
 | `testimonials` | public | Consented client portraits | `testimonials/<id>.webp` |
 | `podcast` | public | Episode artwork; audio when self-hosted | `podcast/<slug>/cover.webp`, `podcast/<slug>/audio.mp3` |
 | `documents` | private | Downloadable guides / lead magnets (signed URLs) | `documents/<slug>.pdf` |
+| `avatars` | public | Profile / practitioner avatars | `avatars/<user_id>.webp` |
+| `knowledge` | private | Knowledge source files (PDF/DOCX/TXT/CSV/audio) backing `knowledge_documents.source_uri`; served to staff/agents via signed URLs only | `knowledge/<document_id>/v<version>.<ext>` |
 
 ## Rules
 
