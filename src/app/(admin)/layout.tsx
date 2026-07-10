@@ -13,8 +13,8 @@ const nav: ShellNavItem[] = [
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  // Production-shaped: a real gate would `redirect('/login')` unless role === 'admin'.
-  const session = await getSession('admin');
+  // Production-shaped: a real gate would `requireRole('administrator')`.
+  const session = await getSession('administrator');
   const userName = session?.user.name ?? 'Admin';
 
   return (
