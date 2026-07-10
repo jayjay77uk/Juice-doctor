@@ -12,12 +12,17 @@ export interface SecurityHeaderOptions {
   nonce?: string;
   /** Send HSTS (only over HTTPS in production). */
   hsts?: boolean;
+  /** Development mode — relaxes script-src so React dev tooling (which uses eval) works. */
+  dev?: boolean;
 }
 
-export function buildContentSecurityPolicy(nonce?: string): string {
-  const scriptSrc = nonce
-    ? `'self' 'nonce-${nonce}' 'strict-dynamic'`
-    : `'self' 'unsafe-inline'`; // dev/prototype fallback
+export function buildContentSecurityPolicy(options: { nonce?: string; dev?: boolean } = {}): string {
+  const { nonce, dev } = options;
+  const scriptSrc = dev
+    ? `'self' 'unsafe-inline' 'unsafe-eval'` // dev only: React dev mode needs eval
+    : nonce
+      ? `'self' 'nonce-${nonce}' 'strict-dynamic'`
+      : `'self' 'unsafe-inline'`;
   return [
     `default-src 'self'`,
     `script-src ${scriptSrc}`,
@@ -35,8 +40,11 @@ export function buildContentSecurityPolicy(nonce?: string): string {
 }
 
 export function securityHeaders(options: SecurityHeaderOptions = {}): Record<string, string> {
+  const cspOptions: { nonce?: string; dev?: boolean } = {};
+  if (options.nonce) cspOptions.nonce = options.nonce;
+  if (options.dev) cspOptions.dev = options.dev;
   const headers: Record<string, string> = {
-    'Content-Security-Policy': buildContentSecurityPolicy(options.nonce),
+    'Content-Security-Policy': buildContentSecurityPolicy(cspOptions),
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'strict-origin-when-cross-origin',

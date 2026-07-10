@@ -47,7 +47,8 @@ export default function proxy(request: NextRequest): NextResponse {
 
   // 1. Attach security headers to the response.
   const response = NextResponse.next();
-  const headersToSet = securityHeaders({ hsts: isHttps && !appConfig.isPrototype });
+  const isDev = process.env.NODE_ENV !== 'production';
+  const headersToSet = securityHeaders({ hsts: isHttps && !appConfig.isPrototype, dev: isDev });
   for (const [key, value] of Object.entries(headersToSet)) {
     response.headers.set(key, value);
   }
