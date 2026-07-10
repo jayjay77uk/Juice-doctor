@@ -1,0 +1,24 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Ask Juice Doctor AI — environment
+#
+# PROTOTYPE MODE is the default. No secrets are required to run the prototype.
+# Copy to `.env.local` to override.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Cosmetic UI flag — drives the "Prototype Environment" banner only.
+# Public (client-visible) by design. Never gate secrets on this.
+#   values: "prototype" (default) | "production"
+NEXT_PUBLIC_APP_MODE=prototype
+
+# Data-provider selection — SERVER-ONLY, non-public by design.
+# Selects mock vs Supabase providers server-side so the Supabase client can
+# never be bundled into client JS. Not read in Phase 1 (mock is the only provider).
+#   values: "prototype" (default) | "production"
+APP_MODE=prototype
+
+# ── Phase 2 (NOT used in the prototype) ──────────────────────────────────────
+# NEXT_PUBLIC_SUPABASE_URL=
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=
+# SUPABASE_SERVICE_ROLE_KEY=
+# RESEND_API_KEY=
+# CONTACT_EMAIL=

@@ -77,6 +77,16 @@ db/                        # paper schema.sql / rls.sql / storage.md
 
 **Out (Phase 2):** all AI, live Supabase, real auth/RLS, payments, real-time booking, media hosting, live email, dark theme.
 
+## Backend architecture (Phase 2)
+
+The enterprise backend **foundation** — designed as it would exist in production, but not connected (no AI, no live data, no payments):
+
+- **Database** — ~55 tables across 13 SQL migrations in [`db/migrations/`](db/migrations) with RLS on every table. See [`db/README.md`](db/README.md).
+- **Auth & RBAC** — a 6-role hierarchy, permission matrix, guards and session seam in [`src/lib/auth`](src/lib/auth); middleware in [`src/proxy.ts`](src/proxy.ts).
+- **Security** — headers/CSP, rate limiting, CSRF, file validation, typed errors in [`src/lib/security`](src/lib/security).
+- **Frameworks** — AI agents (data-driven), knowledge, memory (six scopes), consultations, and platform ops as typed services in [`src/services`](src/services) and models in [`src/types`](src/types).
+- **Docs** — the full architecture write-up (the "why") lives in [`docs/`](docs/README.md).
+
 ## Client decisions captured (2026-07-10)
 
 Standalone `/founder` page · pricing on cards · one Resources surface · forms fully mocked · Remote Selfie Scan is an interactive mocked flow. Brand palette and typography are **proposals pending client confirmation**.
