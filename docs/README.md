@@ -19,6 +19,8 @@ The complete backend & platform architecture for the Ask Juice Doctor AI platfor
 | 10 | [Security](architecture/10-security.md) | Headers, CSP, rate limiting, CSRF, uploads, errors, secrets |
 | 11 | [Scalability](architecture/11-scalability.md) | Multi-org/clinic, i18n, voice, wearables, mobile, API |
 | 12 | [Decision records (ADR)](architecture/12-decisions-adr.md) | The key decisions and why they were made |
+| 13 | [AI Management Platform](architecture/13-ai-platform.md) | Agents, prompts, knowledge, playground, safety, memory, analytics — all DB-driven (Phase 3) |
+| 14 | [Admin Portal & User Dashboard](architecture/14-admin-and-dashboard.md) | The admin portal, the reusable UI kit, and the member dashboard (Phase 3) |
 
 ## Related
 
@@ -29,5 +31,6 @@ The complete backend & platform architecture for the Ask Juice Doctor AI platfor
 ## Phase boundaries
 
 - **Phase 1** — marketing site, design system, mock services (shipped).
-- **Phase 2** — this: the enterprise backend foundation (auth/RBAC, database + RLS, AI/knowledge/memory frameworks, admin, security). **No AI.**
-- **Phase 3** — implement the AI experience on top of this foundation (inference, embeddings/vector search, live services).
+- **Phase 2** — the enterprise backend foundation (auth/RBAC, database + RLS, AI/knowledge/memory frameworks, admin, security). **No AI.**
+- **Phase 3** — the AI management platform + admin portal + user dashboard (shipped): agent/prompt/knowledge management, playground, safety, memory, analytics — all DB-driven and admin-managed. **Still no live AI** (mocked, "build once, configure forever").
+- **Phase 4** — implement the live AI experience on this platform (real inference, pgvector embeddings/vector search, connected services).

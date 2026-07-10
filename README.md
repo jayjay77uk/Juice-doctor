@@ -87,6 +87,15 @@ The enterprise backend **foundation** — designed as it would exist in producti
 - **Frameworks** — AI agents (data-driven), knowledge, memory (six scopes), consultations, and platform ops as typed services in [`src/services`](src/services) and models in [`src/types`](src/types).
 - **Docs** — the full architecture write-up (the "why") lives in [`docs/`](docs/README.md).
 
+## AI platform & admin portal (Phase 3)
+
+The **AI management platform** — "build once, configure forever". Every assistant is configured through the admin dashboard; **nothing about AI behaviour is hardcoded**. Still prototype-mode (mock stores, **no live AI**, no patient data, no payments).
+
+- **Admin portal** ([`src/app/(admin)`](<src/app/(admin)>)) — AI Dashboard, Agent Management (create/version/publish/configure), Prompt Management (versioned, workflowed), AI Playground (isolated mock test harness), Safety Centre, Memory Centre, Analytics, Knowledge Base portal, Users, Consultations, Configuration Centre, Audit Logs.
+- **User dashboard** ([`src/app/(dashboard)`](<src/app/(dashboard)>)) — overview, onboarding wizard, goals, health/fitness/nutrition profile, assessments, journey timeline, bookings, saved conversations, notifications, settings.
+- **Data-driven** — agents/prompts/models/tools/safety/knowledge are data in [`src/config`](src/config) + [`src/services`](src/services) (mock), designed to swap onto migration [`db/migrations/0014`](db/migrations) in production.
+- **Docs** — [AI Management Platform](docs/architecture/13-ai-platform.md) · [Admin Portal & User Dashboard](docs/architecture/14-admin-and-dashboard.md).
+
 ## Client decisions captured (2026-07-10)
 
 Standalone `/founder` page · pricing on cards · one Resources surface · forms fully mocked · Remote Selfie Scan is an interactive mocked flow. Brand palette and typography are **proposals pending client confirmation**.
