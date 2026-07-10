@@ -34,7 +34,7 @@
 -- How the source material arrived / what it is. `ocr` and `audio_transcript`
 -- are declared now so the future ingestion pipelines need no schema change.
 create type knowledge_source_type as enum (
-  'pdf', 'docx', 'txt', 'csv', 'url', 'manual', 'ocr', 'audio_transcript'
+  'pdf', 'docx', 'txt', 'csv', 'markdown', 'url', 'manual', 'ocr', 'audio_transcript'
 );
 
 -- Coarse-grained document reach. Refined further by knowledge_permissions.

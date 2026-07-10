@@ -18,6 +18,7 @@ export type KnowledgeSourceType =
   | 'docx'
   | 'txt'
   | 'csv'
+  | 'markdown'
   | 'url'
   | 'manual'
   | 'ocr'
