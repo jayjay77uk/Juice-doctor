@@ -3,7 +3,17 @@ import 'server-only';
 import type { Goal, HealthProfile, FitnessProfile, NutritionProfile } from '@/types/health';
 import type { Assessment } from '@/types/consultation';
 import type { Notification } from '@/types/platform';
+import type { AiAgent } from '@/types/ai';
+import type { Conversation } from '@/types/conversation';
+import { specialists } from './specialists';
+import { conversations_service } from './conversations';
 import { ok, type Result } from './result';
+
+/**
+ * Which specialist AIs this member currently has access to. Prototype seed;
+ * Phase 3 derives this from the member's active subscription scope.
+ */
+const MEMBER_SPECIALIST_SLUGS = ['specialist-ai-1', 'specialist-ai-2'];
 
 /**
  * Member (user dashboard) read layer. Prototype returns canned member data so
@@ -87,5 +97,19 @@ export const member = {
       { title: 'Follow-up with Practitioner One', when: 'Thu 17 Jul · 4:00pm', type: '1:1' },
       { title: 'Week 4 group check-in', when: 'Mon 21 Jul · 9:00am', type: 'Group' },
     ]);
+  },
+  /** The specialist AIs this member can currently open and chat with. */
+  async mySpecialists(): Promise<Result<AiAgent[]>> {
+    const all = await specialists.all();
+    const list = all.ok ? all.data : [];
+    return ok(list.filter((s) => MEMBER_SPECIALIST_SLUGS.includes(s.slug)));
+  },
+  /** Which specialist slugs the member can access (used for access checks). */
+  async mySpecialistSlugs(): Promise<Result<string[]>> {
+    return ok([...MEMBER_SPECIALIST_SLUGS]);
+  },
+  /** The member's real conversations with their specialist AIs. */
+  async myConversations(): Promise<Result<Conversation[]>> {
+    return conversations_service.list(USER);
   },
 };

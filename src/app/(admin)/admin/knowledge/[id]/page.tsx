@@ -7,9 +7,23 @@ import { AdminHeader } from '@/components/admin/admin-header';
 import { Panel } from '@/components/admin/panel';
 import { StatusBadge } from '@/components/admin/status-badge';
 import { knowledge, PUBLISH_TRANSITIONS } from '@/services/knowledge';
-import { transitionDocumentAction } from '@/services/admin-actions';
+import {
+  advanceIndexAction,
+  archiveDocAction,
+  failIndexAction,
+  setDocActiveAction,
+  transitionDocumentAction,
+} from '@/services/admin-actions';
+import type { KnowledgeIndexState } from '@/types/knowledge';
 
 export const metadata = createMetadata({ title: 'Knowledge document' });
+
+/** Label for the "advance" button, based on the current index state. */
+const ADVANCE_LABELS: Partial<Record<KnowledgeIndexState, string>> = {
+  uploaded: 'Start processing',
+  processing: 'Mark indexed',
+  indexed: 'Mark available',
+};
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-GB', {
@@ -34,6 +48,7 @@ export default async function KnowledgeDocumentPage({
   const versions = versionsResult.ok ? versionsResult.data : [];
 
   const nextStatuses = PUBLISH_TRANSITIONS[doc.publishStatus];
+  const advanceLabel = ADVANCE_LABELS[doc.indexState];
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
@@ -76,6 +91,81 @@ export default async function KnowledgeDocumentPage({
             ))}
           </div>
         ) : null}
+      </Panel>
+
+      <Panel
+        title="Indexing"
+        description="Retrieval-readiness of this document in its knowledge brain. Documents are indexed, never trained."
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <StatusBadge status={doc.indexState} />
+          <span className="text-sm text-muted-foreground">
+            Assigned AI:{' '}
+            <span className="font-medium text-foreground">
+              {doc.assignedSpecialistSlug ?? '—'}
+            </span>
+          </span>
+          <span className="text-sm text-muted-foreground">
+            Active in brain:{' '}
+            <span className="font-medium text-foreground">{doc.active ? 'Yes' : 'No'}</span>
+          </span>
+        </div>
+
+        {doc.indexState === 'failed' && doc.errorMessage ? (
+          <p className="mt-4 rounded-lg bg-[#f6e3e0] px-4 py-2.5 text-sm text-danger">
+            {doc.errorMessage}
+          </p>
+        ) : null}
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          {advanceLabel &&
+          doc.indexState !== 'available' &&
+          doc.indexState !== 'failed' &&
+          doc.indexState !== 'archived' ? (
+            <form action={advanceIndexAction}>
+              <input type="hidden" name="id" value={doc.id} />
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border-strong px-3.5 py-2 text-sm font-medium text-foreground hover:bg-surface-muted"
+              >
+                {advanceLabel}
+              </button>
+            </form>
+          ) : null}
+
+          {doc.indexState !== 'archived' ? (
+            <form action={failIndexAction}>
+              <input type="hidden" name="id" value={doc.id} />
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border-strong px-3.5 py-2 text-sm font-medium text-foreground hover:bg-surface-muted"
+              >
+                Mark failed
+              </button>
+            </form>
+          ) : null}
+
+          <form action={setDocActiveAction}>
+            <input type="hidden" name="id" value={doc.id} />
+            <input type="hidden" name="active" value={String(!doc.active)} />
+            <button
+              type="submit"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border-strong px-3.5 py-2 text-sm font-medium text-foreground hover:bg-surface-muted"
+            >
+              {doc.active ? 'Deactivate' : 'Activate'}
+            </button>
+          </form>
+
+          <form action={archiveDocAction}>
+            <input type="hidden" name="id" value={doc.id} />
+            <button
+              type="submit"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border-strong px-3.5 py-2 text-sm font-medium text-foreground hover:bg-surface-muted"
+            >
+              Archive
+            </button>
+          </form>
+        </div>
       </Panel>
 
       <Panel title="Details" description="Metadata for this knowledge document.">

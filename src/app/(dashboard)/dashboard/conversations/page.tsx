@@ -5,41 +5,45 @@ import { AdminHeader } from '@/components/admin/admin-header';
 import { Panel } from '@/components/admin/panel';
 import { EmptyState } from '@/components/admin/empty-state';
 import { Button } from '@/components/ui/button';
-import { ComingSoon } from '@/components/sections/coming-soon';
 import { member } from '@/services/member';
+import { agents } from '@/services/agents';
 
 export const metadata = createMetadata({
   title: 'Your conversations',
   path: '/dashboard/conversations',
 });
 
-function formatUpdated(iso: string): string {
+function formatUpdated(iso: string | null): string {
+  if (!iso) return '—';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(date);
+  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 }
 
 export default async function ConversationsPage() {
-  const result = await member.savedConversations();
-  const conversations = result.ok ? result.data : [];
+  const [convosResult, agentsResult] = await Promise.all([member.myConversations(), agents.list()]);
+  const conversations = convosResult.ok ? convosResult.data : [];
+  const agentList = agentsResult.ok ? agentsResult.data : [];
+  const agentName = (id: string | null) => agentList.find((a) => a.id === id)?.name ?? 'Specialist AI';
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-8">
       <AdminHeader
         title="Your conversations"
-        description="Chats with your Assistant AI, saved for you."
+        description="Chats with your specialist AIs, saved so you can pick up where you left off."
+        actions={
+          <Button asChild size="sm">
+            <Link href="/dashboard/specialists">Open a specialist</Link>
+          </Button>
+        }
       />
 
       {conversations.length === 0 ? (
         <Panel>
           <EmptyState
             icon={MessageCircle}
-            title="No saved chats yet"
-            description="When you talk with your Assistant AI, we'll keep your conversations here so you can pick up right where you left off."
+            title="No conversations yet"
+            description="Open one of your specialist AIs to start a conversation. Your chats are saved here."
           />
         </Panel>
       ) : (
@@ -51,18 +55,14 @@ export default async function ConversationsPage() {
                   <h2 className="font-serif text-lg text-foreground">{conversation.title}</h2>
                   <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Bot className="size-4" />
-                    {conversation.agent}
+                    {agentName(conversation.agentId)}
                   </p>
                 </div>
-
-                <p className="text-sm text-muted-foreground">{conversation.preview}</p>
-
                 <p className="mt-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Clock className="size-3.5" />
-                  Updated {formatUpdated(conversation.updatedAt)}
+                  Updated {formatUpdated(conversation.lastMessageAt)}
                 </p>
               </div>
-
               <div className="mt-4">
                 <Button asChild>
                   <Link href={`/dashboard/conversations/${conversation.id}`}>Continue</Link>
@@ -73,13 +73,8 @@ export default async function ConversationsPage() {
         </div>
       )}
 
-      <ComingSoon
-        title="AI chat arrives soon"
-        body="In the full platform you'll chat live with your Assistant AI here. This prototype shows the experience only."
-      />
-
       <p className="text-sm text-muted-foreground">
-        Prototype — sample data. No real records, AI, or bookings are connected.
+        Prototype — sample data. No live AI is connected.
       </p>
     </div>
   );

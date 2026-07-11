@@ -1,0 +1,162 @@
+import 'server-only';
+
+import type { Conversation, Message, MessageFeedback, FeedbackRating } from '@/types/conversation';
+import { agents } from './agents';
+import { knowledge } from './knowledge';
+import { ok, err, type Result } from './result';
+
+/**
+ * Conversation service — the specialist-AI chat surface for subscribed
+ * customers. PROTOTYPE: replies are a deterministic MOCK grounded in the
+ * specialist's assigned knowledge brain (it cites an indexed document); no live
+ * AI runs. A small in-process "remembered" store demonstrates that preferences
+ * are carried across the conversation. Production swaps `send()` for live
+ * inference + retrieval over the knowledge_* tables — the interface is unchanged.
+ */
+
+const ORG = '00000000-0000-0000-0000-000000000001';
+const MEMBER = 'usr_member';
+const TS = '2026-07-10T00:00:00.000Z';
+let cCounter = 0;
+let mCounter = 0;
+let fCounter = 0;
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+const conversations: Conversation[] = [
+  { id: 'conv_1', organisationId: ORG, userId: MEMBER, agentId: 'agent_specialist-ai-1', title: 'Getting started', status: 'active', context: {}, lastMessageAt: '2026-07-09T10:00:00.000Z', createdAt: '2026-07-08T09:00:00.000Z' },
+  { id: 'conv_2', organisationId: ORG, userId: MEMBER, agentId: 'agent_specialist-ai-2', title: 'A few questions', status: 'active', context: {}, lastMessageAt: '2026-07-07T14:00:00.000Z', createdAt: '2026-07-07T13:30:00.000Z' },
+];
+
+const messages: Message[] = [
+  { id: 'msg_1', conversationId: 'conv_1', role: 'assistant', content: 'Hello — I am Specialist AI 1. How can I help you today?', tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: '2026-07-08T09:00:00.000Z' },
+  { id: 'msg_2', conversationId: 'conv_1', role: 'user', content: 'I would like to understand how to get started.', tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: '2026-07-08T09:01:00.000Z' },
+  { id: 'msg_3', conversationId: 'conv_1', role: 'assistant', content: 'Here is a placeholder answer. In the full platform I would draw on my knowledge base to help you get started. (Prototype: no live AI is connected.)', tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: '2026-07-09T10:00:00.000Z' },
+  { id: 'msg_4', conversationId: 'conv_2', role: 'assistant', content: 'Hello — I am Specialist AI 2. How can I help you today?', tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: '2026-07-07T13:30:00.000Z' },
+];
+
+const feedback: MessageFeedback[] = [];
+
+/** Simple per-user remembered preferences (mock memory). */
+const remembered: Record<string, string[]> = { [MEMBER]: ['Prefers clear, step-by-step answers.'] };
+
+function findConversation(id: string): Conversation | undefined {
+  return conversations.find((c) => c.id === id);
+}
+
+async function mockReply(agentId: string | null, userText: string): Promise<string> {
+  if (!agentId) return 'Thanks for your message. (Prototype: no specialist is assigned to this conversation.)';
+  const agentResult = await agents.byId(agentId);
+  if (!agentResult.ok) return 'Thanks for your message. (Prototype: no live AI is connected.)';
+  const agent = agentResult.data;
+  const docsResult = await knowledge.documents.availableForSpecialist(agent.slug);
+  const docs = docsResult.ok ? docsResult.data : [];
+  const cite = docs[0]?.title;
+  const grounding = cite
+    ? ` I would draw on “${cite}” from my knowledge base to answer.`
+    : ' No documents are indexed in my knowledge base yet, so I would ask a member of the team to help.';
+  return `Thanks — here is a placeholder response from ${agent.name}.${grounding} (Prototype: no live AI is connected.)`;
+}
+
+export const conversations_service = {
+  async list(userId = MEMBER): Promise<Result<Conversation[]>> {
+    return ok(
+      conversations
+        .filter((c) => c.userId === userId && c.status !== 'deleted')
+        .sort((a, b) => (b.lastMessageAt ?? b.createdAt).localeCompare(a.lastMessageAt ?? a.createdAt)),
+    );
+  },
+
+  async byId(id: string): Promise<Result<Conversation>> {
+    const match = findConversation(id);
+    return match ? ok(match) : err({ code: 'not_found', message: 'Conversation not found.' });
+  },
+
+  async messages(conversationId: string): Promise<Result<Message[]>> {
+    return ok(messages.filter((m) => m.conversationId === conversationId).sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
+  },
+
+  async remembered(userId = MEMBER): Promise<Result<string[]>> {
+    return ok(remembered[userId] ?? []);
+  },
+
+  /** Start a new conversation with a specialist AI, seeded with its welcome message. */
+  async create(input: { userId?: string; agentId: string; title?: string }): Promise<Result<Conversation>> {
+    const agentResult = await agents.byId(input.agentId);
+    if (!agentResult.ok) return err({ code: 'not_found', message: 'Specialist not found.' });
+    const id = `conv_new_${++cCounter}`;
+    const conversation: Conversation = {
+      id,
+      organisationId: ORG,
+      userId: input.userId ?? MEMBER,
+      agentId: input.agentId,
+      title: input.title?.trim() || 'New conversation',
+      status: 'active',
+      context: {},
+      lastMessageAt: nowIso(),
+      createdAt: nowIso(),
+    };
+    conversations.unshift(conversation);
+    messages.push({
+      id: `msg_new_${++mCounter}`,
+      conversationId: id,
+      role: 'assistant',
+      content: agentResult.data.welcomeMessage,
+      tokenCount: null,
+      toolCalls: null,
+      toolCallId: null,
+      modelKey: null,
+      createdAt: nowIso(),
+    });
+    return ok(conversation);
+  },
+
+  /** Send a user message and get the specialist's (mock, knowledge-grounded) reply. */
+  async send(conversationId: string, content: string): Promise<Result<Message[]>> {
+    const conversation = findConversation(conversationId);
+    if (!conversation) return err({ code: 'not_found', message: 'Conversation not found.' });
+    if (!content.trim()) return err({ code: 'invalid', message: 'Please enter a message.' });
+
+    messages.push({ id: `msg_new_${++mCounter}`, conversationId, role: 'user', content: content.trim(), tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: nowIso() });
+
+    // Remember a simple preference signal (mock memory).
+    if (/prefer|like|rather/i.test(content)) {
+      const list = remembered[conversation.userId] ?? (remembered[conversation.userId] = []);
+      const note = `Mentioned a preference: “${content.trim().slice(0, 60)}”.`;
+      if (!list.includes(note)) list.push(note);
+    }
+
+    const replyText = await mockReply(conversation.agentId, content);
+    messages.push({ id: `msg_new_${++mCounter}`, conversationId, role: 'assistant', content: replyText, tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: nowIso() });
+
+    conversation.lastMessageAt = nowIso();
+    return conversations_service.messages(conversationId);
+  },
+
+  async feedback(messageId: string, rating: FeedbackRating, userId = MEMBER): Promise<Result<MessageFeedback>> {
+    const record: MessageFeedback = { id: `fb_${++fCounter}`, messageId, userId, rating, comment: null, createdAt: nowIso() };
+    feedback.push(record);
+    return ok(record);
+  },
+
+  /** Customer asks to speak with a person — logged in the thread. */
+  async requestSupport(conversationId: string): Promise<Result<Message[]>> {
+    const conversation = findConversation(conversationId);
+    if (!conversation) return err({ code: 'not_found', message: 'Conversation not found.' });
+    messages.push({
+      id: `msg_new_${++mCounter}`,
+      conversationId,
+      role: 'system',
+      content: 'You asked to speak with a person. A member of the team has been notified and will follow up. (Prototype: no message is actually sent.)',
+      tokenCount: null,
+      toolCalls: null,
+      toolCallId: null,
+      modelKey: null,
+      createdAt: nowIso(),
+    });
+    conversation.lastMessageAt = nowIso();
+    return conversations_service.messages(conversationId);
+  },
+};

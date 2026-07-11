@@ -22,7 +22,22 @@ export type KnowledgeSourceType =
   | 'url'
   | 'manual'
   | 'ocr'
+  | 'image'
+  | 'audio'
+  | 'video'
   | 'audio_transcript';
+
+/** The upload kinds offered in the admin, mapped to a source type + label. */
+export const KNOWLEDGE_UPLOAD_KINDS: { value: KnowledgeSourceType; label: string }[] = [
+  { value: 'pdf', label: 'PDF' },
+  { value: 'docx', label: 'Word document' },
+  { value: 'txt', label: 'Text file' },
+  { value: 'image', label: 'Image' },
+  { value: 'audio', label: 'Audio' },
+  { value: 'video', label: 'Video' },
+  { value: 'url', label: 'Website content' },
+  { value: 'manual', label: 'Structured notes' },
+];
 
 export type KnowledgeVisibility = 'private' | 'organisation' | 'public';
 export type KnowledgeAccess = 'read' | 'edit' | 'approve';
@@ -62,6 +77,8 @@ export interface KnowledgeDocument {
   id: string;
   organisationId: string;
   categoryId: string | null;
+  /** The specialist AI whose knowledge brain this document belongs to. */
+  assignedSpecialistSlug: string | null;
   title: string;
   slug: string;
   description: string | null;
@@ -72,6 +89,10 @@ export interface KnowledgeDocument {
   publishStatus: PublishStatus;
   /** Retrieval-readiness state (uploaded → processing → indexed → available). */
   indexState: KnowledgeIndexState;
+  /** Whether this document is active in the brain (vs. temporarily disabled). */
+  active: boolean;
+  /** Set when indexState is 'failed'. */
+  errorMessage: string | null;
   visibility: KnowledgeVisibility;
   ownerId: string;
   approvedBy: string | null;

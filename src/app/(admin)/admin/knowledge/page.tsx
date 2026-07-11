@@ -9,27 +9,38 @@ import { Panel } from '@/components/admin/panel';
 import { DataTable, type Column } from '@/components/admin/data-table';
 import { StatusBadge } from '@/components/admin/status-badge';
 import { EmptyState } from '@/components/admin/empty-state';
+import { KnowledgeUploadForm } from '@/components/admin/knowledge-upload-form';
 import { Button } from '@/components/ui/button';
+import { specialists } from '@/services/specialists';
 import type { KnowledgeDocument } from '@/types/knowledge';
 
 export const metadata: Metadata = createMetadata({ title: 'Knowledge Base' });
 
 export default async function KnowledgeBasePage() {
-  const [statsResult, docsResult, categoriesResult, collectionsResult] = await Promise.all([
-    knowledge.stats(),
-    knowledge.documents.list(),
-    knowledge.categories.list(),
-    knowledge.collections.list(),
-  ]);
+  const [statsResult, docsResult, categoriesResult, collectionsResult, specialistsResult] =
+    await Promise.all([
+      knowledge.stats(),
+      knowledge.documents.list(),
+      knowledge.categories.list(),
+      knowledge.collections.list(),
+      specialists.all(),
+    ]);
 
   const stats = statsResult.ok ? statsResult.data : null;
   const documents = docsResult.ok ? docsResult.data.items : [];
   const categories = categoriesResult.ok ? categoriesResult.data : [];
   const collections = collectionsResult.ok ? collectionsResult.data : [];
+  const specialistList = specialistsResult.ok ? specialistsResult.data : [];
 
   const categoryName = (id: string | null): string => {
     if (!id) return '—';
     const match = categories.find((c) => c.id === id);
+    return match ? match.name : '—';
+  };
+
+  const specialistName = (slug: string | null): string => {
+    if (!slug) return '—';
+    const match = specialistList.find((s) => s.slug === slug);
     return match ? match.name : '—';
   };
 
@@ -43,9 +54,12 @@ export default async function KnowledgeBasePage() {
       ),
     },
     { header: 'Type', cell: (d) => d.sourceType.toUpperCase() },
+    { header: 'Assigned AI', cell: (d) => specialistName(d.assignedSpecialistSlug) },
     { header: 'Category', cell: (d) => categoryName(d.categoryId) },
     { header: 'Version', align: 'right', cell: (d) => `v${d.currentVersion}` },
+    { header: 'Index state', cell: (d) => <StatusBadge status={d.indexState} /> },
     { header: 'Status', cell: (d) => <StatusBadge status={d.publishStatus} /> },
+    { header: 'Uploaded', cell: (d) => d.createdAt.slice(0, 10) },
     { header: 'Updated', cell: (d) => d.updatedAt.slice(0, 10) },
   ];
 
@@ -68,6 +82,16 @@ export default async function KnowledgeBasePage() {
         <StatCard label="In review" value={stats?.inReview ?? 0} icon={Clock} />
         <StatCard label="Drafts" value={stats?.drafts ?? 0} icon={FileText} />
       </StatGrid>
+
+      <Panel
+        title="Upload to a knowledge brain"
+        description="Add a source document and assign it to a specialist AI. It enters the indexing pipeline as “uploaded”."
+      >
+        <KnowledgeUploadForm
+          specialists={specialistList.map((s) => ({ slug: s.slug, name: s.name }))}
+          categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+        />
+      </Panel>
 
       <Panel title="Documents" padded={false}>
         <DataTable

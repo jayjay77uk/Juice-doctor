@@ -59,10 +59,14 @@ export async function createAgentAction(_prev: ActionResult, formData: FormData)
 const updateSchema = z.object({
   id: z.string(),
   name: z.string().min(2),
+  code: z.string().optional().or(z.literal('')),
   description: z.string().optional().or(z.literal('')),
+  purpose: z.string().optional().or(z.literal('')),
   role: z.string().min(1),
   personality: z.string().optional().or(z.literal('')),
   systemPrompt: z.string().optional().or(z.literal('')),
+  welcomeMessage: z.string().optional().or(z.literal('')),
+  responseBoundaries: z.string().optional().or(z.literal('')),
   temperature: z.coerce.number().min(0).max(2),
   maxOutputTokens: z.coerce.number().int().min(1).max(200000),
   visibility: z.enum(['private', 'organisation', 'public']),
@@ -75,13 +79,18 @@ export async function updateAgentAction(_prev: ActionResult, formData: FormData)
   }
   const patch: AgentPatch = {
     name: parsed.data.name,
+    code: parsed.data.code ?? '',
     description: parsed.data.description ?? '',
+    purpose: parsed.data.purpose ?? '',
     role: parsed.data.role,
     personality: parsed.data.personality ?? '',
     systemPrompt: parsed.data.systemPrompt ?? '',
+    welcomeMessage: parsed.data.welcomeMessage ?? '',
+    responseBoundaries: parsed.data.responseBoundaries ?? '',
     temperature: parsed.data.temperature,
     maxOutputTokens: parsed.data.maxOutputTokens,
     visibility: parsed.data.visibility as AgentVisibility,
+    subscriptionAvailable: formData.get('subscriptionAvailable') === 'on',
     memoryConfig: {
       useUserMemory: formData.get('useUserMemory') === 'on',
       useConversationMemory: formData.get('useConversationMemory') === 'on',
@@ -93,7 +102,28 @@ export async function updateAgentAction(_prev: ActionResult, formData: FormData)
       escalateOn: toList(formData.get('escalateOn')),
       requireDisclaimer: formData.get('requireDisclaimer') === 'on',
     },
+    followUpConfig: {
+      enabled: formData.get('followUpEnabled') === 'on',
+      cadence: String(formData.get('followUpCadence') ?? 'weekly'),
+      message: String(formData.get('followUpMessage') ?? ''),
+    },
+    escalationConfig: {
+      enabled: formData.get('escalationEnabled') === 'on',
+      target: String(formData.get('escalationTarget') ?? 'the team'),
+      channel: (String(formData.get('escalationChannel') ?? 'whatsapp')) as 'in_app' | 'whatsapp' | 'email',
+      note: String(formData.get('escalationNote') ?? ''),
+    },
   };
+  if (formData.get('hasProduct') === 'true') {
+    patch.product = {
+      tagline: String(formData.get('productTagline') ?? ''),
+      expertise: toList(formData.get('productExpertise')),
+      priceLabel: String(formData.get('productPriceLabel') ?? 'Price on request') || 'Price on request',
+      priceAmount: Number(formData.get('productPriceAmount') ?? 0) || 0,
+      interval: (String(formData.get('productInterval') ?? 'month')) as 'month' | 'year',
+      accent: (String(formData.get('productAccent') ?? 'teal')) as 'teal' | 'green' | 'amber' | 'sage',
+    };
+  }
   const result = await agents.update(parsed.data.id, patch);
   if (!result.ok) return { status: 'error', message: result.error.message };
   revalidatePath(`/admin/ai/agents/${parsed.data.id}`);
@@ -177,6 +207,64 @@ export async function transitionDocumentAction(formData: FormData): Promise<void
   await knowledge.documents.transition(id, to);
   revalidatePath('/admin/knowledge');
   revalidatePath(`/admin/knowledge/${id}`);
+}
+
+// ── Knowledge brain: upload + indexing pipeline (never "training") ───────────
+
+const uploadSchema = z.object({
+  title: z.string().min(2, 'Give the document a title.'),
+  sourceType: z.enum(['pdf', 'docx', 'txt', 'csv', 'markdown', 'url', 'manual', 'ocr', 'image', 'audio', 'video', 'audio_transcript']),
+  assignedSpecialistSlug: z.string().min(1, 'Assign this to a specialist.'),
+  categoryId: z.string().optional().or(z.literal('')),
+  description: z.string().optional().or(z.literal('')),
+});
+
+export async function uploadDocumentAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const parsed = uploadSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { status: 'error', message: 'Please check the fields.', fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+  const result = await knowledge.documents.create({
+    title: parsed.data.title,
+    sourceType: parsed.data.sourceType,
+    assignedSpecialistSlug: parsed.data.assignedSpecialistSlug,
+    categoryId: parsed.data.categoryId || null,
+    ...(parsed.data.description ? { description: parsed.data.description } : {}),
+  });
+  if (!result.ok) return { status: 'error', message: result.error.message };
+  revalidatePath('/admin/knowledge');
+  revalidatePath(`/admin/specialists/${parsed.data.assignedSpecialistSlug}`);
+  return { status: 'success', message: 'Document uploaded — it is now “uploaded” and awaiting processing. (Prototype: no file is stored.)' };
+}
+
+function revalidateKnowledge(id: string): void {
+  revalidatePath('/admin/knowledge');
+  revalidatePath(`/admin/knowledge/${id}`);
+}
+
+export async function advanceIndexAction(formData: FormData): Promise<void> {
+  const id = String(formData.get('id') ?? '');
+  await knowledge.documents.advanceIndex(id);
+  revalidateKnowledge(id);
+}
+
+export async function failIndexAction(formData: FormData): Promise<void> {
+  const id = String(formData.get('id') ?? '');
+  await knowledge.documents.setIndexState(id, 'failed', 'Processing failed in the prototype demo.');
+  revalidateKnowledge(id);
+}
+
+export async function setDocActiveAction(formData: FormData): Promise<void> {
+  const id = String(formData.get('id') ?? '');
+  const active = String(formData.get('active') ?? '') === 'true';
+  await knowledge.documents.setActive(id, active);
+  revalidateKnowledge(id);
+}
+
+export async function archiveDocAction(formData: FormData): Promise<void> {
+  const id = String(formData.get('id') ?? '');
+  await knowledge.documents.archiveDoc(id);
+  revalidateKnowledge(id);
 }
 
 // ── Feature flags (Configuration Centre) ─────────────────────────────────────

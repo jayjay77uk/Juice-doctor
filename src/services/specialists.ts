@@ -44,7 +44,7 @@ function subscriptionsFor(specialist: AiAgent): SpecialistSubscription[] {
       state,
       mrr: mrrUnit,
       startedAt: '2026-06-15',
-      plan: specialist.product?.priceLabel ?? '[Plan required]',
+      plan: specialist.product?.priceLabel ?? 'Standard plan',
     } satisfies SpecialistSubscription;
   });
 }

@@ -73,15 +73,22 @@ const NAV: Record<NavVariant, ShellNavSection[]> = {
     },
   ],
   dashboard: [
+    { items: [{ label: 'Overview', href: '/dashboard', icon: LayoutDashboard }] },
     {
+      title: 'My AI',
       items: [
-        { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+        { label: 'My specialists', href: '/dashboard/specialists', icon: Bot },
+        { label: 'Conversations', href: '/dashboard/conversations', icon: MessageCircle },
+      ],
+    },
+    {
+      title: 'Account',
+      items: [
         { label: 'My goals', href: '/dashboard/goals', icon: Target },
         { label: 'Health profile', href: '/dashboard/profile', icon: HeartPulse },
         { label: 'Assessments', href: '/dashboard/assessments', icon: ClipboardList },
         { label: 'Journey', href: '/dashboard/journey', icon: Route },
         { label: 'Bookings', href: '/dashboard/bookings', icon: CalendarDays },
-        { label: 'Conversations', href: '/dashboard/conversations', icon: MessageCircle },
         { label: 'Notifications', href: '/dashboard/notifications', icon: Bell },
         { label: 'Settings', href: '/dashboard/settings', icon: Settings },
       ],

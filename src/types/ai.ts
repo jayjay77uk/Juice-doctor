@@ -82,6 +82,24 @@ export interface AgentSafetyRules {
   maxTurns?: number;
 }
 
+/** How a specialist follows up with a subscribed customer. Admin-configurable. */
+export interface AgentFollowUpConfig {
+  enabled: boolean;
+  /** Placeholder cadence label (e.g. "weekly") — admin-editable, not a final rule. */
+  cadence: string;
+  /** The follow-up message template shown to the customer. */
+  message: string;
+}
+
+/** How a specialist hands a conversation to a human. Admin-configurable. */
+export interface AgentEscalationConfig {
+  enabled: boolean;
+  /** Who the conversation is escalated to (client / team member). */
+  target: string;
+  channel: 'in_app' | 'whatsapp' | 'email';
+  note: string;
+}
+
 export interface AiAgent {
   id: string;
   organisationId: string;
@@ -91,15 +109,27 @@ export interface AiAgent {
   /** Commercial identity — set for specialist products, null otherwise. */
   product: SpecialistProduct | null;
   name: string;
+  /** Short human code for the specialist (e.g. "SP-1") — admin-editable. */
+  code: string;
   description: string;
+  /** What this agent is for, distinct from its description. Admin-editable. */
+  purpose: string;
   role: string;
   personality: string;
   systemPrompt: string;
+  /** The first message a customer sees when opening this specialist. */
+  welcomeMessage: string;
+  /** Plain-English boundaries on what the agent will and will not do. */
+  responseBoundaries: string;
   temperature: number;
   maxOutputTokens: number | null;
   defaultModelId: string | null;
   memoryConfig: AgentMemoryConfig;
   safetyRules: AgentSafetyRules;
+  followUpConfig: AgentFollowUpConfig;
+  escalationConfig: AgentEscalationConfig;
+  /** Whether this specialist is available to subscribe to. */
+  subscriptionAvailable: boolean;
   visibility: AgentVisibility;
   status: AgentStatus;
   version: number;

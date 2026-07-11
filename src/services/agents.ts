@@ -55,15 +55,23 @@ export type AgentPatch = Partial<
   Pick<
     AiAgent,
     | 'name'
+    | 'code'
     | 'description'
+    | 'purpose'
     | 'role'
     | 'personality'
     | 'systemPrompt'
+    | 'welcomeMessage'
+    | 'responseBoundaries'
     | 'temperature'
     | 'maxOutputTokens'
     | 'defaultModelId'
     | 'memoryConfig'
     | 'safetyRules'
+    | 'followUpConfig'
+    | 'escalationConfig'
+    | 'subscriptionAvailable'
+    | 'product'
     | 'visibility'
     | 'status'
   >
@@ -102,10 +110,17 @@ export const agents = {
       kind: 'specialist',
       product: null,
       name: input.name,
+      code: '',
       description: input.description,
+      purpose: 'Set the purpose of this specialist in the admin backend.',
       role: input.role,
-      personality: '',
+      personality: 'Clear, helpful and professional.',
       systemPrompt: '',
+      welcomeMessage: 'Hello — how can I help you today?',
+      responseBoundaries: 'Answer using the assigned knowledge base. Stay within this specialist’s remit.',
+      followUpConfig: { enabled: false, cadence: 'weekly', message: 'Checking in — how are things going?' },
+      escalationConfig: { enabled: true, target: 'the team', channel: 'whatsapp', note: 'Escalate when the customer needs human help.' },
+      subscriptionAvailable: false,
       temperature: 0.7,
       maxOutputTokens: 1024,
       defaultModelId: null,
