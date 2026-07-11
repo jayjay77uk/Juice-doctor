@@ -5,15 +5,11 @@ import type { Assessment } from '@/types/consultation';
 import type { Notification } from '@/types/platform';
 import type { AiAgent } from '@/types/ai';
 import type { Conversation } from '@/types/conversation';
+import type { CustomerSubscription } from '@/types/crm';
 import { specialists } from './specialists';
 import { conversations_service } from './conversations';
+import { subscriptionsService } from './subscriptions';
 import { ok, type Result } from './result';
-
-/**
- * Which specialist AIs this member currently has access to. Prototype seed;
- * Phase 3 derives this from the member's active subscription scope.
- */
-const MEMBER_SPECIALIST_SLUGS = ['specialist-ai-1', 'specialist-ai-2'];
 
 /**
  * Member (user dashboard) read layer. Prototype returns canned member data so
@@ -98,18 +94,30 @@ export const member = {
       { title: 'Week 4 group check-in', when: 'Mon 21 Jul · 9:00am', type: 'Group' },
     ]);
   },
+  /** Which specialist slugs the member can access (from active subscriptions). */
+  async mySpecialistSlugs(): Promise<Result<string[]>> {
+    return subscriptionsService.memberAccess(USER);
+  },
   /** The specialist AIs this member can currently open and chat with. */
   async mySpecialists(): Promise<Result<AiAgent[]>> {
-    const all = await specialists.all();
-    const list = all.ok ? all.data : [];
-    return ok(list.filter((s) => MEMBER_SPECIALIST_SLUGS.includes(s.slug)));
-  },
-  /** Which specialist slugs the member can access (used for access checks). */
-  async mySpecialistSlugs(): Promise<Result<string[]>> {
-    return ok([...MEMBER_SPECIALIST_SLUGS]);
+    const [accessResult, allResult] = await Promise.all([subscriptionsService.memberAccess(USER), specialists.all()]);
+    const slugs = accessResult.ok ? accessResult.data : [];
+    const list = allResult.ok ? allResult.data : [];
+    return ok(list.filter((s) => slugs.includes(s.slug)));
   },
   /** The member's real conversations with their specialist AIs. */
   async myConversations(): Promise<Result<Conversation[]>> {
     return conversations_service.list(USER);
+  },
+  /** The member's subscriptions. */
+  async mySubscriptions(): Promise<Result<CustomerSubscription[]>> {
+    return subscriptionsService.byMember(USER);
+  },
+  /** Follow-up items for the member. */
+  async myFollowUps(): Promise<Result<{ title: string; detail: string; when: string }[]>> {
+    return ok([
+      { title: 'Continue with Specialist AI 1', detail: 'Pick up your last conversation.', when: 'Anytime' },
+      { title: 'Complete your profile', detail: 'Add a few details so your specialists can help more.', when: 'This week' },
+    ]);
   },
 };

@@ -8,13 +8,45 @@
  * customer's progress. Mirrors migration 0015.
  */
 
+/** The full CRM pipeline (10 stages). */
 export type LeadStatus =
-  | 'new'
-  | 'qualified'
-  | 'recommended'
-  | 'subscribed'
-  | 'escalated'
-  | 'lost';
+  | 'new' // new lead
+  | 'consultation' // consultation in progress
+  | 'human_review' // human review
+  | 'recommended' // AI recommended
+  | 'awaiting_subscription' // awaiting subscription
+  | 'subscribed' // subscribed
+  | 'active' // active customer
+  | 'follow_up' // follow-up required
+  | 'inactive' // inactive
+  | 'closed'; // closed
+
+/** Human-readable labels + order for the CRM pipeline. */
+export const LEAD_STATUS_ORDER: LeadStatus[] = [
+  'new',
+  'consultation',
+  'human_review',
+  'recommended',
+  'awaiting_subscription',
+  'subscribed',
+  'active',
+  'follow_up',
+  'inactive',
+  'closed',
+];
+
+export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
+  new: 'New lead',
+  consultation: 'Consultation in progress',
+  human_review: 'Human review',
+  recommended: 'AI recommended',
+  awaiting_subscription: 'Awaiting subscription',
+  subscribed: 'Subscribed',
+  active: 'Active customer',
+  follow_up: 'Follow-up required',
+  inactive: 'Inactive',
+  closed: 'Closed',
+};
 
 export type LeadFollowUp = 'none' | 'scheduled' | 'in_progress' | 'done';
 export type LeadSource = 'receptionist' | 'website' | 'referral' | 'whatsapp';
@@ -73,6 +105,8 @@ export interface CrmLead {
   notes: string | null;
   /** Whether a human has closed the review for this lead (reopenable). */
   reviewClosed: boolean;
+  /** An optional reminder/follow-up due date (ISO), set by an admin. */
+  reminderAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -110,7 +144,7 @@ export interface ReceptionistRecommendation {
   alternatives: { slug: string; name: string }[];
 }
 
-export type SubscriptionState = 'trialing' | 'active' | 'past_due' | 'canceled';
+export type SubscriptionState = 'trialing' | 'active' | 'past_due' | 'canceled' | 'incomplete' | 'suspended';
 
 /**
  * Access scope of a subscription — one specialist, several selected specialists,
@@ -130,6 +164,50 @@ export interface SpecialistSubscription {
   mrr: number; // minor units
   startedAt: string;
   plan: string;
+}
+
+/**
+ * An admin-configurable subscription plan. Prices are NOT defined here — only the
+ * access scope (one / selected-multiple / all specialists). The admin sets final
+ * pricing/packages later; this keeps the architecture open to all three tiers.
+ */
+export interface SpecialistPlan {
+  id: string;
+  name: string;
+  description: string;
+  scope: SubscriptionScope;
+  /** Specialist slugs covered — for 'single'/'multiple'; empty for scope 'all'. */
+  specialistSlugs: string[];
+  /** Placeholder price label — admin-configurable, never an invented amount. */
+  priceLabel: string;
+  status: 'active' | 'archived';
+}
+
+/** A customer's subscription to a plan (grants specialist access). */
+export interface CustomerSubscription {
+  id: string;
+  memberId: string;
+  customerName: string;
+  customerEmail: string;
+  planId: string;
+  planName: string;
+  scope: SubscriptionScope;
+  /** Resolved specialist access for this subscription. */
+  specialistSlugs: string[];
+  state: SubscriptionState;
+  startedAt: string;
+  lastPaymentAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A manually-recorded payment (prototype only — no live payment provider). */
+export interface ManualPayment {
+  id: string;
+  subscriptionId: string;
+  amountLabel: string;
+  note: string;
+  recordedAt: string;
 }
 
 /** Business analytics for a single specialist AI product. */

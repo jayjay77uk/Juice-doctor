@@ -38,6 +38,22 @@ const STATUS_TONE: Record<string, Tone> = {
   private: 'neutral',
   organisation: 'teal',
   public: 'green',
+  // CRM lead pipeline (10 stages)
+  new: 'teal',
+  consultation: 'amber',
+  human_review: 'amber',
+  recommended: 'teal',
+  awaiting_subscription: 'amber',
+  subscribed: 'green',
+  follow_up: 'amber',
+  inactive: 'neutral',
+  closed: 'neutral',
+  // subscription states
+  trialing: 'amber',
+  past_due: 'red',
+  canceled: 'red',
+  incomplete: 'red',
+  suspended: 'neutral',
 };
 
 function humanise(value: string): string {

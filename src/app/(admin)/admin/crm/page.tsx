@@ -7,8 +7,9 @@ import { Panel } from '@/components/admin/panel';
 import { DataTable, type Column } from '@/components/admin/data-table';
 import { StatusBadge } from '@/components/admin/status-badge';
 import { EmptyState } from '@/components/admin/empty-state';
+import { CrmFilters } from '@/components/admin/crm-filters';
 import { crm } from '@/services/crm';
-import type { CrmLead } from '@/types/crm';
+import { LEAD_STATUS_LABELS, LEAD_STATUS_ORDER, type CrmLead, type LeadStatus } from '@/types/crm';
 
 export const metadata = createMetadata({ title: 'CRM · Leads' });
 
@@ -49,7 +50,7 @@ const columns: Column<CrmLead>[] = [
   },
   {
     header: 'Status',
-    cell: (lead) => <StatusBadge status={lead.status} />,
+    cell: (lead) => <StatusBadge status={LEAD_STATUS_LABELS[lead.status]} />,
   },
   {
     header: 'Follow-up',
@@ -62,9 +63,22 @@ const columns: Column<CrmLead>[] = [
   },
 ];
 
-export default async function CrmLeadsPage() {
+export default async function CrmLeadsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; status?: string }>;
+}) {
+  const { q, status } = await searchParams;
+  const search = q?.trim() ?? '';
+  const statusFilter =
+    status && LEAD_STATUS_ORDER.includes(status as LeadStatus) ? (status as LeadStatus) : undefined;
+
+  const listFilter: { search?: string; status?: LeadStatus } = {};
+  if (search) listFilter.search = search;
+  if (statusFilter) listFilter.status = statusFilter;
+
   const [leadsResult, pipelineResult, escalationResult] = await Promise.all([
-    crm.list(),
+    crm.list(listFilter),
     crm.pipeline(),
     crm.escalationQueue(),
   ]);
@@ -75,6 +89,8 @@ export default async function CrmLeadsPage() {
         title="CRM · Leads"
         description="Every lead the Receptionist AI creates — its assessment, recommendation confidence, assigned specialist and follow-up."
       />
+
+      <CrmFilters q={search} status={statusFilter ?? ''} />
 
       <Panel title="Pipeline">
         {pipelineResult.ok ? (

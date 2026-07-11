@@ -27,6 +27,8 @@ import {
   MessageCircle,
   Bell,
   Settings,
+  CreditCard,
+  LifeBuoy,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -53,7 +55,13 @@ const NAV: Record<NavVariant, ShellNavSection[]> = {
   admin: [
     { title: 'Business', items: [{ label: 'Business Dashboard', href: '/admin', icon: LayoutDashboard }] },
     { title: 'Receptionist AI', items: [{ label: 'The Receptionist', href: '/admin/receptionist', icon: Sparkles }] },
-    { title: 'Specialist AIs', items: [{ label: 'Specialists', href: '/admin/specialists', icon: Bot }] },
+    {
+      title: 'Specialist AIs',
+      items: [
+        { label: 'Specialists', href: '/admin/specialists', icon: Bot },
+        { label: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
+      ],
+    },
     { title: 'CRM', items: [{ label: 'Leads', href: '/admin/crm', icon: ContactRound }] },
     {
       title: 'Administration',
@@ -79,6 +87,8 @@ const NAV: Record<NavVariant, ShellNavSection[]> = {
       items: [
         { label: 'My specialists', href: '/dashboard/specialists', icon: Bot },
         { label: 'Conversations', href: '/dashboard/conversations', icon: MessageCircle },
+        { label: 'My subscriptions', href: '/dashboard/subscriptions', icon: CreditCard },
+        { label: 'Support', href: '/dashboard/support', icon: LifeBuoy },
       ],
     },
     {

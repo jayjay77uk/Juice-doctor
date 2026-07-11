@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { crm } from './crm';
 import { specialists } from './specialists';
-import type { LeadFollowUp, LeadWhatsapp } from '@/types/crm';
+import type { LeadFollowUp, LeadWhatsapp, LeadStatus } from '@/types/crm';
 
 /**
  * Admin Server Actions for the human-review / takeover workflow on a CRM lead.
@@ -64,4 +64,12 @@ export async function closeReviewAction(id: string): Promise<Res> {
 
 export async function reopenReviewAction(id: string): Promise<Res> {
   return wrap(await crm.reopenReview(id), id);
+}
+
+export async function setLeadStatusAction(id: string, status: LeadStatus): Promise<Res> {
+  return wrap(await crm.updateStatus(id, status), id);
+}
+
+export async function setReminderAction(id: string, at: string | null): Promise<Res> {
+  return wrap(await crm.setReminder(id, at), id);
 }

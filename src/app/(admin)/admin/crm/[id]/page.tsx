@@ -294,6 +294,8 @@ export default async function CrmLeadDetailPage({
             followUpStatus: lead.followUpStatus,
             whatsappStatus: lead.whatsappStatus,
             responsibleAdmin: lead.responsibleAdmin,
+            status: lead.status,
+            reminderAt: lead.reminderAt,
           }}
           specialists={specialistOptions}
         />

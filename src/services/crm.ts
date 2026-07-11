@@ -9,6 +9,7 @@ import type {
   LeadHumanReview,
   ConversationTurn,
 } from '@/types/crm';
+import { LEAD_STATUS_ORDER } from '@/types/crm';
 import { ESCALATION_TARGET } from '@/config/receptionist';
 import { ok, err, type Result } from './result';
 
@@ -52,9 +53,9 @@ const leads: CrmLead[] = [
     assessment: { 'What would you like help with today?': 'Choosing the right service.', 'What outcome are you hoping for?': 'A clear plan and guidance.' },
     recommendedSpecialistSlug: 'specialist-ai-1', recommendedSpecialistName: 'Specialist AI 1', recommendationConfidence: 0.72,
     alternativeMatches: [{ slug: 'specialist-ai-2', name: 'Specialist AI 2' }],
-    humanReviewStatus: 'not_required', assignedSpecialistSlug: 'specialist-ai-1', status: 'subscribed',
+    humanReviewStatus: 'not_required', assignedSpecialistSlug: 'specialist-ai-1', status: 'active',
     followUpStatus: 'scheduled', whatsappStatus: 'connected', subscriptionStatus: 'active', progress: 40,
-    escalated: false, escalatedTo: null, responsibleAdmin: null, notes: null, reviewClosed: false,
+    escalated: false, escalatedTo: null, responsibleAdmin: null, notes: null, reviewClosed: false, reminderAt: null,
     createdAt: '2026-07-06T09:12:00.000Z', updatedAt: '2026-07-10T00:00:00.000Z',
   },
   {
@@ -64,9 +65,9 @@ const leads: CrmLead[] = [
     assessment: { 'What would you like help with today?': 'A few different questions.' },
     recommendedSpecialistSlug: null, recommendedSpecialistName: null, recommendationConfidence: 0.34,
     alternativeMatches: [{ slug: 'specialist-ai-1', name: 'Specialist AI 1' }, { slug: 'specialist-ai-3', name: 'Specialist AI 3' }],
-    humanReviewStatus: 'pending', assignedSpecialistSlug: null, status: 'escalated',
+    humanReviewStatus: 'pending', assignedSpecialistSlug: null, status: 'human_review',
     followUpStatus: 'in_progress', whatsappStatus: 'requested', subscriptionStatus: 'none', progress: 0,
-    escalated: true, escalatedTo: ESCALATION_TARGET.name, responsibleAdmin: null, notes: null, reviewClosed: false,
+    escalated: true, escalatedTo: ESCALATION_TARGET.name, responsibleAdmin: null, notes: null, reviewClosed: false, reminderAt: '2026-07-12T09:00:00.000Z',
     createdAt: '2026-07-10T08:40:00.000Z', updatedAt: '2026-07-10T09:00:00.000Z',
   },
   {
@@ -78,7 +79,7 @@ const leads: CrmLead[] = [
     alternativeMatches: [{ slug: 'specialist-ai-4', name: 'Specialist AI 4' }],
     humanReviewStatus: 'not_required', assignedSpecialistSlug: null, status: 'recommended',
     followUpStatus: 'none', whatsappStatus: 'none', subscriptionStatus: 'none', progress: 0,
-    escalated: false, escalatedTo: null, responsibleAdmin: null, notes: null, reviewClosed: false,
+    escalated: false, escalatedTo: null, responsibleAdmin: null, notes: null, reviewClosed: false, reminderAt: null,
     createdAt: '2026-07-09T14:20:00.000Z', updatedAt: '2026-07-09T14:20:00.000Z',
   },
   {
@@ -87,9 +88,9 @@ const leads: CrmLead[] = [
     assessmentSummary: 'A referred visitor who knew what they wanted. The receptionist suggested Specialist AI 2 and a human approved the recommendation.',
     assessment: { 'What would you like help with today?': 'Referred by an existing customer.' },
     recommendedSpecialistSlug: 'specialist-ai-2', recommendedSpecialistName: 'Specialist AI 2', recommendationConfidence: 0.68,
-    alternativeMatches: [], humanReviewStatus: 'approved', assignedSpecialistSlug: 'specialist-ai-2', status: 'subscribed',
+    alternativeMatches: [], humanReviewStatus: 'approved', assignedSpecialistSlug: 'specialist-ai-2', status: 'active',
     followUpStatus: 'done', whatsappStatus: 'connected', subscriptionStatus: 'active', progress: 65,
-    escalated: false, escalatedTo: null, responsibleAdmin: 'Admin', notes: 'Approved after a quick review.', reviewClosed: true,
+    escalated: false, escalatedTo: null, responsibleAdmin: 'Admin', notes: 'Approved after a quick review.', reviewClosed: true, reminderAt: null,
     createdAt: '2026-07-04T11:05:00.000Z', updatedAt: '2026-07-10T00:00:00.000Z',
   },
 ];
@@ -102,7 +103,7 @@ const events: CrmLeadEvent[] = [
   { id: 'ev_5', leadId: 'lead_2', type: 'escalation', title: `Escalated to ${ESCALATION_TARGET.name}`, detail: 'Below the confidence threshold.', actor: 'Receptionist AI', createdAt: '2026-07-10T08:41:00.000Z' },
 ];
 
-const STATUSES: LeadStatus[] = ['new', 'qualified', 'recommended', 'subscribed', 'escalated', 'lost'];
+const STATUSES: LeadStatus[] = LEAD_STATUS_ORDER;
 
 function addEvent(leadId: string, type: CrmLeadEvent['type'], title: string, detail: string | null, actor: string): void {
   events.push({ id: `ev_new_${++eventCounter}`, leadId, type, title, detail, actor, createdAt: nowIso() });
@@ -113,9 +114,15 @@ function find(id: string): CrmLead | undefined {
 }
 
 export const crm = {
-  async list(filter?: { status?: LeadStatus }): Promise<Result<CrmLead[]>> {
+  async list(filter?: { status?: LeadStatus; search?: string; followUp?: LeadFollowUp; assigned?: string }): Promise<Result<CrmLead[]>> {
     let rows = [...leads].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     if (filter?.status) rows = rows.filter((l) => l.status === filter.status);
+    if (filter?.followUp) rows = rows.filter((l) => l.followUpStatus === filter.followUp);
+    if (filter?.assigned) rows = rows.filter((l) => l.responsibleAdmin === filter.assigned);
+    if (filter?.search) {
+      const q = filter.search.toLowerCase();
+      rows = rows.filter((l) => l.name.toLowerCase().includes(q) || l.email.toLowerCase().includes(q) || l.assessmentSummary.toLowerCase().includes(q));
+    }
     return ok(rows);
   },
   async byId(id: string): Promise<Result<CrmLead>> {
@@ -163,7 +170,7 @@ export const crm = {
       alternativeMatches: input.alternativeMatches ?? [],
       humanReviewStatus: input.escalated ? 'pending' : 'not_required',
       assignedSpecialistSlug: null,
-      status: input.escalated ? 'escalated' : input.recommendedSpecialistSlug ? 'recommended' : 'qualified',
+      status: input.escalated ? 'human_review' : input.recommendedSpecialistSlug ? 'recommended' : 'new',
       followUpStatus: input.escalated ? 'in_progress' : 'none',
       whatsappStatus: input.whatsapp ? 'requested' : 'none',
       subscriptionStatus: 'none',
@@ -173,6 +180,7 @@ export const crm = {
       responsibleAdmin: null,
       notes: null,
       reviewClosed: false,
+      reminderAt: null,
       createdAt: nowIso(),
       updatedAt: nowIso(),
     };
@@ -275,6 +283,14 @@ export const crm = {
     lead.reviewClosed = false;
     lead.updatedAt = nowIso();
     addEvent(id, 'note', 'Review reopened', null, 'Admin');
+    return ok(lead);
+  },
+  async setReminder(id: string, at: string | null): Promise<Result<CrmLead>> {
+    const lead = find(id);
+    if (!lead) return err({ code: 'not_found', message: 'Lead not found.' });
+    lead.reminderAt = at;
+    lead.updatedAt = nowIso();
+    addEvent(id, 'follow_up', at ? `Reminder set for ${at.slice(0, 10)}` : 'Reminder cleared', null, 'Admin');
     return ok(lead);
   },
 };

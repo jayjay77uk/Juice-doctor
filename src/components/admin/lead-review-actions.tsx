@@ -12,9 +12,17 @@ import {
   takeOverAction,
   closeReviewAction,
   reopenReviewAction,
+  setLeadStatusAction,
+  setReminderAction,
 } from '@/services/crm-actions';
 import { Button } from '@/components/ui/button';
-import type { LeadFollowUp, LeadWhatsapp } from '@/types/crm';
+import {
+  LEAD_STATUS_ORDER,
+  LEAD_STATUS_LABELS,
+  type LeadFollowUp,
+  type LeadWhatsapp,
+  type LeadStatus,
+} from '@/types/crm';
 
 const inputClass =
   'w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus-visible:border-primary';
@@ -38,6 +46,8 @@ export interface LeadReviewState {
   followUpStatus: LeadFollowUp;
   whatsappStatus: LeadWhatsapp;
   responsibleAdmin: string | null;
+  status: LeadStatus;
+  reminderAt: string | null;
 }
 
 export function LeadReviewActions({
@@ -58,6 +68,8 @@ export function LeadReviewActions({
   );
   const [followUp, setFollowUp] = React.useState<LeadFollowUp>(lead.followUpStatus);
   const [whatsapp, setWhatsapp] = React.useState<LeadWhatsapp>(lead.whatsappStatus);
+  const [status, setStatus] = React.useState<LeadStatus>(lead.status);
+  const [reminder, setReminder] = React.useState(lead.reminderAt ? lead.reminderAt.slice(0, 10) : '');
 
   function run(fn: () => Promise<Res>) {
     setError(null);
@@ -186,6 +198,56 @@ export function LeadReviewActions({
             </select>
             <Button size="sm" intent="ghost" disabled={pending} onClick={() => run(() => setWhatsappAction(lead.id, whatsapp))}>
               Set
+            </Button>
+          </div>
+        </ActionSection>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <ActionSection title="Pipeline status">
+          <div className="flex items-center gap-2">
+            <select value={status} onChange={(e) => setStatus(e.target.value as LeadStatus)} className={inputClass}>
+              {LEAD_STATUS_ORDER.map((s) => (
+                <option key={s} value={s}>
+                  {LEAD_STATUS_LABELS[s]}
+                </option>
+              ))}
+            </select>
+            <Button size="sm" intent="ghost" disabled={pending} onClick={() => run(() => setLeadStatusAction(lead.id, status))}>
+              Set status
+            </Button>
+          </div>
+        </ActionSection>
+
+        <ActionSection title="Reminder">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="date"
+              value={reminder}
+              onChange={(e) => setReminder(e.target.value)}
+              className={`${inputClass} max-w-[10rem]`}
+            />
+            <Button
+              size="sm"
+              intent="ghost"
+              disabled={pending || !reminder}
+              onClick={() => run(() => setReminderAction(lead.id, reminder ? new Date(reminder).toISOString() : null))}
+            >
+              Set reminder
+            </Button>
+            <Button
+              size="sm"
+              intent="ghost"
+              disabled={pending || (!reminder && !lead.reminderAt)}
+              onClick={() =>
+                run(async () => {
+                  const res = await setReminderAction(lead.id, null);
+                  if (res.ok) setReminder('');
+                  return res;
+                })
+              }
+            >
+              Clear
             </Button>
           </div>
         </ActionSection>

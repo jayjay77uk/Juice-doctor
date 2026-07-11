@@ -6,7 +6,24 @@ import type {
   PopularQuestion,
   KnowledgeUsageStat,
 } from '@/types/ai-platform';
+import { crm } from './crm';
+import { subscriptionsService } from './subscriptions';
+import { specialists } from './specialists';
 import { ok, type Result } from './result';
+
+export interface OperationalMetrics {
+  receptionistConversations: number;
+  completedConsultations: number;
+  unresolvedConsultations: number;
+  humanEscalations: number;
+  recommendations: number;
+  subscriptions: number;
+  activeCustomers: number;
+  followUpCompletion: number; // 0..1
+  specialistUsage: { name: string; conversations30d: number }[];
+  knowledgeUsage: KnowledgeUsageStat[];
+  feedback: { up: number; down: number };
+}
 
 /**
  * AI analytics foundation. Prototype returns deterministic mock figures so the
@@ -91,9 +108,46 @@ export const analytics = {
   async knowledgeUsage(): Promise<Result<KnowledgeUsageStat[]>> {
     return ok([
       { documentTitle: 'Getting Started Guide', retrievals: 892 },
-      { documentTitle: 'Product Overview', retrievals: 641 },
-      { documentTitle: 'Product FAQ', retrievals: 508 },
-      { documentTitle: 'Account Management Guide', retrievals: 377 },
+      { documentTitle: 'Overview', retrievals: 641 },
+      { documentTitle: 'Reference Notes', retrievals: 508 },
+      { documentTitle: 'Intake Questionnaire Reference', retrievals: 377 },
     ]);
+  },
+
+  /** Operational analytics for the whole customer lifecycle (Phase 3.E). */
+  async operational(): Promise<Result<OperationalMetrics>> {
+    const [leadsResult, subSummary, specialistsResult, knowledge] = await Promise.all([
+      crm.list(),
+      subscriptionsService.summary(),
+      specialists.all(),
+      analytics.knowledgeUsage(),
+    ]);
+    const leads = leadsResult.ok ? leadsResult.data : [];
+    const specialistList = specialistsResult.ok ? specialistsResult.data : [];
+
+    const unresolvedStatuses = new Set(['new', 'consultation', 'human_review']);
+    const withFollowUp = leads.filter((l) => l.followUpStatus !== 'none');
+    const followUpDone = leads.filter((l) => l.followUpStatus === 'done');
+
+    const specialistUsage = await Promise.all(
+      specialistList.map(async (s) => {
+        const a = await specialists.analytics(s.slug);
+        return { name: s.name, conversations30d: a.ok ? a.data.conversations30d : 0 };
+      }),
+    );
+
+    return ok({
+      receptionistConversations: leads.filter((l) => l.source === 'receptionist').length,
+      completedConsultations: leads.filter((l) => !unresolvedStatuses.has(l.status)).length,
+      unresolvedConsultations: leads.filter((l) => unresolvedStatuses.has(l.status)).length,
+      humanEscalations: leads.filter((l) => l.escalated).length,
+      recommendations: leads.filter((l) => l.recommendedSpecialistSlug !== null).length,
+      subscriptions: subSummary.ok ? subSummary.data.total : 0,
+      activeCustomers: subSummary.ok ? subSummary.data.active : 0,
+      followUpCompletion: withFollowUp.length > 0 ? followUpDone.length / withFollowUp.length : 0,
+      specialistUsage,
+      knowledgeUsage: knowledge.ok ? knowledge.data : [],
+      feedback: { up: 128, down: 12 },
+    });
   },
 };

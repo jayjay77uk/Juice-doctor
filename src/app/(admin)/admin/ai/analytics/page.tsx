@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { MessagesSquare, Users, Bot, TrendingUp, Clock, Smile, Coins, Banknote } from 'lucide-react';
+import { MessagesSquare, Users, Bot, TrendingUp, Clock, Smile, Coins, Banknote, PhoneCall, CheckCircle2, CircleAlert, LifeBuoy, Lightbulb, CreditCard, UserCheck, ListChecks } from 'lucide-react';
 import { createMetadata } from '@/config/metadata';
 import { analytics } from '@/services/analytics';
 import { AdminHeader } from '@/components/admin/admin-header';
@@ -14,19 +14,22 @@ function gbp(micros: number): string {
 }
 
 export default async function AnalyticsPage() {
-  const [summaryResult, dailyResult, questionsResult, usageResult] = await Promise.all([
+  const [summaryResult, dailyResult, questionsResult, usageResult, operationalResult] = await Promise.all([
     analytics.summary(),
     analytics.daily(30),
     analytics.popularQuestions(),
     analytics.knowledgeUsage(),
+    analytics.operational(),
   ]);
   const s = summaryResult.ok ? summaryResult.data : null;
   const daily = dailyResult.ok ? dailyResult.data : [];
   const questions = questionsResult.ok ? questionsResult.data : [];
   const usage = usageResult.ok ? usageResult.data : [];
+  const ops = operationalResult.ok ? operationalResult.data : null;
 
   const convChart = daily.map((d) => ({ label: d.day.slice(5), value: d.conversations }));
   const maxUsage = Math.max(1, ...usage.map((u) => u.retrievals));
+  const maxSpecialistUsage = Math.max(1, ...(ops?.specialistUsage.map((u) => u.conversations30d) ?? []));
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
@@ -84,6 +87,61 @@ export default async function AnalyticsPage() {
               </li>
             ))}
           </ul>
+        </Panel>
+      </div>
+
+      <AdminHeader
+        title="Operational analytics"
+        description="Reception, consultations, subscriptions and customer follow-up across the AI assistants. Figures are illustrative in the prototype."
+      />
+
+      <StatGrid>
+        <StatCard label="Receptionist conversations" value={ops ? ops.receptionistConversations.toLocaleString() : '—'} icon={PhoneCall} />
+        <StatCard label="Completed consultations" value={ops ? ops.completedConsultations.toLocaleString() : '—'} icon={CheckCircle2} />
+        <StatCard label="Unresolved consultations" value={ops ? ops.unresolvedConsultations.toLocaleString() : '—'} icon={CircleAlert} />
+        <StatCard label="Human escalations" value={ops ? ops.humanEscalations.toLocaleString() : '—'} icon={LifeBuoy} />
+      </StatGrid>
+      <StatGrid>
+        <StatCard label="Recommendations" value={ops ? ops.recommendations.toLocaleString() : '—'} icon={Lightbulb} />
+        <StatCard label="Subscriptions" value={ops ? ops.subscriptions.toLocaleString() : '—'} icon={CreditCard} />
+        <StatCard label="Active customers" value={ops ? ops.activeCustomers.toLocaleString() : '—'} icon={UserCheck} />
+        <StatCard label="Follow-up completion" value={ops ? `${(ops.followUpCompletion * 100).toFixed(0)}%` : '—'} icon={ListChecks} />
+      </StatGrid>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel title="Specialist usage" description="Conversations per specialist over the last 30 days.">
+          {ops && ops.specialistUsage.length > 0 ? (
+            <ul className="flex flex-col gap-4">
+              {ops.specialistUsage.map((u) => (
+                <li key={u.name} className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="min-w-0 truncate text-foreground">{u.name}</span>
+                    <span className="shrink-0 tabular-nums text-muted-foreground">{u.conversations30d}</span>
+                  </div>
+                  <span className="h-2 overflow-hidden rounded-full bg-surface-muted">
+                    <span className="block h-full rounded-full bg-secondary" style={{ width: `${(u.conversations30d / maxSpecialistUsage) * 100}%` }} />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">No specialist usage yet.</p>
+          )}
+        </Panel>
+
+        <Panel title="Customer feedback" description="Thumbs up and down from customers on AI responses.">
+          <div className="flex items-center gap-8">
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-3xl">👍</span>
+              <span className="text-2xl font-semibold tabular-nums text-foreground">{ops ? ops.feedback.up.toLocaleString() : '—'}</span>
+              <span className="text-xs text-muted-foreground">Positive</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-3xl">👎</span>
+              <span className="text-2xl font-semibold tabular-nums text-foreground">{ops ? ops.feedback.down.toLocaleString() : '—'}</span>
+              <span className="text-xs text-muted-foreground">Negative</span>
+            </div>
+          </div>
         </Panel>
       </div>
     </div>
