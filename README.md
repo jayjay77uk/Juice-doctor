@@ -1,10 +1,10 @@
-# Ask Juice Doctor AI — Prototype
+# Prototype AI — Prototype
 
-A **prototype** platform for Ask Juice Doctor, built to demonstrate the full vision to the client before production development.
+A **prototype** platform, built to demonstrate the full vision to the client before production development.
 
 > ⚠️ **Prototype — for demonstration only.** Not production-ready. No live AI, real accounts, payments, patient data, or connected database. A "Prototype Environment" banner is shown in every non-production build.
 
-Phase 1 delivers the **foundation**: design system, component library, all pages, the three signature features (HERNE Protocol, Body MOT, Remote Selfie Scan), mock auth + dashboards, and a production-shaped data/write seam — with **no AI**.
+Phase 1 delivers the **foundation**: design system, component library, all pages, the three signature features (the Framework, Assessment, Remote Selfie Scan), mock auth + dashboards, and a production-shaped data/write seam — with **no AI**.
 
 ## Tech stack
 
@@ -98,7 +98,7 @@ The **AI management platform** — "build once, configure forever". Every assist
 
 ## The AI agent system (Phase 4)
 
-An AI agent system **representing the client** — not an AI builder, and not a generic wellness marketplace. The lifecycle is **Receptionist AI → Specialist AIs → CRM → Administration**, reusing every Phase 2–3 module. It operates through the **existing, accepted frontend** (no new public site was imposed).
+An AI agent system **representing the client** — not an AI builder, and not a generic marketplace. The lifecycle is **Receptionist AI → Specialist AIs → CRM → Administration**, reusing every Phase 2–3 module. It operates through the **existing, accepted frontend** (no new public site was imposed).
 
 - **Receptionist AI** — the free front door (backend service + Server Actions): receives the visitor, qualifies, summarises, recommends an approved specialist, creates/updates the CRM lead, and escalates to a **configurable escalation target** (the client or an authorised team member) with WhatsApp handoff. Its routing rules, questions and confidence threshold are a **replaceable mock**, moved to configuration.
 - **Specialist AIs** — **four configurable placeholders** (`Specialist AI 1–4`); their final names, codes, purposes, behaviour, pricing and knowledge are admin-configurable data, supplied by the client.

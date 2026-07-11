@@ -21,7 +21,7 @@ import { ok, err, type Result } from './result';
  *
  * The recommendation below is a REPLACEABLE MOCK: it reads the configurable
  * threshold + routing map from `config/receptionist.ts`. It contains no approved
- * business rules (no wellness matching, no symptom logic). Production swaps
+ * business rules (no domain matching, no scoring logic). Production swaps
  * `consult()` for live AI inference reading the same configuration, with no
  * change to the CRM or the frontend.
  */

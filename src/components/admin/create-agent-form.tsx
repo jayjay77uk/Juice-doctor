@@ -41,15 +41,15 @@ export function CreateAgentForm() {
         <Input
           id="name"
           name="name"
-          placeholder="e.g. Nutrition Coach"
+          placeholder="e.g. Specialist AI"
           onChange={(e) => setSlug(slugify(e.target.value))}
         />
       </Field>
       <Field label="Slug" name="slug" required hint="Unique identifier — lowercase, hyphenated." error={fe?.slug?.[0]}>
-        <Input id="slug" name="slug" value={slug} onChange={(e) => setSlug(slugify(e.target.value))} placeholder="nutrition-coach" />
+        <Input id="slug" name="slug" value={slug} onChange={(e) => setSlug(slugify(e.target.value))} placeholder="specialist-ai" />
       </Field>
       <Field label="Role" name="role" required hint="A short description of what this agent does." error={fe?.role?.[0]}>
-        <Input id="role" name="role" placeholder="Member nutrition guide" />
+        <Input id="role" name="role" placeholder="Customer support specialist" />
       </Field>
       <Field label="Description" name="description">
         <Textarea id="description" name="description" rows={3} placeholder="What is this agent for?" />

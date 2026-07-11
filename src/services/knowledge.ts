@@ -35,10 +35,10 @@ const ORG = '00000000-0000-0000-0000-000000000001';
 const TS = '2026-07-10T00:00:00.000Z';
 
 const SEED_CATEGORIES: KnowledgeCategory[] = [
-  { id: 'cat_herne', organisationId: ORG, parentId: null, slug: 'herne-protocol', name: 'HERNE Protocol', description: 'Core protocol guidance.', sortOrder: 0, status: 'active' },
-  { id: 'cat_nutrition', organisationId: ORG, parentId: null, slug: 'nutrition', name: 'Nutrition', description: null, sortOrder: 1, status: 'active' },
-  { id: 'cat_hydration', organisationId: ORG, parentId: null, slug: 'hydration', name: 'Hydration', description: null, sortOrder: 2, status: 'active' },
-  { id: 'cat_intake', organisationId: ORG, parentId: null, slug: 'intake', name: 'Intake', description: 'Onboarding + triage material.', sortOrder: 3, status: 'active' },
+  { id: 'cat_1', organisationId: ORG, parentId: null, slug: 'category-one', name: 'Category One', description: 'Core framework guidance.', sortOrder: 0, status: 'active' },
+  { id: 'cat_2', organisationId: ORG, parentId: null, slug: 'category-two', name: 'Category Two', description: null, sortOrder: 1, status: 'active' },
+  { id: 'cat_3', organisationId: ORG, parentId: null, slug: 'category-three', name: 'Category Three', description: null, sortOrder: 2, status: 'active' },
+  { id: 'cat_4', organisationId: ORG, parentId: null, slug: 'category-four', name: 'Category Four', description: 'Onboarding + triage material.', sortOrder: 3, status: 'active' },
 ];
 
 function doc(partial: Partial<KnowledgeDocument> & Pick<KnowledgeDocument, 'id' | 'title' | 'slug' | 'sourceType' | 'publishStatus' | 'categoryId'>): KnowledgeDocument {
@@ -61,17 +61,17 @@ function doc(partial: Partial<KnowledgeDocument> & Pick<KnowledgeDocument, 'id' 
 }
 
 const documents: KnowledgeDocument[] = [
-  doc({ id: 'doc_herne', title: 'The HERNE Protocol — Overview', slug: 'herne-protocol-overview', sourceType: 'markdown', publishStatus: 'published', categoryId: 'cat_herne', description: 'The definitive overview of the five-pillar protocol.', tags: ['protocol', 'foundations'], visibility: 'public' }),
-  doc({ id: 'doc_hydration', title: 'Cellular Hydration Explained', slug: 'cellular-hydration', sourceType: 'pdf', publishStatus: 'published', categoryId: 'cat_hydration', description: 'Why drinking more water isn’t the whole story.', tags: ['hydration', 'physiology'] }),
-  doc({ id: 'doc_nutrition', title: 'Nutrient Density vs Restriction', slug: 'nutrient-density', sourceType: 'docx', publishStatus: 'in_review', categoryId: 'cat_nutrition', description: 'A sustainable approach to eating.', tags: ['nutrition'] }),
-  doc({ id: 'doc_sleep', title: 'Sleep & Recovery Guide', slug: 'sleep-recovery', sourceType: 'pdf', publishStatus: 'approved', categoryId: 'cat_herne', tags: ['rest', 'recovery'] }),
-  doc({ id: 'doc_intake', title: 'Intake Questionnaire Reference', slug: 'intake-reference', sourceType: 'csv', publishStatus: 'draft', categoryId: 'cat_intake', description: 'Reference answers for the intake flow.', visibility: 'private' }),
-  doc({ id: 'doc_sugar', title: 'Overcoming Sugar Cravings', slug: 'sugar-cravings', sourceType: 'txt', publishStatus: 'archived', categoryId: 'cat_nutrition', tags: ['nutrition', 'habits'] }),
+  doc({ id: 'doc_1', title: 'The Framework — Overview', slug: 'document-one', sourceType: 'markdown', publishStatus: 'published', categoryId: 'cat_1', description: 'The definitive overview of the five-pillar framework.', tags: ['framework', 'foundations'], visibility: 'public' }),
+  doc({ id: 'doc_2', title: 'Getting Started Guide', slug: 'document-two', sourceType: 'pdf', publishStatus: 'published', categoryId: 'cat_3', description: 'A concise introduction to the basics.', tags: ['guide', 'basics'] }),
+  doc({ id: 'doc_3', title: 'Product Overview', slug: 'document-three', sourceType: 'docx', publishStatus: 'in_review', categoryId: 'cat_2', description: 'A sustainable approach to the fundamentals.', tags: ['overview'] }),
+  doc({ id: 'doc_4', title: 'Reference Guide', slug: 'document-four', sourceType: 'pdf', publishStatus: 'approved', categoryId: 'cat_1', tags: ['reference', 'guide'] }),
+  doc({ id: 'doc_5', title: 'Intake Questionnaire Reference', slug: 'document-five', sourceType: 'csv', publishStatus: 'draft', categoryId: 'cat_4', description: 'Reference answers for the intake flow.', visibility: 'private' }),
+  doc({ id: 'doc_6', title: 'Product FAQ', slug: 'document-six', sourceType: 'txt', publishStatus: 'archived', categoryId: 'cat_2', tags: ['faq', 'habits'] }),
 ];
 
 const collections: KnowledgeCollection[] = [
-  { id: 'col_companion', organisationId: ORG, slug: 'companion-reading', name: 'Companion Reading List', description: 'Sources the member companion may cite.', documentCount: 3, status: 'active', updatedAt: TS },
-  { id: 'col_clinical', organisationId: ORG, slug: 'clinical-guidance', name: 'Clinical Guidance', description: 'Practitioner-only references.', documentCount: 2, status: 'active', updatedAt: TS },
+  { id: 'col_companion', organisationId: ORG, slug: 'companion-reading', name: 'Assistant Reading List', description: 'Sources the member assistant may cite.', documentCount: 3, status: 'active', updatedAt: TS },
+  { id: 'col_clinical', organisationId: ORG, slug: 'clinical-guidance', name: 'Practitioner Guidance', description: 'Practitioner-only references.', documentCount: 2, status: 'active', updatedAt: TS },
 ];
 
 function nowIso() {

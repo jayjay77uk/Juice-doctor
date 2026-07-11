@@ -59,7 +59,7 @@ export default function SelfieScanPage() {
       <CtaSection
         title={ph.heading}
         primaryLabel={ph.cta}
-        primaryHref="/body-mot"
+        primaryHref="/assessment"
       />
     </>
   );

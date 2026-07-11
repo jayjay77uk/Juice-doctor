@@ -1,8 +1,8 @@
 {
-  "name": "ask-juice-doctor-ai",
+  "name": "prototype-ai",
   "version": "0.1.0",
   "private": true,
-  "description": "Ask Juice Doctor AI — Phase 1 prototype (demonstration only, not production).",
+  "description": "Prototype AI — Phase 1 prototype (demonstration only, not production).",
   "type": "module",
   "scripts": {
     "dev": "next dev",

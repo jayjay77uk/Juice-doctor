@@ -13,7 +13,7 @@ export function CtaSection({
   body = ph.body,
   primaryHref = routes.book.href,
   primaryLabel = ph.cta,
-  secondaryHref = routes.herne.href,
+  secondaryHref = routes.framework.href,
   secondaryLabel = ph.cta,
 }: {
   title?: string;

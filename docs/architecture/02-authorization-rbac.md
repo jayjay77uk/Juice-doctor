@@ -1,6 +1,6 @@
 # 02 · Authorization & RBAC
 
-> **Scope.** How *Ask Juice Doctor AI* decides **who may do what**. This document
+> **Scope.** How *Prototype AI* decides **who may do what**. This document
 > covers the role hierarchy, the fine-grained permission catalogue, the
 > role→permission matrix, per-user overrides, the pure decision engine, the
 > server-side guards, and — most importantly — **why** the same rules are

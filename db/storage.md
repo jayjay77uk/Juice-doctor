@@ -6,7 +6,7 @@ Designed now so media references in the content model (`ImageRef.src`, `PodcastE
 
 | Bucket | Visibility | Contents | Path convention |
 | --- | --- | --- | --- |
-| `media` | public | Marketing imagery (programmes, resources, hero, founder) | `media/<domain>/<slug>.<ext>` e.g. `media/programmes/21-day-reset.webp` |
+| `media` | public | Marketing imagery (programmes, resources, hero, founder) | `media/<domain>/<slug>.<ext>` e.g. `media/programmes/programme-one.webp` |
 | `testimonials` | public | Consented client portraits | `testimonials/<id>.webp` |
 | `podcast` | public | Episode artwork; audio when self-hosted | `podcast/<slug>/cover.webp`, `podcast/<slug>/audio.mp3` |
 | `documents` | private | Downloadable guides / lead magnets (signed URLs) | `documents/<slug>.pdf` |

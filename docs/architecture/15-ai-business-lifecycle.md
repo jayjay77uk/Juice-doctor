@@ -5,7 +5,7 @@
 > - Escalation goes to a **configurable escalation target** (the client or an authorised team member), **not** a generic "human expert".
 > - The confidence threshold, consultation questions and routing are a **replaceable mock in configuration** (`config/receptionist.ts`), **not** approved rules.
 > - No public receptionist/specialist pages exist — the accepted frontend is unchanged; the receptionist operates via **backend hooks** pending an approved integration point.
-> - This is an **AI agent system representing the client**, not a generic wellness marketplace.
+> - This is an **AI agent system representing the client**, not a generic marketplace.
 
 > **Scope.** How the platform was refocused from an *AI builder* into an *AI business*. The product we demonstrate is not "how to build AI models" — it is **how a client operates an AI business** with a Receptionist AI front door, Specialist AI subscription products, and an AI‑centric CRM. All the reusable infrastructure from Phases 2–3 (versioning, prompts, knowledge, safety, analytics, audit, configuration, publishing workflows, admin framework) is **preserved and reused**; only the *experience* is reorganised.
 
@@ -21,7 +21,7 @@ The whole platform is organised around one journey:
 flowchart LR
   V(["Visitor"]) --> R["Receptionist AI<br/><i>consult · qualify · recommend</i>"]
   R -->|"confident"| Rec["Recommendation<br/>+ confidence score"]
-  R -->|"low confidence /<br/>red-flag symptom"| H["Human expert<br/>(escalation)"]
+  R -->|"low confidence /<br/>red-flag case"| H["Escalation target<br/>(escalation)"]
   Rec --> Lead["CRM lead created"]
   Lead --> Sub["Specialist AI<br/>subscription"]
   Lead --> WA["WhatsApp handoff"]
@@ -44,7 +44,7 @@ Every visitor starts with the receptionist (`/start`). It is a single agent (`ki
 2. **Qualifies & recommends** — maps the answers to the best specialist with a **confidence score** (`receptionist.consult()`).
 3. **Creates a CRM lead** — capturing the assessment and recommendation.
 4. **Hands off** — to a specialist subscription, to **WhatsApp**, or…
-5. **Escalates to a human expert** — automatically when confidence is below `CONFIDENCE_THRESHOLD` (0.6) or a red‑flag symptom is mentioned.
+5. **Escalates to the escalation target** — automatically when confidence is below `CONFIDENCE_THRESHOLD` (0.6) or a red‑flag case is mentioned.
 
 | Concern | Where |
 | --- | --- |
@@ -78,7 +78,7 @@ Each specialist has its own:
 - Public: `/specialists` (catalogue) + `/specialists/[slug]` (product page, subscribe CTA).
 - Admin: `/admin/specialists` (products) + `/admin/specialists/[id]` (Overview · Subscribers · Analytics · Conversations, linking to the shared capability modules).
 
-The seed roster (`config/ai-agents.ts`): one Receptionist + five specialists (Hydration, Nutrition, Sleep & Recovery, Movement, Wellbeing Companion) + one internal copilot. The client adds more from the admin dashboard — **no code change**.
+The seed roster (`config/ai-agents.ts`): one Receptionist + five specialists (Specialist AI 1, Specialist AI 2, Specialist AI 3, Specialist AI 4, Assistant AI) + one internal copilot. The client adds more from the admin dashboard — **no code change**.
 
 ---
 
@@ -109,7 +109,7 @@ plus an **append‑only activity timeline** (`crm_lead_events`).
 
 **Added (additive only)** — a business identity on agents (`kind` + `product`), the receptionist consultation + routing, the specialist‑as‑product surface, the AI‑centric CRM, specialist subscriptions, and the business roll‑up. New tables live in migration **`0015`**; the model extends `ai_agents` rather than replacing it.
 
-**Reorganised** — the admin sidebar now reads **Business · Receptionist AI · Specialist AIs · CRM · Administration**, and the public site leads with *"Meet your AI wellness team"* (receptionist → specialists → human), rather than an AI‑builder framing.
+**Reorganised** — the admin sidebar now reads **Business · Receptionist AI · Specialist AIs · CRM · Administration**, and the public site leads with *"Meet your AI team"* (receptionist → specialists → human), rather than an AI‑builder framing.
 
 ---
 

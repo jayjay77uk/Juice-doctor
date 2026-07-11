@@ -23,9 +23,9 @@ interface PillarScore {
 }
 
 const questions = [
-  { name: 'energy', label: 'Lorem ipsum dolor sit amet consectetur?' },
-  { name: 'sleep', label: 'Lorem ipsum dolor sit amet elit?' },
-  { name: 'hydration', label: 'Lorem ipsum dolor sit amet adipiscing?' },
+  { name: 'metric-1', label: 'Lorem ipsum dolor sit amet consectetur?' },
+  { name: 'metric-2', label: 'Lorem ipsum dolor sit amet elit?' },
+  { name: 'metric-3', label: 'Lorem ipsum dolor sit amet adipiscing?' },
 ] as const;
 
 const options = [
@@ -82,9 +82,9 @@ export function SelfieScanFlow() {
     const base = (name: string) => (answers[name] ?? 3) * 20 + 10;
     const jitter = () => Math.round((Math.random() - 0.5) * 12);
     const next: PillarScore[] = [
-      { label: 'Lorem', value: clamp(base('hydration') + jitter()) },
-      { label: 'Ipsum', value: clamp(base('sleep') + jitter()) },
-      { label: 'Dolor', value: clamp(base('energy') + jitter()) },
+      { label: 'Lorem', value: clamp(base('metric-3') + jitter()) },
+      { label: 'Ipsum', value: clamp(base('metric-2') + jitter()) },
+      { label: 'Dolor', value: clamp(base('metric-1') + jitter()) },
       { label: 'Amet', value: clamp(64 + jitter()) },
       { label: 'Elit', value: clamp(60 + jitter()) },
     ];
@@ -237,7 +237,7 @@ export function SelfieScanFlow() {
               </p>
               <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                 <Button asChild>
-                  <Link href={routes.bodyMot.href}>
+                  <Link href={routes.assessment.href}>
                     {ph.cta} <ArrowRight className="size-4" />
                   </Link>
                 </Button>

@@ -105,7 +105,7 @@ export default async function HealthProfilePage() {
       value: 'health',
       label: 'Health',
       content: (
-        <Panel title="Health" description="The basics that keep your plan safe and personal.">
+        <Panel title="Health" description="The basic details on file for this profile.">
           <DefinitionGrid items={healthItems} />
         </Panel>
       ),
@@ -114,7 +114,7 @@ export default async function HealthProfilePage() {
       value: 'fitness',
       label: 'Fitness',
       content: (
-        <Panel title="Fitness" description="How you move — so we can match your energy.">
+        <Panel title="Fitness" description="Activity details on file for this profile.">
           <DefinitionGrid items={fitnessItems} />
         </Panel>
       ),
@@ -123,7 +123,7 @@ export default async function HealthProfilePage() {
       value: 'nutrition',
       label: 'Nutrition',
       content: (
-        <Panel title="Nutrition" description="What nourishes you best, day to day.">
+        <Panel title="Nutrition" description="Dietary details on file for this profile.">
           <DefinitionGrid items={nutritionItems} />
         </Panel>
       ),
@@ -134,7 +134,7 @@ export default async function HealthProfilePage() {
     <div className="mx-auto flex max-w-4xl flex-col gap-8">
       <AdminHeader
         title="Health profile"
-        description="The information that personalises your plan."
+        description="The information stored on this profile."
         actions={
           <Button disabled>
             <Pencil className="size-4" />
@@ -146,7 +146,7 @@ export default async function HealthProfilePage() {
       <Tabs tabs={tabs} defaultValue="health" />
 
       <p className="text-sm text-muted-foreground">
-        Editing your profile saves instantly in production — every change gently reshapes your plan.
+        Editing your profile saves instantly in production — every change updates this record.
       </p>
 
       <p className="text-sm text-muted-foreground">

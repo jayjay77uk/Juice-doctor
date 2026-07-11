@@ -39,7 +39,7 @@ export const PERMISSIONS = {
   'members.read': { resource: 'members', action: 'read', description: 'View member records within care scope.' },
   'health.read': { resource: 'health', action: 'read', description: 'Read a member’s health profile and history.', sensitive: true },
   'health.update': { resource: 'health', action: 'update', description: 'Update a member’s health records.', sensitive: true },
-  'assessments.read': { resource: 'assessments', action: 'read', description: 'View member assessments (Body MOT, scans, intake).' },
+  'assessments.read': { resource: 'assessments', action: 'read', description: 'View member assessments (Assessment, scans, intake).' },
   'assessments.review': { resource: 'assessments', action: 'review', description: 'Clinically review and sign off assessments.' },
   'consultations.read': { resource: 'consultations', action: 'read', description: 'View consultations.' },
   'consultations.manage': { resource: 'consultations', action: 'manage', description: 'Conduct and record consultations.' },

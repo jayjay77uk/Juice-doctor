@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next';
 
 /**
- * Ask Juice Doctor AI — Next.js configuration.
+ * Prototype AI — Next.js configuration.
  *
  * Prototype note: no remote image hosts, analytics, or backend integrations are
  * wired here. When the platform moves to production (Phase 2), remote image

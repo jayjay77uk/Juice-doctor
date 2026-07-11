@@ -5,7 +5,7 @@
 > empty result sets; no live encounters, no AI inference, no scheduling engine.
 > The *shape* is the deliverable. Phase 3 fills it in.
 
-The consultation workflow is the clinical spine of the Ask Juice Doctor AI
+The consultation workflow is the clinical spine of the Prototype AI
 platform — the journey a member takes from first data capture to a durable
 health history. It is deliberately modelled as a **linear pipeline of stages**
 plus an **append-only event timeline**, so that every surface (member dashboard,
@@ -33,7 +33,7 @@ the `public.consultation_stage` enum in migration 0007.
 
 ```mermaid
 flowchart LR
-    A["intake<br/><i>who &amp; why</i>"] --> B["assessment<br/><i>Body MOT, Selfie Scan,<br/>questionnaires</i>"]
+    A["intake<br/><i>who &amp; why</i>"] --> B["assessment<br/><i>Assessment, Selfie Scan,<br/>questionnaires</i>"]
     B --> C["ai_review<br/><i>Phase 3 —<br/>placeholder now</i>"]
     C --> D["practitioner_review<br/><i>clinician sign-off</i>"]
     D --> E["appointment<br/><i>scheduled encounter</i>"]
@@ -47,7 +47,7 @@ flowchart LR
 | Stage | What happens | Primary record(s) written |
 | --- | --- | --- |
 | `intake` | Member identifies themselves and states the reason for engaging | `assessments` (`type = intake`); a `consultations` row may be opened |
-| `assessment` | Structured data capture — **Body MOT**, **Remote Selfie Scan**, health questionnaires | `assessments` (`type = body_mot` / `selfie_scan` / `health_questionnaire`) |
+| `assessment` | Structured data capture — **Assessment**, **Remote Selfie Scan**, health questionnaires | `assessments` (`type = body_mot` / `selfie_scan` / `health_questionnaire`) |
 | `ai_review` | *(Phase 3)* AI summarises + triages the captured assessments | `consultations.ai_review`, `assessments.ai_summary` — **placeholders, null now** |
 | `practitioner_review` | A clinician reviews assessments + AI output and signs off | `consultations.practitioner_notes`; `assessments.reviewed_by`/`reviewed_at`; `status → reviewed` |
 | `appointment` | A scheduled encounter (in person / video / phone) if one is warranted | `appointments` |
@@ -149,8 +149,8 @@ Every structured data-capture surface lands here, discriminated by `type`
 (`intake`, `body_mot`, `selfie_scan`, `health_questionnaire`), with the
 type-specific payload in `results jsonb`.
 
-**Why one table, not one per capture type.** The brand will ship new scan and
-assessment *products* over time (the Body MOT and Remote Selfie Scan are only the
+**Why one table, not one per capture type.** The platform will ship new scan and
+assessment *products* over time (the Assessment and Remote Selfie Scan are only the
 first two). A table-per-product schema would force a migration and a code change
 for every new capture surface, and would force the AI layer and reporting to know
 about each one individually. A single discriminated container means:
@@ -209,7 +209,7 @@ A follow-up is its **own scheduled record** (a `due_date`, a `status`, a
 
 **Why a table, not a boolean.** A single consultation legitimately spawns
 *several* follow-ups — "call in two weeks", "re-take the Selfie Scan in a month",
-"email the nutrition plan tomorrow" — each on its own channel and date, each
+"email the summary document tomorrow" — each on its own channel and date, each
 tracked independently to `completed`. A `needs_follow_up` flag could never
 represent that fan-out.
 
@@ -268,14 +268,14 @@ the pure decision those actions consult.
 
 ---
 
-## 4. Body MOT and Remote Selfie Scan as assessments
+## 4. Assessment and Remote Selfie Scan as assessments
 
-The Body MOT and the Remote Selfie Scan are two of the brand's signature
+The Assessment and the Remote Selfie Scan are two of the platform's signature
 experiences. Architecturally, **they are not special** — they are assessments.
 
-- A Body MOT run is an `assessments` row with `type = 'body_mot'`.
+- An Assessment run is an `assessments` row with `type = 'body_mot'`.
 - A Remote Selfie Scan run is an `assessments` row with `type = 'selfie_scan'`.
-- The scan/MOT output (metrics, readings, derived indicators) is written to
+- The scan/assessment output (metrics, readings, derived indicators) is written to
   `results jsonb`; any headline number lands in `score`; a future AI narrative
   lands in `ai_summary`.
 
@@ -283,16 +283,16 @@ experiences. Architecturally, **they are not special** — they are assessments.
 means they inherit — for free — everything the container already provides:
 
 - **uniform ingestion into the AI layer** — the future `ai_review` stage iterates
-  a member's assessments without needing a Body-MOT-specific or Selfie-Scan-specific
+  a member's assessments without needing an Assessment-specific or Selfie-Scan-specific
   code path;
 - **the same review lifecycle** — a practitioner reviews a Selfie Scan exactly as
   they review a questionnaire (`status → reviewed`, `reviewed_by`/`reviewed_at`);
-- **the same RLS posture** — the member owns the row, treating staff/practitioners
+- **the same RLS posture** — the member owns the row, staff/practitioners
   in the organisation can read it, admins manage it (§5);
 - **the same reporting** — dashboards count and trend across all assessment types
   at once.
 
-When a Body MOT or Selfie Scan is captured during a consultation, a
+When an Assessment or Selfie Scan is captured during a consultation, a
 `consultation_events` row is appended at `stage = 'assessment'` referencing that
 assessment in its `data` blob, so the encounter's timeline records *that a scan
 happened* without duplicating the scan payload.

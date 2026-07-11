@@ -1,6 +1,6 @@
-# Ask Juice Doctor AI — Architecture documentation
+# Prototype AI — Architecture documentation
 
-The complete backend & platform architecture for the Ask Juice Doctor AI platform, produced in **Phase 2**. Everything here is designed exactly as it would exist in production, even though the prototype runs on typed mock providers and a paper database — **no AI, no live data, no payments**.
+The complete backend & platform architecture for the Prototype AI platform, produced in **Phase 2**. Everything here is designed exactly as it would exist in production, even though the prototype runs on typed mock providers and a paper database — **no AI, no live data, no payments**.
 
 ## Reading order
 

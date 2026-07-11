@@ -13,7 +13,7 @@ import { ok, err, type Result } from './result';
  * reads crm_leads + crm_lead_events (migration 0015).
  *
  * Seed content is NEUTRAL PLACEHOLDER data referencing the four configurable
- * specialist placeholders — no invented product/wellness content.
+ * specialist placeholders — no invented product/domain content.
  */
 
 const ORG = '00000000-0000-0000-0000-000000000001';

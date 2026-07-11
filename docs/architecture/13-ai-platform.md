@@ -28,9 +28,9 @@ Related reading: [05 · AI Agent Framework](./05-ai-agent-framework.md), [06 · 
 
 ## 1. Principle: build once, configure forever
 
-The single governing decision of Phase 3 is that **nothing about AI behaviour is hardcoded**. There is no `if (agent === 'companion')` anywhere in the application, no prompt string baked into a component, no temperature literal in the runtime. Every knob an AI product exposes — which model answers, what it may say, what it may read, how it remembers, where it must stop — is a *row* the client edits from the dashboard.
+The single governing decision of Phase 3 is that **nothing about AI behaviour is hardcoded**. There is no `if (agent === 'assistant')` anywhere in the application, no prompt string baked into a component, no temperature literal in the runtime. Every knob an AI product exposes — which model answers, what it may say, what it may read, how it remembers, where it must stop — is a *row* the client edits from the dashboard.
 
-**Why this matters for Ask Juice Doctor.** The client is a wellness brand run by non‑engineers. They will want to reword a system prompt, tighten a medical boundary, spin up a seasonal "Sleep Companion", or swap Opus for Haiku to control cost — on their own schedule, without a pull request or a deploy. In a health‑adjacent product, a hardcoded prompt is not just slow to change; it is *ungoverned* — no version history, no review step, no rollback. Modelling everything as data turns every one of those changes into an auditable, versioned, reversible database write.
+**Why this matters for the client.** The client is a service business run by non‑engineers. They will want to reword a system prompt, tighten a policy boundary, spin up a seasonal assistant, or swap a larger model for a smaller one to control cost — on their own schedule, without a pull request or a deploy. In a governed product, a hardcoded prompt is not just slow to change; it is *ungoverned* — no version history, no review step, no rollback. Modelling everything as data turns every one of those changes into an auditable, versioned, reversible database write.
 
 This is the platform's contract: **build the management surface once; the client configures the product forever.**
 
@@ -144,7 +144,7 @@ Every agent is one `AiAgent` ([`src/types/ai.ts`](../../src/types/ai.ts)) — th
 | Bindings | `tools`, `knowledgeCategories` | Wired via `ai_agent_tools` / `ai_agent_knowledge_sources` in production |
 | Governance | `visibility` (`private`/`organisation`/`public`), `status`, `version` | |
 
-The three seed agents in [`ai-agents.ts`](../../src/config/ai-agents.ts) demonstrate the range: the member‑facing **Juice Doctor Companion** (warm, `temperature 0.6`, all four memory scopes, blocks diagnosis/prescription), the **Intake & Triage Assistant** (methodical, `temperature 0.3`, escalates on red‑flag symptoms and safeguarding), and the staff‑only **Practitioner Copilot** (`private` visibility, `temperature 0.2`, cites sources, minimal guardrails).
+The three seed agents in [`ai-agents.ts`](../../src/config/ai-agents.ts) demonstrate the range: the member‑facing **Assistant AI** (warm, `temperature 0.6`, all four memory scopes, blocks restricted topics), the **Intake & Triage Assistant** (methodical, `temperature 0.3`, escalates on red‑flag cases and safeguarding), and the staff‑only **Practitioner Copilot** (`private` visibility, `temperature 0.2`, cites sources, minimal guardrails).
 
 ### Editor tabs → config
 
@@ -165,7 +165,7 @@ The editor at `/admin/ai/agents/[id]` ([`agent-edit-form.tsx`](../../src/compone
 
 ## 3. Prompt management
 
-A system prompt is the operative instruction of a health companion — exactly the artefact that demands review and rollback. Phase 3 promotes prompts out of the agent row into their own **versioned, workflowed** store: [`ai_prompts`](../../db/migrations/0014_ai_platform_management.sql#L29) (the named prompt + pointer to its current version) and [`ai_prompt_versions`](../../db/migrations/0014_ai_platform_management.sql#L47) (immutable history), served by [`prompts.ts`](../../src/services/prompts.ts).
+A system prompt is the operative instruction of an assistant — exactly the artefact that demands review and rollback. Phase 3 promotes prompts out of the agent row into their own **versioned, workflowed** store: [`ai_prompts`](../../db/migrations/0014_ai_platform_management.sql#L29) (the named prompt + pointer to its current version) and [`ai_prompt_versions`](../../db/migrations/0014_ai_platform_management.sql#L47) (immutable history), served by [`prompts.ts`](../../src/services/prompts.ts).
 
 ### The eight prompt kinds
 
@@ -234,7 +234,7 @@ The knowledge portal ([06 · Knowledge Architecture](./06-knowledge-architecture
 | Collection | [`knowledge_collections`](../../db/migrations/0014_ai_platform_management.sql#L95) (0014) | A *curated set* — e.g. an agent's reading list — independent of categories |
 | Membership | [`knowledge_collection_documents`](../../db/migrations/0014_ai_platform_management.sql#L109) (0014) | Ordered docs within a collection |
 
-Categories are the *taxonomy* (where a document belongs); collections are *curation* (which documents an agent is allowed to read). The prototype seeds a "Companion Reading List" and a practitioner‑only "Clinical Guidance" collection.
+Categories are the *taxonomy* (where a document belongs); collections are *curation* (which documents an agent is allowed to read). The prototype seeds an "Assistant Reading List" and a practitioner‑only "Practitioner Guidance" collection.
 
 ### Source types
 
@@ -308,17 +308,17 @@ Guardrails are configurable data, not conditionals in code. Two tables model thi
 
 | Configurable control | Field | Prototype example |
 | --- | --- | --- |
-| Allowed topics | `allowedTopics` | `nutrition`, `hydration`, `sleep`, `movement`, `HERNE Protocol` |
-| Restricted topics | `restrictedTopics` | `diagnosis`, `prescription`, `dosage`, `medication changes` |
-| Medical boundaries | `medicalBoundaries` | "Never diagnose", "Never change medication", "Advise seeing a professional" |
-| Emergency responses | `emergencyResponses` (jsonb) | `self_harm` → crisis resources + escalate; `acute_symptoms` → urgent care |
+| Allowed topics | `allowedTopics` | `topic one`, `topic two`, `topic three`, `topic four`, `the Framework` |
+| Restricted topics | `restrictedTopics` | `restricted one`, `restricted two`, `restricted three`, `restricted four` |
+| Medical boundaries | `medicalBoundaries` | "Never overstep scope", "Never give binding advice", "Advise seeing a professional" |
+| Emergency responses | `emergencyResponses` (jsonb) | `self_harm` → crisis resources + escalate; `acute_case` → urgent care |
 | Content filters | `contentFilters` (jsonb) | `profanity: block`, `pii: redact` |
 | Escalation rules | `escalationRules` (jsonb) | `onLowConfidence: handoff`, `onRestrictedTopic: decline_and_redirect` |
 | Confidence threshold | `confidenceThreshold` | `0.7` — below this, defer/handoff |
 | Human escalation | `humanEscalation` (bool) | `true` for member‑facing, `false` for staff copilot |
 | Role restrictions | `roleRestrictions` (`app_role[]`) | practitioner policy limited to `practitioner`/`staff`/`administrator` |
 
-Two seed policies show the split: a strict **Default wellbeing policy** (health‑safe by default, escalates on self‑harm/acute symptoms) and a looser, staff‑only **Practitioner‑copilot policy**. Because policies are separate rows bound to agents, one boundary change (e.g. adding a restricted topic) applies to every agent sharing that policy — no per‑agent editing, no redeploy. `safety.save()` handles both create (id `null`) and update, mirroring the future Supabase upsert.
+Two seed policies show the split: a strict **Default policy** (safe by default, escalates on self‑harm/acute cases) and a looser, staff‑only **Practitioner‑copilot policy**. Because policies are separate rows bound to agents, one boundary change (e.g. adding a restricted topic) applies to every agent sharing that policy — no per‑agent editing, no redeploy. `safety.save()` handles both create (id `null`) and update, mirroring the future Supabase upsert.
 
 ---
 
@@ -335,7 +335,7 @@ The memory model ([07 · Memory Architecture](./07-memory-architecture.md), [`me
 | `organisation` | `organisationId` | Tenant‑shared knowledge |
 | `global` | — | Platform‑wide defaults |
 
-Per‑agent memory configuration is stored on the agent itself as `memoryConfig` (mirrors `ai_agents.memory_config` jsonb): four booleans — `useUserMemory`, `useConversationMemory`, `useOrganisationMemory`, `useGlobalMemory` — plus `maxItems` capping how much is injected into context. This is edited on the agent editor's Memory tab and surfaced across agents at `/admin/ai/memory`. The Companion opts into all four scopes; the Copilot skips user memory (it serves practitioners, not members). RLS on `ai_memory` (0011) enforces the same isolation the selector expresses in code.
+Per‑agent memory configuration is stored on the agent itself as `memoryConfig` (mirrors `ai_agents.memory_config` jsonb): four booleans — `useUserMemory`, `useConversationMemory`, `useOrganisationMemory`, `useGlobalMemory` — plus `maxItems` capping how much is injected into context. This is edited on the agent editor's Memory tab and surfaced across agents at `/admin/ai/memory`. The Assistant opts into all four scopes; the Copilot skips user memory (it serves practitioners, not members). RLS on `ai_memory` (0011) enforces the same isolation the selector expresses in code.
 
 ---
 

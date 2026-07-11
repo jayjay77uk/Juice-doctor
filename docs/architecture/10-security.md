@@ -7,8 +7,8 @@
 > in the vault. The **shape** of the security posture is the deliverable — so
 > that going live is *configuration and a provider swap*, not a rewrite.
 
-Security for Ask Juice Doctor AI is not a single module — it is a **posture**
-that runs through every layer. A member's health profile is protected four
+Security for Prototype AI is not a single module — it is a **posture**
+that runs through every layer. A member's profile is protected four
 different ways at four different distances from the attacker: by the CSP that
 governs what runs in their browser, by the middleware that rejects a forged
 cross-origin write, by the RBAC guard on the Server Action, and — last and most
@@ -143,7 +143,7 @@ Encryption is layered by *where the data is* and *how sensitive it is*.
 | **At rest** | Postgres/Supabase-managed disk + backup encryption (AES-256); Storage buckets encrypted at rest | Provisioned by Supabase in production; DB not connected in the prototype |
 | **In transit** | TLS 1.2+ everywhere; **HSTS** (`max-age=63072000; includeSubDomains; preload`) sent on HTTPS in production | HSTS emitted only when `isHttps && !isPrototype` — see below |
 | **Secrets** | Never in `NEXT_PUBLIC_*`; server-only env; provider selection off non-public `APP_MODE` | Enforced structurally today (§7) |
-| **Field-level (PHI)** | Application-level encryption of the most sensitive health fields | **Future** — the RLS-hardened tables are the seam it plugs into |
+| **Field-level (sensitive)** | Application-level encryption of the most sensitive fields | **Future** — the RLS-hardened tables are the seam it plugs into |
 
 **At rest.** We do not roll our own storage encryption. Postgres data files,
 WAL, and automated backups are encrypted by the managed platform; Storage
@@ -165,7 +165,7 @@ list), so it must never fire from a prototype or preview origin — hence the
 `!isPrototype` guard. The header itself is assembled in
 [`headers.ts`](../../src/lib/security/headers.ts).
 
-**Field-level, for sensitive health data (future).** PHI-grade tables
+**Field-level, for the most sensitive data (future).** The most sensitive tables
 (`health_profiles`, `medical_questionnaires`, `fitness_profiles`,
 `nutrition_profiles` in [`0006_health_profiles.sql`](../../db/migrations/0006_health_profiles.sql))
 already carry the *strictest* RLS: a row is visible only to its owner, a treating
@@ -180,7 +180,7 @@ stores.
 
 ## 4. Audit logging
 
-A health platform must be able to answer *"who changed this record, when, from
+The platform must be able to answer *"who changed this record, when, from
 where, and what did it look like before?"* — for security investigation, for
 regulatory inquiry, and for member data-subject requests. That answer lives in
 an **append-only, immutable forensic trail**.
@@ -568,7 +568,7 @@ as a typed `ActionResult` rather than an unhandled exception (see
 
 ## 12. Consents & GDPR
 
-For a health platform, *lawful basis* is a security concern, not just a legal
+For this platform, *lawful basis* is a security concern, not just a legal
 one. [`0005_preferences_and_consents.sql`](../../db/migrations/0005_preferences_and_consents.sql)
 records consent as an **append-only, versioned ledger** (`user_consents`): a new
 row is written each time consent is given or withdrawn, keyed by
@@ -577,7 +577,7 @@ policy change re-prompts rather than silently assuming stale consent; because it
 is **append-only** (no update/delete policy exists, mirroring `audit_logs`), the
 record of *what was agreed and when* cannot be rewritten. A user manages their
 own consents; staff may read them to honour data-subject requests. This ledger,
-plus the audit trail (§4) and the strict PHI RLS (§3), is what lets the platform
+plus the audit trail (§4) and the strict sensitive-data RLS (§3), is what lets the platform
 answer a regulator honestly.
 
 ---
@@ -598,7 +598,7 @@ production-grade; the **enforcement** is partial by design.
 | Audit logging | ✅ (shape + recorder) | ❌ no-op recorder | Recorder body + service role |
 | Encryption at rest | ✅ (managed) | ❌ (no DB) | Supabase provisioning |
 | HSTS / TLS | ✅ | ❌ (gated off in prototype) | HTTPS + `!isPrototype` |
-| Field-level PHI encryption | described | ❌ | Phase 3 |
+| Field-level encryption | described | ❌ | Phase 3 |
 | Malware scanning | hook reserved | ❌ | Scanner integration |
 | API-key auth | ✅ (schema) | ❌ (API not exposed) | Public API phase |
 

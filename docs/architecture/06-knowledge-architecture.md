@@ -1,6 +1,6 @@
 # 06 · Knowledge Management Architecture
 
-> **Scope.** This document describes the **knowledge management** subsystem of *Ask Juice Doctor AI* — the curated, organisation-authored source material that the AI will eventually reason over. It covers the ingestion-to-retrieval pipeline (document → version → chunk → embedding), the taxonomy (categories + tags), the publishing/approval **state machine**, source tracking + storage, layered access control (visibility + fine-grained grants), and the deferred vector-search layer.
+> **Scope.** This document describes the **knowledge management** subsystem of *Prototype AI* — the curated, organisation-authored source material that the AI will eventually reason over. It covers the ingestion-to-retrieval pipeline (document → version → chunk → embedding), the taxonomy (categories + tags), the publishing/approval **state machine**, source tracking + storage, layered access control (visibility + fine-grained grants), and the deferred vector-search layer.
 >
 > **Prototype status.** This is Phase 2 — the **enterprise backend foundation as production-grade design**. The schema, types, and service seams are production-shaped, but **no inference, no ingestion, and no embeddings run yet**. `pgvector` is intentionally not enabled. The service layer (`src/services/knowledge.ts`) returns seed categories and no documents. Everything here is modelled so that turning the real pipeline on in Phase 3 requires *adding* code, not *re-architecting* it.
 
@@ -19,7 +19,7 @@
 
 ## 1. What "knowledge" is, and why it is its own subsystem
 
-The knowledge base is the **grounding corpus**: the set of documents the AI agents (see [`db/migrations/0009_ai_agents.sql`](../../db/migrations/0009_ai_agents.sql)) will be given as retrieval-augmented context — the HERNE protocol, nutrition and hydration guidance, intake/triage material, public FAQ, and so on. An agent without a knowledge base is a general chatbot; an agent *with* one is a domain expert whose answers are traceable to approved, versioned, organisation-owned source material.
+The knowledge base is the **grounding corpus**: the set of documents the AI agents (see [`db/migrations/0009_ai_agents.sql`](../../db/migrations/0009_ai_agents.sql)) will be given as retrieval-augmented context — the framework documentation, domain guidance, intake/triage material, public FAQ, and so on. An agent without a knowledge base is a general chatbot; an agent *with* one is a domain expert whose answers are traceable to approved, versioned, organisation-owned source material.
 
 That framing drives the single most important architectural decision in this subsystem:
 
@@ -122,12 +122,12 @@ Two complementary axes organise the corpus, both scoped per organisation:
 
 ```mermaid
 flowchart TD
-    ROOT1["HERNE Protocol"]
-    ROOT2["Nutrition"]
-    ROOT3["Hydration"]
-    ROOT4["Intake"]
-    ROOT2 --> N1["Juicing recipes"]
-    ROOT2 --> N2["Supplements"]
+    ROOT1["Category One"]
+    ROOT2["Category Two"]
+    ROOT3["Category Three"]
+    ROOT4["Category Four"]
+    ROOT2 --> N1["Subcategory A"]
+    ROOT2 --> N2["Subcategory B"]
     ROOT4 --> I1["Triage material"]
 ```
 
@@ -135,7 +135,7 @@ flowchart TD
 - **`on delete set null` on `knowledge_documents.category_id`** — deleting a category detaches its documents; it never destroys them.
 - `sort_order` gives deterministic ordering; `slug` is unique per `(organisation_id, slug)`; `status` reuses the generic `record_status` lifecycle (`draft`/`active`/`archived`/`deleted`).
 
-The prototype seeds four root categories via [`src/services/knowledge.ts`](../../src/services/knowledge.ts) (`HERNE Protocol`, `Nutrition`, `Hydration`, `Intake`) so the admin UI has a realistic tree to render with no data connected.
+The prototype seeds four root categories via [`src/services/knowledge.ts`](../../src/services/knowledge.ts) (`Category One`, `Category Two`, `Category Three`, `Category Four`) so the admin UI has a realistic tree to render with no data connected.
 
 ### Tags — flat, cross-cutting labels
 
@@ -334,7 +334,7 @@ The coarse model handles the common case; `knowledge_permissions` handles the ex
 grant = (subject: role XOR user) → (object: document AND/OR category) → access ∈ {read, edit, approve}
 ```
 
-This gives four practical grant shapes: *user-on-document*, *user-on-category*, *role-on-document*, *role-on-category* — enough to express "give this practitioner edit on the HERNE category" or "let the member role read this one document" without loosening the document's coarse visibility for everyone.
+This gives four practical grant shapes: *user-on-document*, *user-on-category*, *role-on-document*, *role-on-category* — enough to express "give this practitioner edit on Category One" or "let the member role read this one document" without loosening the document's coarse visibility for everyone.
 
 ### 8.3 How the two layers combine — the read policy
 

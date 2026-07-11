@@ -80,20 +80,20 @@ export const analytics = {
 
   async popularQuestions(): Promise<Result<PopularQuestion[]>> {
     return ok([
-      { question: 'How much water should I actually drink?', count: 214 },
-      { question: 'Why am I so tired in the afternoon?', count: 187 },
-      { question: 'What should I eat before training?', count: 156 },
-      { question: 'How do I reduce sugar cravings?', count: 143 },
-      { question: 'Is my sleep affecting my digestion?', count: 121 },
+      { question: 'How do I get started?', count: 214 },
+      { question: 'What features are included?', count: 187 },
+      { question: 'How do I update my account settings?', count: 156 },
+      { question: 'How does billing work?', count: 143 },
+      { question: 'How do I contact support?', count: 121 },
     ]);
   },
 
   async knowledgeUsage(): Promise<Result<KnowledgeUsageStat[]>> {
     return ok([
-      { documentTitle: 'The HERNE Protocol — Overview', retrievals: 892 },
-      { documentTitle: 'Cellular Hydration Explained', retrievals: 641 },
-      { documentTitle: 'Nutrient Density vs Restriction', retrievals: 508 },
-      { documentTitle: 'Sleep & Recovery Guide', retrievals: 377 },
+      { documentTitle: 'Getting Started Guide', retrievals: 892 },
+      { documentTitle: 'Product Overview', retrievals: 641 },
+      { documentTitle: 'Product FAQ', retrievals: 508 },
+      { documentTitle: 'Account Management Guide', retrievals: 377 },
     ]);
   },
 };

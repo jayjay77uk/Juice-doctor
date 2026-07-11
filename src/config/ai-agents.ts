@@ -4,7 +4,7 @@ import type { AiAgentDefinition, AgentMemoryConfig, AgentSafetyRules } from '@/t
  * The AI-agent roster — agents defined as DATA (seed the `ai_agents` table).
  *
  * This models an AI agent system that represents the client, NOT a generic
- * wellness marketplace and NOT an AI builder:
+ * marketplace and NOT an AI builder:
  *  • ONE free Receptionist AI is the front door for every visitor (its function
  *    is defined; its exact wording/prompt is client-supplied and admin-editable).
  *  • FOUR Specialist AIs are subscription agents. Their final names, codes,

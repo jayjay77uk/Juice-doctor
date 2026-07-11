@@ -12,8 +12,8 @@ export const metadata = createMetadata({ title: 'Your bookings', path: '/dashboa
 
 // prototype mock — a couple of past sessions to show the completed history
 const pastSessions: { title: string; when: string; status: string }[] = [
-  { title: 'Intro consultation with your wellness guide', when: 'Mon 23 Jun · 10:00am', status: 'completed' },
-  { title: 'Week 1 nutrition review', when: 'Wed 2 Jul · 2:30pm', status: 'completed' },
+  { title: 'Intro consultation with your specialist', when: 'Mon 23 Jun · 10:00am', status: 'completed' },
+  { title: 'Week 1 progress review', when: 'Wed 2 Jul · 2:30pm', status: 'completed' },
 ];
 
 export default async function BookingsPage() {
@@ -103,7 +103,7 @@ export default async function BookingsPage() {
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — sample data. No real health records, AI, or bookings are connected.
+        Prototype — sample data. No real records, AI, or bookings are connected.
       </p>
     </div>
   );

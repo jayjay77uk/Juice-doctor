@@ -9,8 +9,8 @@ import type { SignatureFeature } from '@/types/content';
  * copy here is deliberately outcome-framed, not diagnostic.
  */
 
-export const bodyMot: SignatureFeature = {
-  slug: 'body-mot',
+export const assessment: SignatureFeature = {
+  slug: 'assessment',
   eyebrow: 'Lorem ipsum dolor',
   title: 'Lorem ipsum dolor sit amet',
   lede:

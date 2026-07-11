@@ -31,7 +31,7 @@ export default async function ConversationsPage() {
     <div className="mx-auto flex max-w-4xl flex-col gap-8">
       <AdminHeader
         title="Your conversations"
-        description="Chats with your AI companion, saved for you."
+        description="Chats with your Assistant AI, saved for you."
       />
 
       {conversations.length === 0 ? (
@@ -39,7 +39,7 @@ export default async function ConversationsPage() {
           <EmptyState
             icon={MessageCircle}
             title="No saved chats yet"
-            description="When you talk with your AI companion, we'll keep your conversations here so you can pick up right where you left off."
+            description="When you talk with your Assistant AI, we'll keep your conversations here so you can pick up right where you left off."
           />
         </Panel>
       ) : (
@@ -75,11 +75,11 @@ export default async function ConversationsPage() {
 
       <ComingSoon
         title="AI chat arrives soon"
-        body="In the full platform you'll chat live with your AI companion here. This prototype shows the experience only."
+        body="In the full platform you'll chat live with your Assistant AI here. This prototype shows the experience only."
       />
 
       <p className="text-sm text-muted-foreground">
-        Prototype — sample data. No real health records, AI, or bookings are connected.
+        Prototype — sample data. No real records, AI, or bookings are connected.
       </p>
     </div>
   );

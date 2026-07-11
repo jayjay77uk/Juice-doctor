@@ -21,12 +21,12 @@
 
 The single most important decision in this framework is that **an AI agent is a row, not a class**. Everything an agent needs to run — which model it talks to, its system prompt and personality, the tools it may call, the knowledge it may read, its memory strategy, and the safety rules that fence it in — is stored as configuration, not compiled into the application.
 
-**Why this matters for Ask Juice Doctor.** The brand is not a single chatbot; it is a wellness platform whose staff (non-engineers) will want to spin up a "Nutrition Coach", a "Booking Assistant", a "Sleep Companion", or a seasonal campaign agent on their own schedule. If each agent were code, every new agent — and every prompt tweak — would be an engineering ticket, a pull request, a deploy, and a release-approval cycle. In a health-adjacent product that is both slow and risky.
+**Why this matters for the platform.** The platform is not a single chatbot; it is a system whose staff (non-engineers) will want to spin up a "Specialist AI 1", a "Specialist AI 2", an "Assistant AI", or a seasonal campaign agent on their own schedule. If each agent were code, every new agent — and every prompt tweak — would be an engineering ticket, a pull request, a deploy, and a release-approval cycle. In a governed product that is both slow and risky.
 
 By modelling agents as data we get three properties that a code-per-agent design cannot:
 
 1. **Unlimited agents, zero deploys.** Creating an agent is an `INSERT`; editing one is an `UPDATE` + an immutable snapshot. The admin UI is a CRUD surface over `ai_agents` and its satellites.
-2. **Governance for free.** Because a prompt change is a database write, it is *auditable, versioned, diffable, and reversible* (see §5). A non-engineer editing the operative system prompt of a health companion is exactly the case where you want one-click rollback.
+2. **Governance for free.** Because a prompt change is a database write, it is *auditable, versioned, diffable, and reversible* (see §5). A non-engineer editing the operative system prompt of a member-facing assistant is exactly the case where you want one-click rollback.
 3. **A stable seam for the runtime.** The Phase-3 inference engine loads an agent by reading its row and satellites. Adding, editing, or retiring agents never touches the runtime — the runtime only ever *interprets* configuration.
 
 > **Prototype reality.** In Phase 2 the "database" is a typed mock. `src/config/ai-agents.ts` holds the seed agents as `AiAgentDefinition[]`; `src/services/agents.ts` maps them to `AiAgent` records and exposes `list()` / `bySlug()` / `definitions()`. The service interface is **identical** to the one production will implement against `ai_agents` — swapping the provider (mock → Supabase) is a wiring change behind the server-only seam, not a rewrite. See §9.
@@ -105,10 +105,10 @@ Every field on `ai_agents` (and its `AiAgent` TypeScript mirror) exists to be re
 | --- | --- | --- |
 | `id` | `uuid` | Primary key. |
 | `organisation_id` | `uuid` (FK) | Tenancy. Every agent belongs to exactly one organisation; RLS scopes on it. |
-| `slug` | `citext` | Case-insensitive URL/lookup handle. `unique (organisation_id, slug)` — one `juice-doctor-companion` per org. |
+| `slug` | `citext` | Case-insensitive URL/lookup handle. `unique (organisation_id, slug)` — one `assistant-ai` per org. |
 | `name` | `text` | Human display name. |
 | `description` | `text` | What the agent is for (admin UI + directory). |
-| `role` | `text` | Short role label, e.g. *"Member wellbeing companion"* — orients the model and the operator. |
+| `role` | `text` | Short role label, e.g. *"Member support assistant"* — orients the model and the operator. |
 | `personality` | `text` | Tone/voice guidance ("warm, encouraging, plain-spoken"). Separated from `system_prompt` so voice can be tuned independently of instructions. |
 | `system_prompt` | `text` | The operative instruction block. This is the highest-governance field — the one that most benefits from versioning/rollback. |
 | `temperature` | `numeric` | Sampling temperature. DB `CHECK (temperature >= 0 and temperature <= 2)`. |
@@ -138,7 +138,7 @@ interface AgentMemoryConfig {
 }
 ```
 
-The `session`, `user`, `conversation`, `agent`, `organisation`, and `global` scopes are isolated by RLS in `ai_memory`; `memory_config` is the agent's *opt-in* to each. This is why the three seed agents differ: the member companion opts into user + conversation + organisation + global memory (rich personalisation), whereas the intake assistant deliberately uses only user + conversation memory (a focused, low-leakage intake), and the practitioner copilot skips user memory entirely (it works on behalf of staff, not a member). See [`src/services/memory.ts`](../../src/services/memory.ts) for the uniform selector API the runtime will call.
+The `session`, `user`, `conversation`, `agent`, `organisation`, and `global` scopes are isolated by RLS in `ai_memory`; `memory_config` is the agent's *opt-in* to each. This is why the three seed agents differ: the member assistant opts into user + conversation + organisation + global memory (rich personalisation), whereas the intake assistant deliberately uses only user + conversation memory (a focused, low-leakage intake), and the specialist copilot skips user memory entirely (it works on behalf of staff, not a member). See [`src/services/memory.ts`](../../src/services/memory.ts) for the uniform selector API the runtime will call.
 
 ### 3.2 `safety_rules` — the fence around the agent
 
@@ -153,7 +153,7 @@ interface AgentSafetyRules {
 }
 ```
 
-Because Ask Juice Doctor is health-adjacent, these are first-class configuration, not code buried in a prompt. Storing them as data means the client can tighten a guardrail (e.g. add `medication_change` to `escalateOn`) without a deploy, and every such change is versioned. §6 covers how the Phase-3 runtime is expected to enforce them.
+Because the platform is governance-sensitive, these are first-class configuration, not code buried in a prompt. Storing them as data means the client can tighten a guardrail (e.g. add `medication_change` to `escalateOn`) without a deploy, and every such change is versioned. §6 covers how the Phase-3 runtime is expected to enforce them.
 
 ---
 
@@ -175,10 +175,10 @@ In the prototype, an agent's tools are the string `keys` on `AiAgentDefinition.t
 
 Each row scopes what an agent may retrieve from the knowledge base (`0012`):
 
-- **`mode = 'include' | 'exclude'`** — includes widen the agent's readable scope; **excludes deny and take precedence** over broader includes. This lets an operator say "all of the HERNE Protocol category *except* this one draft document."
+- **`mode = 'include' | 'exclude'`** — includes widen the agent's readable scope; **excludes deny and take precedence** over broader includes. This lets an operator say "all of the Framework category *except* this one draft document."
 - **Soft references** (`category_id` / `document_id`) — as noted in §2, no hard FK, integrity enforced by the app, `CHECK` ensures at least one target is present.
 
-In the prototype these are the `knowledgeCategories` slugs on `AiAgentDefinition` (e.g. `['herne-protocol', 'nutrition', 'hydration']`). The actual retrieval — chunking + embeddings — is a **Phase-3** concern; `knowledge_embeddings` is a placeholder until `pgvector` is enabled (§9).
+In the prototype these are the `knowledgeCategories` slugs on `AiAgentDefinition` (e.g. `['framework', 'category-one', 'category-two']`). The actual retrieval — chunking + embeddings — is a **Phase-3** concern; `knowledge_embeddings` is a placeholder until `pgvector` is enabled (§9).
 
 ---
 
@@ -211,7 +211,7 @@ Design points and their "why":
 - **Append-only by RLS.** `ai_agent_versions` has a read policy and an insert policy but **no update or delete policy** — history cannot be rewritten. This is the same append-only discipline used platform-wide for audit logs (`audit_logs`, `consultation_events`, `user_consents`, `knowledge_workflow_events`).
 - **Rollback is a forward write.** Rolling back doesn't erase history; it copies an old snapshot into the live row and records a *new* version. The timeline is always complete.
 
-This is exactly the governance a health-adjacent product needs: when a non-engineer edits the operative prompt of a member-facing wellbeing companion, there is a permanent record of *what changed, who changed it, and why*, and any bad change is one write away from being undone.
+This is exactly the governance a regulated product needs: when a non-engineer edits the operative prompt of a member-facing assistant, there is a permanent record of *what changed, who changed it, and why*, and any bad change is one write away from being undone.
 
 ---
 
@@ -305,23 +305,23 @@ The framework's promise holds end-to-end: **nothing about adding, editing, versi
 
 The seed registry proves the framework's claim: three genuinely different agents, expressed entirely as data, differing only in configuration. All three are seeded `status: 'draft'` (nothing is live in Phase 2) and owned by the system super-admin in the prototype org.
 
-| Property | Juice Doctor Companion | Intake & Triage Assistant | Practitioner Copilot |
+| Property | Assistant AI | Intake & Triage Assistant | Specialist Copilot |
 | --- | --- | --- | --- |
-| `slug` | `juice-doctor-companion` | `intake-triage` | `practitioner-copilot` |
-| Audience | Members (public-facing wellbeing) | New members (structured intake) | Staff/practitioners only |
-| `role` | Member wellbeing companion | Clinical intake assistant | Practitioner productivity copilot |
+| `slug` | `assistant-ai` | `intake-triage` | `specialist-copilot` |
+| Audience | Members (public-facing support) | New members (structured intake) | Staff/practitioners only |
+| `role` | Member support assistant | Intake assistant | Specialist productivity copilot |
 | `temperature` | `0.6` (warm, varied) | `0.3` (methodical) | `0.2` (precise, evidence-oriented) |
 | `maxOutputTokens` | `1024` | `1500` | `2048` |
 | `visibility` | `organisation` | `organisation` | `private` |
 | Memory | user + conversation + org + global, `maxItems: 20` | user + conversation only | conversation + org + global (no user memory) |
 | Safety | blocks `diagnosis`/`prescription`/`emergency_medical`; disclaimer required; escalates on `self_harm`, `acute_symptoms`, `medication_change`; `maxTurns: 40` | blocks `diagnosis`/`prescription`; disclaimer required; escalates on `red_flag_symptom`, `safeguarding` | no blocks, no disclaimer, no escalation (staff-only, low-risk) |
 | Tools | `search_knowledge`, `book_consultation` | `create_assessment`, `flag_for_review` | `search_knowledge`, `summarise_consultation` |
-| Knowledge | `herne-protocol`, `nutrition`, `hydration` | `intake`, `safeguarding` | `herne-protocol`, `clinical-guidance` |
+| Knowledge | `framework`, `category-one`, `category-two` | `intake`, `safeguarding` | `framework`, `category-three` |
 
 Reading the differences top-down tells the story of the framework:
 
-- **Juice Doctor Companion** is the brand's member-facing voice, grounded in the **HERNE Protocol** (Hydration, Elimination, Rest, Nutrition, Exercise). Warm and personalised (rich memory), but tightly fenced: it explicitly must not diagnose or prescribe, always carries a disclaimer, and escalates safety-critical intents to a human.
+- **Assistant AI** is the platform's member-facing voice, grounded in the **Framework** (Pillar One through Pillar Five). Warm and personalised (rich memory), but tightly fenced: it explicitly must not diagnose or prescribe, always carries a disclaimer, and escalates safety-critical intents to a human.
 - **Intake & Triage Assistant** trades warmth for rigour (low temperature, methodical personality), collects what a practitioner needs, and routes red flags to human review — it gathers and routes, it does **not** conclude. Its narrower memory scope keeps intake focused and reduces cross-context leakage.
-- **Practitioner Copilot** is a staff-only productivity tool (`private` visibility). It is precise, cites sources, and drafts consultation summaries — with no member memory and minimal guardrails, because its user is a clinician, not a patient.
+- **Specialist Copilot** is a staff-only productivity tool (`private` visibility). It is precise, cites sources, and drafts consultation summaries — with no member memory and minimal guardrails, because its user is a specialist, not a member.
 
-Every one of these differences is a value in a row. Adding a fourth agent — a "Sleep Coach", say — is the same operation the client will perform in the admin UI: pick a model, write a prompt and personality, choose tools and knowledge, set memory and safety, choose visibility, save. **No code. No deploy.** That is the framework.
+Every one of these differences is a value in a row. Adding a fourth agent — a "Specialist AI 4", say — is the same operation the client will perform in the admin UI: pick a model, write a prompt and personality, choose tools and knowledge, set memory and safety, choose visibility, save. **No code. No deploy.** That is the framework.

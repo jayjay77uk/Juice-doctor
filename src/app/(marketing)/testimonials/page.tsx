@@ -3,7 +3,7 @@ import { Quote } from 'lucide-react';
 import { createMetadata } from '@/config/metadata';
 import { ph } from '@/content/placeholder';
 import { testimonials as testimonialsService } from '@/services';
-import { herneStats } from '@/content/herne';
+import { frameworkStats } from '@/content/framework';
 import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
 import { StatBand } from '@/components/sections/stat-band';
@@ -63,7 +63,7 @@ export default async function TestimonialsPage() {
         </p>
       </Section>
 
-      <StatBand stats={herneStats} tone="inverse" />
+      <StatBand stats={frameworkStats} tone="inverse" />
       <CtaSection />
     </>
   );

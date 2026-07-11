@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { createMetadata } from '@/config/metadata';
-import { bodyMot } from '@/content/features';
+import { assessment } from '@/content/features';
 import { ph } from '@/content/placeholder';
 import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
@@ -17,15 +17,15 @@ import { CtaSection } from '@/components/sections/cta-section';
 export const metadata: Metadata = createMetadata({
   title: ph.metaTitle,
   description: ph.metaDescription,
-  path: '/body-mot',
+  path: '/assessment',
 });
 
-export default function BodyMotPage() {
+export default function AssessmentPage() {
   return (
     <>
-      <PageHero eyebrow={bodyMot.eyebrow} title={bodyMot.title} lede={bodyMot.lede}>
+      <PageHero eyebrow={assessment.eyebrow} title={assessment.title} lede={assessment.lede}>
         <Button asChild size="lg">
-          <Link href="/book?service=body-mot">
+          <Link href="/book?service=assessment">
             {ph.cta} <ArrowRight className="size-4" />
           </Link>
         </Button>
@@ -34,7 +34,7 @@ export default function BodyMotPage() {
       <Section tone="default" spacing="lg">
         <SectionHeading eyebrow={ph.eyebrow} title={ph.heading} />
         <div className="mt-10">
-          <FeatureGrid items={bodyMot.what} />
+          <FeatureGrid items={assessment.what} />
         </div>
       </Section>
 
@@ -43,7 +43,7 @@ export default function BodyMotPage() {
           <div>
             <SectionHeading eyebrow={ph.eyebrow} title={ph.heading} />
             <ol className="mt-8 flex flex-col gap-6">
-              {bodyMot.steps.map((step, i) => (
+              {assessment.steps.map((step, i) => (
                 <Reveal as="li" key={i} delay={i * 80}>
                   <div className="flex gap-4">
                     <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary font-serif text-primary-foreground">
@@ -77,13 +77,13 @@ export default function BodyMotPage() {
           <p className="mt-3 font-serif text-4xl text-foreground">{ph.price}</p>
           <p className="mt-2 text-muted-foreground">{ph.body}</p>
           <Button asChild size="lg" className="mt-6">
-            <Link href="/book?service=body-mot">{ph.cta}</Link>
+            <Link href="/book?service=assessment">{ph.cta}</Link>
           </Button>
         </div>
         <div className="mt-12">
           <SectionHeading eyebrow={ph.eyebrow} title={ph.heading} />
           <div className="mt-6">
-            <Accordion items={bodyMot.faqs} />
+            <Accordion items={assessment.faqs} />
           </div>
         </div>
       </Section>

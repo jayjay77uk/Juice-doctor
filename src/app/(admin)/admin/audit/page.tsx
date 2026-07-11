@@ -18,11 +18,11 @@ interface AuditRow {
 
 // prototype mock — the append-only audit trail is empty in the prototype.
 const ENTRIES: AuditRow[] = [
-  { id: 'a1', actor: 'Erran Warden', action: 'agent.published', entity: 'Juice Doctor Companion', at: '10 Jul, 14:22' },
-  { id: 'a2', actor: 'Sam Bennett', action: 'knowledge.document.approved', entity: 'Sleep & Recovery Guide', at: '10 Jul, 11:05' },
-  { id: 'a3', actor: 'Erran Warden', action: 'feature_flag.toggled', entity: 'ai.chat', at: '9 Jul, 16:40' },
+  { id: 'a1', actor: 'Admin User', action: 'agent.published', entity: 'Assistant AI', at: '10 Jul, 14:22' },
+  { id: 'a2', actor: 'Staff One', action: 'knowledge.document.approved', entity: 'Getting Started Guide', at: '10 Jul, 11:05' },
+  { id: 'a3', actor: 'Admin User', action: 'feature_flag.toggled', entity: 'ai.chat', at: '9 Jul, 16:40' },
   { id: 'a4', actor: 'System', action: 'prompt.version.published', entity: 'System prompt · Intake & Triage', at: '9 Jul, 09:15' },
-  { id: 'a5', actor: 'Dr. Amara Okoye', action: 'consultation.note.added', entity: 'Case · Rachel Adeyemi', at: '7 Jul, 10:03' },
+  { id: 'a5', actor: 'Practitioner One', action: 'consultation.note.added', entity: 'Case · Customer A', at: '7 Jul, 10:03' },
 ];
 
 const columns: Column<AuditRow>[] = [
@@ -84,7 +84,7 @@ export default async function AuditLogsPage() {
 
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
         <ScrollText className="size-4 shrink-0" />
-        Prototype — mock data, served through the service layer. No production AI or patient data.
+        Prototype — mock data, served through the service layer. No production AI or user data.
       </p>
     </div>
   );

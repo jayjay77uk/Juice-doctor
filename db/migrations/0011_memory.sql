@@ -2,7 +2,7 @@
 -- 0011 · AI memory architecture
 --
 -- DOMAIN
---   The persistent memory substrate for "Ask Juice Doctor AI". Agents and the
+--   The persistent memory substrate for Prototype AI. Agents and the
 --   platform need to remember things at very different lifetimes and blast radii:
 --   a throwaway scratchpad for one browser session, durable facts about a user,
 --   a running summary of one conversation, an agent's own operating instructions,

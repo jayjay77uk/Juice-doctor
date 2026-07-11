@@ -25,12 +25,12 @@ export interface ImageRef {
 
 export type ProgrammeFormat = '1:1' | 'group' | 'corporate' | 'self-paced';
 
-/** The five pillars of the HERNE Protocol. */
-export type HernePillarKey = 'hydration' | 'elimination' | 'rest' | 'nutrition' | 'exercise';
+/** The five pillars of the framework. */
+export type PillarKey = 'pillar-one' | 'pillar-two' | 'pillar-three' | 'pillar-four' | 'pillar-five';
 
-export interface HernePillar {
-  key: HernePillarKey;
-  /** The single letter shown in the H·E·R·N·E device. */
+export interface Pillar {
+  key: PillarKey;
+  /** The single letter shown in the framework device. */
   letter: string;
   name: string;
   tagline: string;
@@ -49,7 +49,7 @@ export interface Programme {
   format: ProgrammeFormat;
   priceLabel: string;
   includes: string[];
-  pillars: HernePillarKey[];
+  pillars: PillarKey[];
   featured: boolean;
   image: ImageRef;
 }
@@ -117,7 +117,7 @@ export interface FaqItem {
   answer: string;
 }
 
-/** Marketing content for one signature-feature page (Body MOT, Selfie Scan). */
+/** Marketing content for one signature-feature page (assessment, selfie scan). */
 export interface SignatureFeature {
   slug: string;
   eyebrow: string;

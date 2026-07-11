@@ -3,7 +3,7 @@ import type { Resource } from '@/types/content';
 /** Resources — articles, guides and recipes. Placeholder content. */
 export const resources: Resource[] = [
   {
-    id: 'res-sugar-cravings',
+    id: 'res-1',
     slug: 'resource-1',
     title: 'Lorem ipsum dolor sit amet',
     excerpt:
@@ -14,7 +14,7 @@ export const resources: Resource[] = [
     image: { alt: 'Placeholder image', tone: 'amber', ratio: '3/2' },
   },
   {
-    id: 'res-colon-health',
+    id: 'res-2',
     slug: 'resource-2',
     title: 'Lorem ipsum dolor sit amet',
     excerpt: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor incididunt.',
@@ -24,7 +24,7 @@ export const resources: Resource[] = [
     image: { alt: 'Placeholder image', tone: 'green', ratio: '3/2' },
   },
   {
-    id: 'res-morning-ritual',
+    id: 'res-3',
     slug: 'resource-3',
     title: 'Lorem ipsum dolor sit amet',
     excerpt: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore.',
@@ -34,7 +34,7 @@ export const resources: Resource[] = [
     image: { alt: 'Placeholder image', tone: 'teal', ratio: '3/2' },
   },
   {
-    id: 'res-green-juice',
+    id: 'res-4',
     slug: 'resource-4',
     title: 'Lorem ipsum dolor sit amet',
     excerpt: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor.',

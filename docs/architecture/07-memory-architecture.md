@@ -1,7 +1,7 @@
 # 07 · Memory Architecture
 
 > **Status:** Phase 2 — production-shaped design, no inference wired.
-> **Scope of this document:** the persistent memory substrate for *Ask Juice Doctor AI*.
+> **Scope of this document:** the persistent memory substrate for *Prototype AI*.
 > **Primary sources:** [`db/migrations/0011_memory.sql`](../../db/migrations/0011_memory.sql), [`src/types/memory.ts`](../../src/types/memory.ts), [`src/services/memory.ts`](../../src/services/memory.ts).
 > **Related:** [09 · AI Agents](./09-ai-agents.md), [10 · Conversations](./10-conversations.md), [03 · RBAC](./03-rbac.md), [02 · Multi-tenancy](./02-multi-tenancy.md).
 
@@ -9,7 +9,7 @@
 
 ## 1. The problem memory solves
 
-An assistant is only as good as what it can remember, and *what it may remember* is not one thing — it is six things with six different lifetimes and six different blast radii. A throwaway scratchpad for a single browser session is not the same object as a durable clinical fact about a patient, and neither is the same as an organisation-wide policy that every practitioner in a clinic should share. Collapsing them into "one memory bag" is how health platforms leak data.
+An assistant is only as good as what it can remember, and *what it may remember* is not one thing — it is six things with six different lifetimes and six different blast radii. A throwaway scratchpad for a single browser session is not the same object as a durable standing fact about a user, and neither is the same as an organisation-wide policy that every practitioner in an organisation should share. Collapsing them into "one memory bag" is how platforms leak data.
 
 So the modelling question is not *"where do we store memory?"* but *"what are the security boundaries, and how do we keep them from bleeding into each other while still presenting one clean API to the retrieval layer?"*
 
@@ -21,7 +21,7 @@ This document answers that. The short version:
 - **A discriminated `MemorySelector`** makes it *type-impossible* for a caller to address a scope with the wrong key.
 - **One combined RLS policy set** whose predicate is an **OR across the six scopes**, so a row is visible/writable *iff* its own scope's rule is satisfied.
 
-Everything below explains *why* each of those choices is the right one for a wellness platform holding sensitive health data.
+Everything below explains *why* each of those choices is the right one for a platform holding sensitive data.
 
 ---
 
@@ -32,7 +32,7 @@ Memory in this system is partitioned by **isolation scope** — the answer to "w
 | Scope | Identifying key column(s) | Lifetime / intent | Who **reads** | Who **writes** |
 |---|---|---|---|---|
 | `session` | `session_id` (+ `user_id`) | Ephemeral scratchpad for one signed-in browser session | the owning user | the owning user |
-| `user` | `user_id` | Durable per-user memory (preferences, standing facts) | the user; **org staff** (clinically/operationally justified, same tenant) | the user |
+| `user` | `user_id` | Durable per-user memory (preferences, standing facts) | the user; **org staff** (operationally justified, same tenant) | the user |
 | `conversation` | `conversation_id` | Bound to a single chat thread (e.g. a running summary) | the owner of the parent conversation | the conversation owner |
 | `agent` | `agent_id` (+ `organisation_id`) | An agent's own operating instructions / learned notes, per tenant | org **staff** (same tenant) | org **admins** (same tenant) |
 | `organisation` | `organisation_id` | Tenant-wide shared knowledge | org **staff** (same tenant) | org **admins** (same tenant) |
@@ -41,7 +41,7 @@ Memory in this system is partitioned by **isolation scope** — the answer to "w
 A few deliberate asymmetries are worth calling out, because they encode the trust model:
 
 - **`session` is keyed by `session_id` *and* `user_id`.** The session id alone is an opaque client token; pinning it to `user_id` means a session note can only ever be read back by *that* signed-in user, never by whoever happens to guess or replay a session identifier.
-- **`user` memory has a read-widening for staff but not for writes.** A treating practitioner or support staffer in the *same tenant* may read a member's durable memory (they need context to help); they may **not** silently write into it. Writes stay with the owner. This mirrors the health-data posture used throughout the platform: staff can *see* to care, but the record's authorship belongs to the subject.
+- **`user` memory has a read-widening for staff but not for writes.** A practitioner or support staffer in the *same tenant* may read a member's durable memory (they need context to help); they may **not** silently write into it. Writes stay with the owner. This mirrors the sensitive-data posture used throughout the platform: staff can *see* to assist, but the record's authorship belongs to the subject.
 - **`agent` and `organisation` split read (staff) from write (admin).** Operating instructions and tenant knowledge are configuration; line staff consume them, admins curate them. This is the same read-vs-configure boundary the RBAC layer draws elsewhere.
 - **`global` is read-by-all, written-by-super-admin.** It is the only scope where a plain `SELECT` predicate is unconditionally true — and it is intentionally the *only* place `using(true)` appears in the whole policy set.
 
@@ -236,7 +236,7 @@ Isolation is not just "who can see a row" but "who can create/modify it." The `I
 | `organisation` | same-tenant **staff** | same-tenant **admin** |
 | `global` | everyone | **super-admin only** |
 
-The asymmetries are the trust model made executable: staff *read* a member's `user` memory to provide care but cannot author it; staff *consume* agent/org configuration but admins *curate* it.
+The asymmetries are the trust model made executable: staff *read* a member's `user` memory to provide assistance but cannot author it; staff *consume* agent/org configuration but admins *curate* it.
 
 ### 7.3 Guarding the post-image on `UPDATE`
 
@@ -247,7 +247,7 @@ for update using ( … per-scope predicates … )
         with check ( … the same per-scope predicates … );
 ```
 
-Without the `WITH CHECK`, a caller with write authority over, say, their own `user` row could **re-scope it** — flip `scope` to `organisation` and set an `organisation_id` — and thereby smuggle a row into a scope they don't control. The post-image check forbids the mutated row from landing in a scope the caller isn't authorised for. Re-scoping out from under RLS is exactly the kind of privilege-escalation a health platform cannot afford, so it is closed off explicitly. (`INSERT` uses `WITH CHECK` for the same reason — the new row's scope+keys must satisfy the caller's authority before it can exist.)
+Without the `WITH CHECK`, a caller with write authority over, say, their own `user` row could **re-scope it** — flip `scope` to `organisation` and set an `organisation_id` — and thereby smuggle a row into a scope they don't control. The post-image check forbids the mutated row from landing in a scope the caller isn't authorised for. Re-scoping out from under RLS is exactly the kind of privilege-escalation a platform holding sensitive data cannot afford, so it is closed off explicitly. (`INSERT` uses `WITH CHECK` for the same reason — the new row's scope+keys must satisfy the caller's authority before it can exist.)
 
 ### 7.4 Append-vs-mutable note
 
@@ -257,14 +257,14 @@ Unlike the platform's append-only logs (`audit_logs`, `activity_logs`, `consulta
 
 ## 8. Why clean scope separation matters here specifically
 
-This is a wellness platform. The failure modes are not abstract:
+This is a platform holding sensitive data. The failure modes are not abstract:
 
 - **A session note must never leak.** Session memory is a throwaway scratchpad — half-formed intake answers, transient reasoning. Pinning it to `session_id + user_id` and gating reads on `user_id = auth.uid()` means it dies with the session and is never visible to anyone else, ever. No amount of guessing a `session_id` reaches it.
-- **An org fact must never cross tenants.** `agent` and `organisation` memory is keyed on `organisation_id` and every read/write predicate is `organisation_id = app.current_org_id()`. Clinic A's operating notes are structurally invisible to Clinic B — the tenant boundary is the *same one* the whole multi-tenant schema uses ([02 · Multi-tenancy](./02-multi-tenancy.md)), not a bespoke rule that could rot.
-- **Health data reads are care-justified, not open.** A member's durable `user` memory can be read by same-tenant staff (a practitioner needs context) but authored only by the member. That is the exact posture the platform's sensitive-health-data RLS takes elsewhere — owner + treating practitioner/staff + admin — applied to memory.
+- **An org fact must never cross tenants.** `agent` and `organisation` memory is keyed on `organisation_id` and every read/write predicate is `organisation_id = app.current_org_id()`. Organisation A's operating notes are structurally invisible to Organisation B — the tenant boundary is the *same one* the whole multi-tenant schema uses ([02 · Multi-tenancy](./02-multi-tenancy.md)), not a bespoke rule that could rot.
+- **Sensitive-data reads are justified, not open.** A member's durable `user` memory can be read by same-tenant staff (a practitioner needs context) but authored only by the member. That is the exact posture the platform's sensitive-data RLS takes elsewhere — owner + practitioner/staff + admin — applied to memory.
 - **The two guarantees are enforced twice.** The `MemorySelector` type stops scope confusion at the application boundary; the RLS OR-per-scope predicates stop it at the database boundary. Neither alone is trusted. This is the platform's standing defence-in-depth rule — **RBAC in the app and RLS in the DB, kept in lock-step** — applied to the memory substrate.
 
-Clean scope separation is therefore not a tidiness preference. It is the mechanism by which a single shared table can hold session scratchpads, patient facts, per-clinic knowledge, and platform-wide facts side by side and *still* prove that none of them leaks into the others.
+Clean scope separation is therefore not a tidiness preference. It is the mechanism by which a single shared table can hold session scratchpads, per-user facts, per-organisation knowledge, and platform-wide facts side by side and *still* prove that none of them leaks into the others.
 
 ---
 

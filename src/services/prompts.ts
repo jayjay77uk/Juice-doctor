@@ -28,7 +28,7 @@ for (const def of DEFAULT_AI_AGENTS) {
     {
       kind: 'welcome',
       name: 'Welcome message',
-      content: `Hi — I'm the ${def.name}. How can I help with your wellbeing today?`,
+      content: `Hi — I'm the ${def.name}. How can I help you today?`,
     },
     { kind: 'style', name: 'Conversation style', content: def.personality },
   ];

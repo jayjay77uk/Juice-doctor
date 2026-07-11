@@ -1,6 +1,6 @@
 # 01 · Authentication & Authorisation Architecture
 
-> **Ask Juice Doctor AI — Phase 2 Enterprise Backend Foundation**
+> **Prototype AI — Phase 2 Enterprise Backend Foundation**
 > Status: Production-shaped **design**, running on typed mock providers. No live auth, no live data, no AI.
 
 This document describes how the platform decides **who a caller is** (authentication) and **what they may do** (authorisation). Phase 2 ships the *shape* of a production identity system — the seams, the role model, the guards, and the database schema — without connecting Supabase, without real cookies, and without real users. The prototype resolves canned personas; the production code path exists beside them, commented and ready.
@@ -96,7 +96,7 @@ result.super_administrator = new Set(ALL_PERMISSION_KEYS); // wildcard
 
 ### Why this shape, and not a bag of independent roles
 
-1. **It mirrors the real organisation.** A wellness clinic *is* a hierarchy: a practitioner delivers care, a staff member also runs operations, an admin also governs the org. Modelling authority as a chain matches how the business actually delegates trust, so the permission matrix reads like an org chart instead of a lookup puzzle.
+1. **It mirrors the real organisation.** An organisation *is* a hierarchy: a practitioner delivers care, a staff member also runs operations, an admin also governs the org. Modelling authority as a chain matches how the business actually delegates trust, so the permission matrix reads like an org chart instead of a lookup puzzle.
 
 2. **Correctness by construction.** With cumulative inheritance, "can an admin do everything a practitioner can?" is *true by definition* — it need not be maintained by hand. A flat set of unrelated roles requires re-granting every shared capability to every role, and the day someone forgets is the day an admin loses the ability to read a member record. Inheritance makes that class of bug unrepresentable.
 
@@ -153,7 +153,7 @@ flowchart TD
     Start([getSession · cached per request]) --> Load[loadSession]
     Load --> Mode{config.isPrototype?}
 
-    Mode -->|prototype| Canned["Return CANNED&#91;roleHint&#93;<br/>e.g. Erran Warden = administrator"]
+    Mode -->|prototype| Canned["Return CANNED&#91;roleHint&#93;<br/>e.g. Admin User = administrator"]
     Mode -->|production| Cookie["createServerClient&#40;cookies&#40;&#41;&#41;"]
 
     Cookie --> User["supabase.auth.getUser&#40;&#41;<br/>await token refresh"]
@@ -171,7 +171,7 @@ flowchart TD
     style Cookie fill:#10b981,color:#000
 ```
 
-**Prototype.** `loadSession()` returns a canned persona from the `CANNED` map — one fully-formed `SessionUser` per role. `roleHint` lets the member shell and the admin shell each present a different persona (e.g. "Jordan Rivera" the member vs "Erran Warden" the administrator) so the demo can showcase every role without real logins. **`roleHint` is a prototype-only affordance; production ignores it entirely** — the role comes from the authenticated profile, never from a caller-supplied hint. This is critical: it means the prototype's convenience mechanism cannot become a production privilege-escalation vector.
+**Prototype.** `loadSession()` returns a canned persona from the `CANNED` map — one fully-formed `SessionUser` per role. `roleHint` lets the member shell and the admin shell each present a different persona (e.g. "Prototype User" the member vs "Admin User" the administrator) so the demo can showcase every role without real logins. **`roleHint` is a prototype-only affordance; production ignores it entirely** — the role comes from the authenticated profile, never from a caller-supplied hint. This is critical: it means the prototype's convenience mechanism cannot become a production privilege-escalation vector.
 
 **Production (deferred, present as a comment).** `loadSession()` will:
 1. Build a Supabase server client bound to the request `cookies()`.
@@ -336,7 +336,7 @@ The Origin check in `proxy.ts` is the cheap, universal first gate; the double-su
 
 ### 3 · Security headers
 
-Finally `securityHeaders()` ([`src/lib/security/headers.ts`](../../src/lib/security/headers.ts)) attaches the baseline to every response: a strict CSP (`default-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'`, `upgrade-insecure-requests`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, a locked-down `Permissions-Policy` (camera allowed only on its own origin for the Remote Selfie Scan; mic/geo/payment/usb denied), and COOP/CORP `same-origin`. HSTS is sent **only over HTTPS in production** (`hsts: isHttps && !isPrototype`). In **development** the CSP `script-src` is relaxed to allow `'unsafe-eval'` because React's dev tooling needs it — a deliberate, documented, *dev-only* loosening; production uses a nonce + `strict-dynamic`.
+Finally `securityHeaders()` ([`src/lib/security/headers.ts`](../../src/lib/security/headers.ts)) attaches the baseline to every response: a strict CSP (`default-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'`, `upgrade-insecure-requests`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, a locked-down `Permissions-Policy` (camera allowed only on its own origin for the Selfie Scan; mic/geo/payment/usb denied), and COOP/CORP `same-origin`. HSTS is sent **only over HTTPS in production** (`hsts: isHttps && !isPrototype`). In **development** the CSP `script-src` is relaxed to allow `'unsafe-eval'` because React's dev tooling needs it — a deliberate, documented, *dev-only* loosening; production uses a nonce + `strict-dynamic`.
 
 ---
 
@@ -439,4 +439,4 @@ See [`db/README.md`](../../db/README.md) for the full ERD across all 13 migratio
 
 ### Summary
 
-Authentication is a **single server-only seam** (`getSession`) whose one swappable function separates canned prototype personas from real Supabase sessions. Authorisation is a **linear, cumulative six-role hierarchy** — chosen because it mirrors the clinic's real chain of authority, makes inheritance correct by construction, and auto-grants new capabilities safely to the platform owner — refined by **deny-wins per-user overrides**. Every rule is enforced **twice**: by the application RBAC engine (fast, friendly) and by Postgres RLS (unbypassable), seeded from **one catalogue** and kept in lock-step. The `proxy.ts` middleware wraps it all with a CSRF Origin check, coarse route protection, and a strict security-header baseline — production-shaped throughout, with the live code paths present and commented rather than stubbed away.
+Authentication is a **single server-only seam** (`getSession`) whose one swappable function separates canned prototype personas from real Supabase sessions. Authorisation is a **linear, cumulative six-role hierarchy** — chosen because it mirrors the organisation's real chain of authority, makes inheritance correct by construction, and auto-grants new capabilities safely to the platform owner — refined by **deny-wins per-user overrides**. Every rule is enforced **twice**: by the application RBAC engine (fast, friendly) and by Postgres RLS (unbypassable), seeded from **one catalogue** and kept in lock-step. The `proxy.ts` middleware wraps it all with a CSRF Origin check, coarse route protection, and a strict security-header baseline — production-shaped throughout, with the live code paths present and commented rather than stubbed away.

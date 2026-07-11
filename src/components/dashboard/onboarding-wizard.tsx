@@ -14,15 +14,15 @@ import { cn } from '@/lib/cn';
  */
 
 const GOALS = [
-  { key: 'energy', label: 'More energy', icon: Sparkles },
-  { key: 'hydration', label: 'Better hydration', icon: Droplets },
-  { key: 'sleep', label: 'Deeper sleep', icon: Moon },
-  { key: 'nutrition', label: 'Eat better', icon: Apple },
-  { key: 'movement', label: 'Move more', icon: Activity },
-  { key: 'clarity', label: 'Mental clarity', icon: Brain },
+  { key: 'goal-1', label: 'Goal One', icon: Sparkles },
+  { key: 'goal-2', label: 'Goal Two', icon: Droplets },
+  { key: 'goal-3', label: 'Goal Three', icon: Moon },
+  { key: 'goal-4', label: 'Goal Four', icon: Apple },
+  { key: 'goal-5', label: 'Goal Five', icon: Activity },
+  { key: 'goal-6', label: 'Goal Six', icon: Brain },
 ];
 
-const STEPS = ['Welcome', 'Your goals', 'Health basics', 'Preferences', 'Done'] as const;
+const STEPS = ['Welcome', 'Your goals', 'Basic details', 'Preferences', 'Done'] as const;
 
 export function OnboardingWizard() {
   const [step, setStep] = React.useState(0);
@@ -61,10 +61,10 @@ export function OnboardingWizard() {
             <span className="mx-auto grid size-14 place-items-center rounded-full bg-teal-100 text-primary">
               <Sparkles className="size-6" />
             </span>
-            <h1 className="text-h2 text-foreground">Welcome to your reset</h1>
+            <h1 className="text-h2 text-foreground">Welcome</h1>
             <p className="measure mx-auto text-muted-foreground">
-              A few quick questions and we’ll tailor your HERNE journey. It takes about two minutes —
-              and remember, your body isn’t broken, it’s responsive.
+              A few quick questions and we’ll tailor your experience. It takes about two minutes —
+              and you can update your answers at any time.
             </p>
           </div>
         )}
@@ -126,10 +126,10 @@ export function OnboardingWizard() {
                   <option>Very active</option>
                 </Select>
               </Field>
-              <Field label="Typical sleep (hours)" name="sleep">
+              <Field label="Value A" name="sleep">
                 <Input id="sleep" name="sleep" type="number" min="0" max="14" placeholder="7" />
               </Field>
-              <Field label="Water per day (glasses)" name="water">
+              <Field label="Value B" name="water">
                 <Input id="water" name="water" type="number" min="0" max="20" placeholder="4" />
               </Field>
             </div>

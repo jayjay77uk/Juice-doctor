@@ -130,7 +130,7 @@ earlier ones. Grouped by domain concern:
 | # | File | Key objects | Notes |
 | --- | --- | --- | --- |
 | 0006 | `health_profiles` | `health_profiles`, `medical_questionnaires`, `fitness_profiles`, `nutrition_profiles`, `goals` | **Strictest RLS in the codebase** (PHI-grade). 1:1 tables keyed by `user_id`. |
-| 0007 | `consultation_workflow` | `assessments`, `appointments`, `consultations`, `consultation_events`, `follow_ups` | Pipeline intake → assessment → ai_review → practitioner_review → appointment → follow_up → history. Body MOT + Remote Selfie Scan are `assessments`. `consultation_events` append-only. |
+| 0007 | `consultation_workflow` | `assessments`, `appointments`, `consultations`, `consultation_events`, `follow_ups` | Pipeline intake → assessment → ai_review → practitioner_review → appointment → follow_up → history. Assessment + Remote Selfie Scan are `assessments`. `consultation_events` append-only. |
 
 ### Commerce
 
@@ -142,7 +142,7 @@ earlier ones. Grouped by domain concern:
 
 | # | File | Key objects | Notes |
 | --- | --- | --- | --- |
-| 0009 | `ai_agents` | `ai_model_providers`, `ai_models`, `ai_tools`, `ai_agents`, `ai_agent_versions`, `ai_agent_tools`, `ai_agent_knowledge_sources`, `ai_configurations` | **Agents are data.** Every save snapshots to the append-only `ai_agent_versions`. 3 seed agents: `juice-doctor-companion`, `intake-triage`, `practitioner-copilot`. |
+| 0009 | `ai_agents` | `ai_model_providers`, `ai_models`, `ai_tools`, `ai_agents`, `ai_agent_versions`, `ai_agent_tools`, `ai_agent_knowledge_sources`, `ai_configurations` | **Agents are data.** Every save snapshots to the append-only `ai_agent_versions`. 3 seed agents: `assistant-ai`, `intake-triage`, `specialist-copilot`. |
 | 0010 | `conversations` | `conversations`, `messages`, `message_feedback` | `messages` append-only (transcript = audit record). `agent_id` is a **soft** reference (no FK). |
 | 0011 | `memory` | `ai_memory` | **One table, six isolation scopes** (session, user, conversation, agent, organisation, global) — a `scope` discriminator + nullable scope keys, isolated by RLS. |
 | 0012 | `knowledge` | `knowledge_categories`, `knowledge_tags`, `knowledge_documents`, `knowledge_document_tags`, `knowledge_document_versions`, `knowledge_chunks`, `knowledge_embeddings`, `knowledge_permissions`, `knowledge_workflow_events` | Publish state machine draft→in_review→approved→published (+rejected/archived). **Embeddings are placeholders — pgvector deferred to Phase 3.** |

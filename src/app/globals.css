@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 /* ============================================================================
-   Ask Juice Doctor AI — Design tokens
+   Prototype AI — Design tokens
    Tailwind CSS v4 CSS-first configuration. Tokens defined here generate the
    utility classes used across the app. Components reference INTENT tokens
    (bg-surface, text-primary), never raw brand hexes.

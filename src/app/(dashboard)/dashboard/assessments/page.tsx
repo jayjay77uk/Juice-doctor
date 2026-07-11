@@ -11,7 +11,7 @@ import { member } from '@/services/member';
 
 export const metadata = createMetadata({
   title: 'Assessments',
-  description: 'Your Body MOT and scan results over time.',
+  description: 'Your assessment and scan results over time.',
 });
 
 function humanise(value: string): string {
@@ -31,7 +31,7 @@ export default async function AssessmentsPage() {
     <div className="mx-auto flex max-w-4xl flex-col gap-8">
       <AdminHeader
         title="Assessments"
-        description="Your Body MOT and scan results over time."
+        description="Your assessment and scan results over time."
       />
 
       <StatGrid>
@@ -44,7 +44,7 @@ export default async function AssessmentsPage() {
         <Panel>
           <EmptyState
             title="No assessments yet"
-            description="Your Body MOT and scan results will appear here once your first check-in is complete."
+            description="Your assessment and scan results will appear here once your first check-in is complete."
           />
         </Panel>
       ) : (
@@ -83,7 +83,7 @@ export default async function AssessmentsPage() {
       )}
 
       <p className="text-sm text-muted-foreground">
-        Prototype — sample data. No real health records, AI, or bookings are connected.
+        Prototype — sample data. No real records, AI, or bookings are connected.
       </p>
     </div>
   );

@@ -22,10 +22,10 @@ type Case = {
 
 // prototype mock
 const CASES: Case[] = [
-  { id: 'case_1', member: 'Rachel Adeyemi', stage: 'assessment', practitioner: 'Dr. Amara Okoye', status: 'in_progress', updated: '2026-07-09' },
-  { id: 'case_2', member: 'Tom Blake', stage: 'intake', practitioner: 'Unassigned', status: 'awaiting_review', updated: '2026-07-10' },
-  { id: 'case_3', member: 'Priya Shah', stage: 'practitioner_review', practitioner: 'Dr. Amara Okoye', status: 'in_progress', updated: '2026-07-08' },
-  { id: 'case_4', member: 'Marcus Cole', stage: 'follow_up', practitioner: 'Sam Bennett', status: 'completed', updated: '2026-07-05' },
+  { id: 'case_1', member: 'Customer A', stage: 'assessment', practitioner: 'Practitioner One', status: 'in_progress', updated: '2026-07-09' },
+  { id: 'case_2', member: 'Customer B', stage: 'intake', practitioner: 'Unassigned', status: 'awaiting_review', updated: '2026-07-10' },
+  { id: 'case_3', member: 'Customer C', stage: 'practitioner_review', practitioner: 'Practitioner One', status: 'in_progress', updated: '2026-07-08' },
+  { id: 'case_4', member: 'Customer D', stage: 'follow_up', practitioner: 'Staff One', status: 'completed', updated: '2026-07-05' },
 ];
 
 // prototype mock
@@ -33,7 +33,7 @@ type Escalation = { id: string; member: string; reason: string; since: string };
 
 // prototype mock
 const ESCALATIONS: Escalation[] = [
-  { id: 'case_2', member: 'Tom Blake', reason: 'Flagged red-flag symptom at intake', since: '2h ago' },
+  { id: 'case_2', member: 'Customer B', reason: 'Flagged for review at intake', since: '2h ago' },
 ];
 
 const labelize = (value: string) => value.replace(/_/g, ' ');

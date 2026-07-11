@@ -1,14 +1,14 @@
-import type { FaqItem, HernePillar, Stat } from '@/types/content';
+import type { FaqItem, Pillar, Stat } from '@/types/content';
 
 /**
  * Development placeholder data. The framework structure (five pillars) is kept
  * intact; all human-readable wording is neutral placeholder text pending
  * approved copy.
  */
-export const hernePillars: HernePillar[] = [
+export const frameworkPillars: Pillar[] = [
   {
-    key: 'hydration',
-    letter: 'H',
+    key: 'pillar-one',
+    letter: '1',
     name: 'Lorem ipsum',
     tagline: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
     description:
@@ -21,8 +21,8 @@ export const hernePillars: HernePillar[] = [
     tone: 'teal',
   },
   {
-    key: 'elimination',
-    letter: 'E',
+    key: 'pillar-two',
+    letter: '2',
     name: 'Lorem ipsum',
     tagline: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
     description:
@@ -31,8 +31,8 @@ export const hernePillars: HernePillar[] = [
     tone: 'green',
   },
   {
-    key: 'rest',
-    letter: 'R',
+    key: 'pillar-three',
+    letter: '3',
     name: 'Lorem ipsum',
     tagline: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
     description:
@@ -41,8 +41,8 @@ export const hernePillars: HernePillar[] = [
     tone: 'sage',
   },
   {
-    key: 'nutrition',
-    letter: 'N',
+    key: 'pillar-four',
+    letter: '4',
     name: 'Lorem ipsum',
     tagline: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
     description:
@@ -51,8 +51,8 @@ export const hernePillars: HernePillar[] = [
     tone: 'amber',
   },
   {
-    key: 'exercise',
-    letter: 'E',
+    key: 'pillar-five',
+    letter: '5',
     name: 'Lorem ipsum',
     tagline: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
     description:
@@ -66,13 +66,13 @@ export const hernePillars: HernePillar[] = [
  * Placeholder headline figures. Numeric structure is retained; labels are
  * neutral placeholder text pending approved, substantiated copy.
  */
-export const herneStats: Stat[] = [
+export const frameworkStats: Stat[] = [
   { value: '92%', label: 'Lorem ipsum dolor sit amet', note: 'placeholder' },
   { value: '87%', label: 'Lorem ipsum dolor sit amet', note: 'placeholder' },
   { value: '3×', label: 'Lorem ipsum dolor sit amet', note: 'placeholder' },
 ];
 
-export const herneFaqs: FaqItem[] = [
+export const frameworkFaqs: FaqItem[] = [
   {
     question: 'Lorem ipsum dolor sit amet, consectetur?',
     answer:

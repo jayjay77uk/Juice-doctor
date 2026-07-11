@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { createMetadata } from '@/config/metadata';
 import { ph } from '@/content/placeholder';
-import { herneFaqs, herneStats } from '@/content/herne';
+import { frameworkFaqs, frameworkStats } from '@/content/framework';
 import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
-import { HerneNarrative } from '@/components/sections/herne-narrative';
+import { FrameworkNarrative } from '@/components/sections/framework-narrative';
 import { StatBand } from '@/components/sections/stat-band';
 import { SectionHeading } from '@/components/sections/section-heading';
 import { Accordion } from '@/components/ui/accordion';
@@ -13,10 +13,10 @@ import { CtaSection } from '@/components/sections/cta-section';
 export const metadata: Metadata = createMetadata({
   title: ph.metaTitle,
   description: ph.metaDescription,
-  path: '/herne-protocol',
+  path: '/framework',
 });
 
-export default function HernePage() {
+export default function FrameworkPage() {
   return (
     <>
       <PageHero
@@ -26,22 +26,22 @@ export default function HernePage() {
       />
 
       <Section tone="default" spacing="lg">
-        <HerneNarrative />
+        <FrameworkNarrative />
       </Section>
 
-      <StatBand heading={ph.subheading} stats={herneStats} tone="inverse" />
+      <StatBand heading={ph.subheading} stats={frameworkStats} tone="inverse" />
 
       <Section tone="cream" spacing="lg" containerSize="narrow">
         <SectionHeading eyebrow={ph.eyebrow} title={ph.subheading} />
         <div className="mt-8">
-          <Accordion items={herneFaqs} />
+          <Accordion items={frameworkFaqs} />
         </div>
       </Section>
 
       <CtaSection
         title={ph.heading}
         primaryLabel={ph.cta}
-        primaryHref="/body-mot"
+        primaryHref="/assessment"
       />
     </>
   );

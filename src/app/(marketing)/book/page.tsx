@@ -26,7 +26,7 @@ export default async function BookPage({
 
   const services: BookingService[] = [
     { slug: 'consultation-1', title: ph.short, priceLabel: ph.price },
-    { slug: 'body-mot', title: ph.short, priceLabel: ph.price },
+    { slug: 'assessment', title: ph.short, priceLabel: ph.price },
     ...(consResult.ok
       ? consResult.data.map((c) => ({ slug: c.slug, title: c.title, priceLabel: c.priceLabel }))
       : []),

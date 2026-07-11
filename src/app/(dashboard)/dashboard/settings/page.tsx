@@ -8,20 +8,20 @@ import { Button } from '@/components/ui/button';
 export const metadata = createMetadata({ title: 'Settings' });
 
 const profileRows: { label: string; value: string }[] = [
-  { label: 'Name', value: 'Jordan Rivera' },
-  { label: 'Email', value: 'jordan@example.com' },
+  { label: 'Name', value: 'Prototype User' },
+  { label: 'Email', value: 'hello@example.com' },
 ];
 
 const notificationToggles: { id: string; label: string; hint: string }[] = [
   {
     id: 'email-checkins',
     label: 'Email check-ins',
-    hint: 'A warm weekly note on how your programme is going.',
+    hint: 'A short weekly note on how your programme is going.',
   },
   {
     id: 'daily-nudges',
     label: 'Daily nudges',
-    hint: 'Gentle reminders to hydrate, rest, and move.',
+    hint: 'Gentle reminders to stay on track.',
   },
   {
     id: 'share-practitioner',
@@ -103,7 +103,7 @@ export default async function SettingsPage() {
           </div>
           <p className="text-sm text-muted-foreground">
             Your data is GDPR-backed — you can export it or withdraw consent at any time,
-            and we’ll only ever use it to support your wellness journey.
+            and we’ll only ever use it to support your experience.
           </p>
         </div>
       </Panel>
@@ -128,7 +128,7 @@ export default async function SettingsPage() {
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — sample data. No real health records, AI, or bookings are connected. These
+        Prototype — sample data. No real records, AI, or bookings are connected. These
         controls are for demonstration only and won’t change any settings.
       </p>
     </div>

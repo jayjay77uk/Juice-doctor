@@ -1,6 +1,6 @@
 # 04 · Row-Level Security Model
 
-> **Scope.** This document explains the **Row-Level Security (RLS)** posture of the Ask Juice Doctor AI platform: the governing principle, the `SECURITY DEFINER` helper functions that make policies both safe and terse, the small vocabulary of standard policy patterns, the append-only log discipline, and two fully worked examples. It closes with *why* the platform enforces access in two places at once — RBAC in the application **and** RLS in the database.
+> **Scope.** This document explains the **Row-Level Security (RLS)** posture of the Prototype AI platform: the governing principle, the `SECURITY DEFINER` helper functions that make policies both safe and terse, the small vocabulary of standard policy patterns, the append-only log discipline, and two fully worked examples. It closes with *why* the platform enforces access in two places at once — RBAC in the application **and** RLS in the database.
 >
 > **Prototype note.** The migrations under [`db/migrations/`](../../db/migrations/) are the production database **design**. The prototype does not execute them — it runs on typed mock providers behind the server-only service layer, selected off the non-public `APP_MODE` env via the single seam `config.isPrototype` ([`src/config/app.ts`](../../src/config/app.ts)). The SQL below is nonetheless the authoritative source of truth: when the platform connects to Supabase, going live is "run the migrations + swap the provider", not a redesign. Every policy quoted here is real and lives in the migration cited.
 

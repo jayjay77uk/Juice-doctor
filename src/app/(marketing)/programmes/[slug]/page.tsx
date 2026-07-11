@@ -5,7 +5,7 @@ import { ArrowRight, Check } from 'lucide-react';
 import { createMetadata } from '@/config/metadata';
 import { ph } from '@/content/placeholder';
 import { programmes as programmesService } from '@/services';
-import { hernePillars } from '@/content/herne';
+import { frameworkPillars } from '@/content/framework';
 import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
 import { Media } from '@/components/ui/media';
@@ -42,7 +42,7 @@ export default async function ProgrammeDetailPage({
   const result = await programmesService.bySlug(slug);
   if (!result.ok) notFound();
   const programme = result.data;
-  const pillars = hernePillars.filter((p) => programme.pillars.includes(p.key));
+  const pillars = frameworkPillars.filter((p) => programme.pillars.includes(p.key));
 
   return (
     <>

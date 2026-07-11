@@ -82,7 +82,7 @@ export default async function UsersPage() {
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — mock data, served through the service layer. No production AI or patient data.
+        Prototype — mock data, served through the service layer. No production AI or user data.
       </p>
     </div>
   );

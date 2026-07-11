@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Migration: 0007_consultation_workflow.sql
 -- Domain:    Consultation workflow — the clinical journey a member takes through
---            the "Ask Juice Doctor AI" platform:
+--            the Prototype AI platform:
 --
 --              intake → assessment → AI review → practitioner review →
 --              appointment → follow-up → history
@@ -9,7 +9,7 @@
 -- WHY these modelling decisions:
 --
 --   * assessments is a generic container for every structured data-capture
---     surface (intake forms, Body MOT, Remote Selfie Scan, health
+--     surface (intake forms, Assessment, Selfie Scan, health
 --     questionnaires). Rather than one table per capture type — which would
 --     explode as new scan/assessment products ship — we keep a single table
 --     discriminated by `type`, with the payload in `results jsonb`. This lets
@@ -134,7 +134,7 @@ create table public.assessments (
 );
 
 comment on table public.assessments is
-    'Structured member assessments (intake, Body MOT, Remote Selfie Scan, health questionnaires). Payload in results jsonb; score/ai_summary are first-class for filtering. Tenant-scoped by organisation_id, member-owned by user_id.';
+    'Structured member assessments (intake, Assessment, Selfie Scan, health questionnaires). Payload in results jsonb; score/ai_summary are first-class for filtering. Tenant-scoped by organisation_id, member-owned by user_id.';
 
 create index assessments_user_id_idx          on public.assessments (user_id);
 create index assessments_organisation_id_idx  on public.assessments (organisation_id);

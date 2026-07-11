@@ -3,12 +3,12 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { programmes as programmesService, testimonials as testimonialsService } from '@/services';
 import { routes } from '@/config/routes';
-import { herneStats } from '@/content/herne';
+import { frameworkStats } from '@/content/framework';
 import { Section } from '@/components/ui/section';
 import { Button } from '@/components/ui/button';
 import { Hero } from '@/components/sections/hero';
 import { PressStrip } from '@/components/sections/press-strip';
-import { HerneOverview } from '@/components/sections/herne-overview';
+import { FrameworkOverview } from '@/components/sections/framework-overview';
 import { SectionHeading } from '@/components/sections/section-heading';
 import { ProgrammeCard } from '@/components/sections/programme-card';
 import { StatBand } from '@/components/sections/stat-band';
@@ -28,7 +28,7 @@ export default async function HomePage() {
     <>
       <Hero />
       <PressStrip />
-      <HerneOverview />
+      <FrameworkOverview />
 
       {/* Programmes */}
       <Section tone="default" spacing="lg">
@@ -53,7 +53,7 @@ export default async function HomePage() {
 
       <StatBand
         heading={ph.heading}
-        stats={herneStats}
+        stats={frameworkStats}
         tone="inverse"
       />
 

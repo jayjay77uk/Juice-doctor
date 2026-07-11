@@ -11,33 +11,33 @@ export const metadata = createMetadata({ title: 'Consultation case' });
 
 // prototype mock
 const CASE = {
-  member: 'Rachel Adeyemi',
-  practitioner: 'Dr. Amara Okoye',
+  member: 'Customer A',
+  practitioner: 'Practitioner One',
   stage: 'practitioner_review',
   status: 'in_progress',
-  reason: 'Low energy and poor sleep',
+  reason: 'General enquiry',
   started: '2026-07-06',
 };
 
 // prototype mock
 const TIMELINE = [
-  { stage: 'intake', title: 'Intake completed', at: '6 Jul, 09:12', actor: 'Rachel Adeyemi' },
-  { stage: 'assessment', title: 'Body MOT assessment scored', at: '6 Jul, 09:40', actor: 'System' },
-  { stage: 'ai_review', title: 'AI review drafted', at: '6 Jul, 09:41', actor: 'Juice Doctor Companion' },
+  { stage: 'intake', title: 'Intake completed', at: '6 Jul, 09:12', actor: 'Customer A' },
+  { stage: 'assessment', title: 'Assessment scored', at: '6 Jul, 09:40', actor: 'System' },
+  { stage: 'ai_review', title: 'AI review drafted', at: '6 Jul, 09:41', actor: 'Assistant AI' },
   {
     stage: 'practitioner_review',
     title: 'Awaiting practitioner sign-off',
     at: '7 Jul, 10:00',
-    actor: 'Dr. Amara Okoye',
+    actor: 'Practitioner One',
   },
 ];
 
 // prototype mock
 const NOTES = [
   {
-    author: 'Dr. Amara Okoye',
+    author: 'Practitioner One',
     at: '7 Jul',
-    text: 'Reviewed intake; recommend starting with hydration + sleep pillars.',
+    text: 'Reviewed intake; recommend starting with the first two pillars.',
   },
 ];
 
@@ -113,11 +113,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         <div className="flex flex-col gap-8">
           <Panel title="Assessment review">
             <p className="text-sm text-foreground">
-              {CASE.member} reports {CASE.reason.toLowerCase()}. The Body MOT assessment and AI draft
+              {CASE.member} submitted a {CASE.reason.toLowerCase()}. The Assessment and AI draft
               are ready for practitioner sign-off.
             </p>
             <div className="mt-4 flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Body MOT score</span>
+              <span className="text-sm text-muted-foreground">Assessment score</span>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-100 px-2.5 py-1 text-xs font-medium text-teal-700">
                 <span className="size-1.5 rounded-full bg-current opacity-70" aria-hidden />
                 62 / 100

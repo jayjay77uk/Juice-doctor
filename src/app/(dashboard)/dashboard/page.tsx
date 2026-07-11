@@ -13,11 +13,11 @@ import type { Goal } from '@/types/health';
 export const metadata = createMetadata({ title: 'Dashboard', path: '/dashboard' });
 
 const emptyProgress: PillarProgress = {
-  hydration: 0,
-  elimination: 0,
-  rest: 0,
-  nutrition: 0,
-  exercise: 0,
+  pillarOne: 0,
+  pillarTwo: 0,
+  pillarThree: 0,
+  pillarFour: 0,
+  pillarFive: 0,
   overall: 0,
 };
 
@@ -35,18 +35,18 @@ export default async function DashboardPage() {
   const goals: Goal[] = goalsR.ok ? goalsR.data : [];
 
   const pillars: { label: string; value: number }[] = [
-    { label: 'Hydration', value: progress.hydration },
-    { label: 'Elimination', value: progress.elimination },
-    { label: 'Rest', value: progress.rest },
-    { label: 'Nutrition', value: progress.nutrition },
-    { label: 'Exercise', value: progress.exercise },
+    { label: 'Pillar One', value: progress.pillarOne },
+    { label: 'Pillar Two', value: progress.pillarTwo },
+    { label: 'Pillar Three', value: progress.pillarThree },
+    { label: 'Pillar Four', value: progress.pillarFour },
+    { label: 'Pillar Five', value: progress.pillarFive },
   ];
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8">
       <AdminHeader
         title="Welcome back"
-        description="Week 3 of your journey — here's where things stand."
+        description="Week 3 of your account — here's where things stand."
         actions={
           <Button asChild>
             <Link href="/dashboard/onboarding">Resume onboarding</Link>
@@ -55,14 +55,14 @@ export default async function DashboardPage() {
       />
 
       <StatGrid>
-        <StatCard label="Overall wellbeing" value={`${progress.overall}/100`} icon={TrendingUp} />
+        <StatCard label="Overall score" value={`${progress.overall}/100`} icon={TrendingUp} />
         <StatCard label="Active goals" value={goals.length} icon={Target} />
-        <StatCard label="Hydration" value={`${progress.hydration}/100`} icon={Droplets} />
-        <StatCard label="Rest" value={`${progress.rest}/100`} icon={Moon} />
+        <StatCard label="Pillar One" value={`${progress.pillarOne}/100`} icon={Droplets} />
+        <StatCard label="Pillar Three" value={`${progress.pillarThree}/100`} icon={Moon} />
       </StatGrid>
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <Panel title="Your HERNE pillars this week">
+        <Panel title="Your Framework pillars this week">
           <ul className="flex flex-col gap-4">
             {pillars.map((pillar) => (
               <li key={pillar.label} className="flex items-center gap-4">

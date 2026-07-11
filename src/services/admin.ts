@@ -15,10 +15,10 @@ const SEED_ORG = '00000000-0000-0000-0000-000000000001';
 const SEED_TS = '2026-07-10T00:00:00.000Z';
 
 const SEED_USERS: Profile[] = [
-  { id: 'usr_admin', organisationId: SEED_ORG, role: 'administrator', email: 'erran@askjuicedoctor.com', fullName: 'Erran Warden', displayName: 'Erran', avatarUrl: null, phone: null, locale: 'en-GB', timezone: 'Europe/London', status: 'active', onboardingCompleted: true, lastSeenAt: SEED_TS, createdAt: SEED_TS },
-  { id: 'usr_practitioner', organisationId: SEED_ORG, role: 'practitioner', email: 'amara@askjuicedoctor.com', fullName: 'Dr. Amara Okoye', displayName: 'Amara', avatarUrl: null, phone: null, locale: 'en-GB', timezone: 'Europe/London', status: 'active', onboardingCompleted: true, lastSeenAt: SEED_TS, createdAt: SEED_TS },
-  { id: 'usr_staff', organisationId: SEED_ORG, role: 'staff', email: 'sam@askjuicedoctor.com', fullName: 'Sam Bennett', displayName: 'Sam', avatarUrl: null, phone: null, locale: 'en-GB', timezone: 'Europe/London', status: 'active', onboardingCompleted: true, lastSeenAt: SEED_TS, createdAt: SEED_TS },
-  { id: 'usr_member', organisationId: SEED_ORG, role: 'member', email: 'jordan@example.com', fullName: 'Jordan Rivera', displayName: 'Jordan', avatarUrl: null, phone: null, locale: 'en-GB', timezone: 'Europe/London', status: 'active', onboardingCompleted: false, lastSeenAt: SEED_TS, createdAt: SEED_TS },
+  { id: 'usr_admin', organisationId: SEED_ORG, role: 'administrator', email: 'admin@example.com', fullName: 'Admin User', displayName: 'Admin', avatarUrl: null, phone: null, locale: 'en-GB', timezone: 'Europe/London', status: 'active', onboardingCompleted: true, lastSeenAt: SEED_TS, createdAt: SEED_TS },
+  { id: 'usr_practitioner', organisationId: SEED_ORG, role: 'practitioner', email: 'practitioner@example.com', fullName: 'Practitioner One', displayName: 'Practitioner', avatarUrl: null, phone: null, locale: 'en-GB', timezone: 'Europe/London', status: 'active', onboardingCompleted: true, lastSeenAt: SEED_TS, createdAt: SEED_TS },
+  { id: 'usr_staff', organisationId: SEED_ORG, role: 'staff', email: 'staff@example.com', fullName: 'Staff One', displayName: 'Staff', avatarUrl: null, phone: null, locale: 'en-GB', timezone: 'Europe/London', status: 'active', onboardingCompleted: true, lastSeenAt: SEED_TS, createdAt: SEED_TS },
+  { id: 'usr_member', organisationId: SEED_ORG, role: 'member', email: 'member@example.com', fullName: 'Prototype User', displayName: 'Member', avatarUrl: null, phone: null, locale: 'en-GB', timezone: 'Europe/London', status: 'active', onboardingCompleted: false, lastSeenAt: SEED_TS, createdAt: SEED_TS },
 ];
 
 export interface AdminMetrics {

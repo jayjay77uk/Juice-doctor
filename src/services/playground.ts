@@ -12,20 +12,20 @@ import { ok, type Result } from './result';
 
 const SAMPLE_CHUNKS: RetrievedChunk[] = [
   {
-    documentTitle: 'The HERNE Protocol — Overview',
+    documentTitle: 'Getting Started Guide',
     snippet:
-      'HERNE connects Hydration, Elimination, Rest, Nutrition and Exercise into one system, sequenced to the individual…',
+      'The framework connects the core steps into one system, sequenced to the individual…',
     score: 0.91,
   },
   {
-    documentTitle: 'Cellular Hydration Explained',
+    documentTitle: 'Product Overview',
     snippet:
-      'True cellular hydration is the difference between fluid passing through you and water reaching your cells…',
+      'This overview explains how the main features fit together and when to use each one…',
     score: 0.86,
   },
   {
-    documentTitle: 'Nutrient Density vs Restriction',
-    snippet: 'Food is information. Nutrient density beats restriction for sustainable change…',
+    documentTitle: 'Product FAQ',
+    snippet: 'Answers to the most common questions, organised for quick reference…',
     score: 0.79,
   },
 ];
@@ -51,10 +51,10 @@ export const playground = {
   }): Promise<Result<PlaygroundResult>> {
     const retrieved = SAMPLE_CHUNKS.slice(0, input.knowledgeCount ?? 2);
     const output = [
-      `Here's how I'd approach that, grounded in the HERNE Protocol:`,
+      `Here's how I'd approach that, grounded in the framework:`,
       ``,
-      `• Start with hydration — most fatigue and cravings trace back to being under-watered.`,
-      `• Look at rest next; recovery is where change actually happens.`,
+      `• Start with the first step — most issues trace back to getting the basics right.`,
+      `• Review the next step; that's where most of the progress actually happens.`,
       ``,
       `(Prototype: this is a simulated response — no AI model was called. In production this agent would answer using its published prompt and the retrieved knowledge shown alongside.)`,
     ].join('\n');

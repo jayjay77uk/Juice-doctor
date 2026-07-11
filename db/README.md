@@ -1,6 +1,6 @@
 # Database architecture
 
-The complete production database **design** for the Ask Juice Doctor AI platform. These migrations are the source of truth from which the TypeScript model (`src/types/db.ts`) is derived.
+The complete production database **design** for the Prototype AI platform. These migrations are the source of truth from which the TypeScript model (`src/types/db.ts`) is derived.
 
 > **Prototype note.** The prototype does **not** run this database — it uses typed mock providers behind the server-only service layer. These migrations exist so that (a) the model is designed exactly as production requires, and (b) moving to Supabase in a later phase is "run the migrations + swap the provider", not a redesign. Nothing here is executed and no data is stored.
 

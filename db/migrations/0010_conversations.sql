@@ -1,7 +1,7 @@
 -- ============================================================================
 -- 0010 · Conversations, messages & message feedback
 --
--- The persistence layer for "Ask Juice Doctor AI" chat. This migration models
+-- The persistence layer for Prototype AI chat. This migration models
 -- ONLY the durable structure of a conversation — the transcript and its human
 -- feedback signals. It deliberately contains NO AI runtime: no queues, no
 -- streaming state, no provider credentials. Inference happens server-side; this

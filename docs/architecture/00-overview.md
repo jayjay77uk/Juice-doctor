@@ -1,7 +1,7 @@
 # 00 — Backend Architecture Overview
 
-> **Ask Juice Doctor AI** — Phase 2: the enterprise backend foundation.
-> Founder: Erran Warden ("The Juice Doctor"). This is a **prototype for demonstration purposes only** — production-*shaped*, not production-*wired*.
+> **Prototype AI** — Phase 2: the enterprise backend foundation.
+> This is a **prototype for demonstration purposes only** — production-*shaped*, not production-*wired*.
 
 This is the entry point to the architecture set. It explains **what Phase 2 is**, the **prototype-vs-production philosophy** that governs every decision below it, the **three-layer architecture**, the **single seam** we swap to go live, the **phase boundaries** (what we deliberately did *not* build), and a **map** of where everything lives — ending with an index of every other document in this set.
 
@@ -186,7 +186,7 @@ src/
 ├── config/                  DOMAIN · catalogues mirrored by the DB
 │   ├── app.ts               ← the cosmetic seam: config.isPrototype, APP_MODE docs
 │   ├── permissions.ts       ← permission catalogue (resource.action) + role base map
-│   ├── ai-agents.ts         ← 3 seed agents (juice-doctor-companion, intake-triage, practitioner-copilot)
+│   ├── ai-agents.ts         ← 3 seed agents (assistant-companion, intake-triage, practitioner-copilot)
 │   ├── feature-flags.ts     ← flag registry (targeting-aware)
 │   └── routes.ts            ← route constants
 ├── lib/
@@ -257,7 +257,7 @@ This overview is the map; the following documents drill into each territory.
 | 06 | `06-ai-agents-framework.md` | Agents-as-data: models, agents, versions, tools, knowledge sources; the seed agents |
 | 07 | `07-knowledge-base.md` | The knowledge pipeline, source types, versioning, chunks/embeddings, the publishing state machine |
 | 08 | `08-memory-model.md` | The single `ai_memory` table, six isolation scopes, `MemorySelector`, RLS isolation |
-| 09 | `09-consultation-workflow.md` | Intake → assessment → review → appointment → follow-up; Body MOT & Remote Selfie Scan as assessments |
+| 09 | `09-consultation-workflow.md` | Intake → assessment → review → appointment → follow-up; Assessment & Selfie Scan as assessments |
 | 10 | `10-platform-operations.md` | Notifications, audit/activity logs, system settings, feature flags & targeting |
 | 11 | `11-consents-and-compliance.md` | The versioned GDPR consent ledger, sensitive-health-data RLS, re-prompt on policy change |
 

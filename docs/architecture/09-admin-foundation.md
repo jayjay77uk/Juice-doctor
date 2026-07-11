@@ -119,7 +119,7 @@ flowchart LR
 - **The navigation is *data*, not markup.** Each layout passes its own `ShellNavItem[]`. Adding an admin surface is adding a row to an array — the same pattern the whole codebase uses for routes (`src/config/routes.ts`), permissions (`src/config/permissions.ts`), and flags (`src/config/feature-flags.ts`). This is the "everything privileged is a registry" principle applied to navigation.
 - **The shell holds no data logic.** It receives already-resolved props (`userName`, `nav`) from a server layout. It never fetches, never checks permissions itself — it is a pure presentational frame. Authorisation stays in the layer that owns it.
 
-The admin `nav` currently lists the operator surfaces (Overview, Clients, Bookings, Content, Podcast, Messages). In this phase every entry points at `/admin` because the sub-pages are not yet built — the navigation exists to demonstrate the information architecture, and each destination becomes a real page in Phase 3 gated by the permission in the table in §6.
+The admin `nav` currently lists the operator surfaces (Overview, Customers, Bookings, Content, Media, Messages). In this phase every entry points at `/admin` because the sub-pages are not yet built — the navigation exists to demonstrate the information architecture, and each destination becomes a real page in Phase 3 gated by the permission in the table in §6.
 
 ---
 

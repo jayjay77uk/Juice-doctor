@@ -1,7 +1,7 @@
 -- ============================================================================
 -- Migration: 0008_commerce.sql
 -- Domain:    Commerce (programmes, enrollments, subscription plans, billing)
--- Platform:  Ask Juice Doctor AI
+-- Platform:  Prototype AI
 --
 -- PURPOSE
 --   Models the commercial surface of the platform: the catalogue of coaching
@@ -115,7 +115,7 @@ create table public.programmes (
   currency         char(3) not null default 'GBP',
 
   includes         text[] not null default '{}',          -- bullet list of what's included
-  pillars          text[] not null default '{}',          -- juice/health pillars covered
+  pillars          text[] not null default '{}',          -- framework pillars covered
 
   publish_status   public.publish_status not null default 'draft',
   featured         boolean not null default false,

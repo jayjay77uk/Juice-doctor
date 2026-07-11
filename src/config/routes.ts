@@ -24,9 +24,9 @@ export const routes = {
   founder: { href: '/founder', label: 'Lorem 2' },
   programmes: { href: '/programmes', label: 'Lorem 3' },
   consultations: { href: '/consultations', label: 'Lorem 4' },
-  bodyMot: { href: '/body-mot', label: 'Lorem 5' },
+  assessment: { href: '/assessment', label: 'Lorem 5' },
   selfieScan: { href: '/remote-selfie-scan', label: 'Lorem 6' },
-  herne: { href: '/herne-protocol', label: 'Lorem 7' },
+  framework: { href: '/framework', label: 'Lorem 7' },
   podcast: { href: '/podcast', label: 'Lorem 8' },
   resources: { href: '/resources', label: 'Lorem 9' },
   theBook: { href: '/the-book', label: 'Lorem 10' },
@@ -53,14 +53,14 @@ export const primaryNav: NavGroup[] = [
     items: [
       { ...routes.programmes, description: D },
       { ...routes.consultations, description: D },
-      { ...routes.bodyMot, description: D },
+      { ...routes.assessment, description: D },
       { ...routes.selfieScan, description: D },
     ],
   },
   {
     label: 'Lorem ipsum',
     items: [
-      { ...routes.herne, description: D },
+      { ...routes.framework, description: D },
       { ...routes.about, description: D },
       { ...routes.founder, description: D },
     ],
@@ -79,7 +79,7 @@ export const primaryNav: NavGroup[] = [
 /** Flat list of the top-level nav destinations (mobile + simple contexts). */
 export const flatNav: RouteDef[] = [
   routes.programmes,
-  routes.herne,
+  routes.framework,
   routes.podcast,
   routes.resources,
   routes.about,
@@ -90,11 +90,11 @@ export const flatNav: RouteDef[] = [
 export const footerNav: NavGroup[] = [
   {
     label: 'Lorem ipsum',
-    items: [routes.programmes, routes.consultations, routes.bodyMot, routes.selfieScan],
+    items: [routes.programmes, routes.consultations, routes.assessment, routes.selfieScan],
   },
   {
     label: 'Lorem ipsum',
-    items: [routes.herne, routes.about, routes.founder, routes.testimonials],
+    items: [routes.framework, routes.about, routes.founder, routes.testimonials],
   },
   {
     label: 'Lorem ipsum',
@@ -121,9 +121,9 @@ export const publicRoutes: RouteDef[] = [
   routes.founder,
   routes.programmes,
   routes.consultations,
-  routes.bodyMot,
+  routes.assessment,
   routes.selfieScan,
-  routes.herne,
+  routes.framework,
   routes.podcast,
   routes.resources,
   routes.theBook,

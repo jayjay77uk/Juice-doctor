@@ -1,14 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { hernePillars } from '@/content/herne';
+import { frameworkPillars } from '@/content/framework';
 import type { BrandTone } from '@/types/content';
 import { cn } from '@/lib/cn';
 import { ph } from '@/content/placeholder';
 
 /**
  * The signature design device: a scroll-linked vertical narrative through the
- * five HERNE pillars. A sticky rail tracks the active pillar as you scroll;
+ * five framework pillars. A sticky rail tracks the active pillar as you scroll;
  * each pillar reveals as it enters view. Degrades to a clean stacked layout
  * with no motion when reduced-motion is preferred (transitions are neutralised
  * globally and the rail simply shows all letters).
@@ -29,7 +29,7 @@ const toneDot: Record<BrandTone, string> = {
   ink: 'bg-ink-900',
 };
 
-export function HerneNarrative() {
+export function FrameworkNarrative() {
   const [active, setActive] = React.useState(0);
   const refs = React.useRef<(HTMLDivElement | null)[]>([]);
 
@@ -57,7 +57,7 @@ export function HerneNarrative() {
           {ph.eyebrow}
         </p>
         <div className="flex gap-2 lg:flex-col lg:gap-1">
-          {hernePillars.map((pillar, i) => {
+          {frameworkPillars.map((pillar, i) => {
             const on = i === active;
             return (
               <button
@@ -92,7 +92,7 @@ export function HerneNarrative() {
 
       {/* Pillar panels */}
       <div className="flex flex-col gap-6">
-        {hernePillars.map((pillar, i) => (
+        {frameworkPillars.map((pillar, i) => (
           <div
             key={pillar.key}
             data-index={i}

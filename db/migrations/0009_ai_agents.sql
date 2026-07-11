@@ -5,7 +5,7 @@
 --
 -- Purpose
 --   Provide the data model that lets an organisation stand up UNLIMITED AI
---   agents (a "Juice Doctor", a "Nutrition Coach", a "Booking Assistant", …)
+--   agents (a "Receptionist AI", a "Specialist AI 1", an "Assistant AI", …)
 --   entirely through configuration rows — never a code deploy. Everything an
 --   agent needs to run is data: which model it talks to, its system prompt and
 --   personality, which tools it may call, which knowledge it may read, and the
@@ -180,7 +180,7 @@ create table public.ai_agents (
   slug              citext not null,             -- URL/lookup handle, case-insensitive
   name              text not null,
   description       text,
-  role              text,                        -- short role label, e.g. 'Juice Doctor'
+  role              text,                        -- short role label, e.g. 'Specialist AI 1'
   personality       text,                        -- tone/voice guidance
   system_prompt     text,                        -- the operative system prompt
   temperature       numeric not null default 0.7,

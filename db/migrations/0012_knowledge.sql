@@ -2,7 +2,7 @@
 -- 0012 · Knowledge management: documents, categories, tags, versioning,
 --        publishing/approval workflow, chunking + embedding placeholders
 --
--- The knowledge base is what "Ask Juice Doctor AI" reasons over: curated,
+-- The knowledge base is what Prototype AI reasons over: curated,
 -- organisation-authored source material (PDF/DOCX/TXT/CSV/URL/manual, plus
 -- future OCR + audio transcripts) that will be chunked and embedded for
 -- retrieval-augmented generation.
