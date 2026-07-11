@@ -21,31 +21,31 @@ export function Hero() {
         <div className="flex flex-col items-start gap-6">
           <span className="reveal inline-flex items-center gap-2 rounded-full border border-border-strong bg-surface px-3.5 py-1.5 text-xs font-medium text-muted-foreground">
             <Sparkles className="size-3.5 text-accent-strong" />
-            Built on the HERNE Protocol
+            Your AI wellness team · guided by the HERNE Protocol
           </span>
           <h1 className="reveal reveal-2 text-display text-foreground">
-            Your body is not broken.
-            <span className="block text-primary">It’s responsive.</span>
+            Meet your AI
+            <span className="block text-primary">wellness team.</span>
           </h1>
           <p className="reveal reveal-3 measure text-lg text-muted-foreground sm:text-xl">
-            {site.tagline}. Premium natural-health coaching that restores your inner environment —
-            so you feel the difference, backed by science you can trust.
+            Start with our AI receptionist — it understands your goals and matches you with the right
+            specialist AI, with a human expert on hand whenever you need one. {site.belief}
           </p>
           <div className="reveal reveal-3 flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg">
-              <Link href={routes.programmes.href}>
-                Explore programmes <ArrowRight className="size-4" />
+              <Link href={routes.start.href}>
+                Meet the receptionist <ArrowRight className="size-4" />
               </Link>
             </Button>
             <Button asChild size="lg" intent="outline">
-              <Link href={routes.selfieScan.href}>Try the free scan</Link>
+              <Link href={routes.specialists.href}>Browse specialist AIs</Link>
             </Button>
           </div>
           <dl className="reveal reveal-4 mt-4 flex flex-wrap gap-x-8 gap-y-3">
             {[
-              { v: '20+ yrs', l: 'restoring health' },
-              { v: '3M+', l: 'reached on TV' },
-              { v: '5 pillars', l: 'one protocol' },
+              { v: '1 receptionist', l: 'your front door' },
+              { v: '5 specialists', l: 'one per pillar' },
+              { v: 'Human expert', l: 'when it matters' },
             ].map((s) => (
               <div key={s.l} className="flex flex-col">
                 <dt className="font-serif text-2xl text-foreground">{s.v}</dt>

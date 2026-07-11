@@ -14,3 +14,4 @@ export * from './memory';
 export * from './conversation';
 export * from './platform';
 export * from './ai-platform';
+export * from './crm';

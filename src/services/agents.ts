@@ -99,6 +99,8 @@ export const agents = {
       id: `agent_new_${++idCounter}`,
       organisationId: input.organisationId,
       slug: input.slug,
+      kind: 'specialist',
+      product: null,
       name: input.name,
       description: input.description,
       role: input.role,

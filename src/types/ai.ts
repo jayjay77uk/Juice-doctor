@@ -8,6 +8,29 @@ export type AgentVisibility = 'private' | 'organisation' | 'public';
 export type AgentStatus = 'draft' | 'active' | 'disabled' | 'archived';
 export type AgentKnowledgeMode = 'include' | 'exclude';
 
+/**
+ * An agent's role in the AI business:
+ *  - receptionist: the single front-door AI that consults, qualifies, recommends
+ *    a specialist, creates a CRM lead, and escalates to a human when unsure.
+ *  - specialist: a customer-facing subscription PRODUCT with its own identity,
+ *    knowledge, prompts, memory, subscribers and analytics.
+ *  - internal: a staff-only assistant (not a customer product).
+ */
+export type AgentKind = 'receptionist' | 'specialist' | 'internal';
+
+/** Commercial identity for a specialist AI sold as a subscription product. */
+export interface SpecialistProduct {
+  /** Short marketing tagline shown in the catalogue. */
+  tagline: string;
+  /** What this specialist helps with (feature bullets). */
+  expertise: string[];
+  priceLabel: string;
+  priceAmount: number; // minor units (pence)
+  interval: 'month' | 'year';
+  /** Brand accent used across the product's surfaces. */
+  accent: 'teal' | 'green' | 'amber' | 'sage';
+}
+
 export interface AiModelProvider {
   id: string;
   organisationId: string | null; // null = platform-global
@@ -63,6 +86,10 @@ export interface AiAgent {
   id: string;
   organisationId: string;
   slug: string;
+  /** Role in the AI business (front-door receptionist vs specialist product). */
+  kind: AgentKind;
+  /** Commercial identity — set for specialist products, null otherwise. */
+  product: SpecialistProduct | null;
   name: string;
   description: string;
   role: string;
