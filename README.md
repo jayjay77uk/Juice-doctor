@@ -96,6 +96,16 @@ The **AI management platform** — "build once, configure forever". Every assist
 - **Data-driven** — agents/prompts/models/tools/safety/knowledge are data in [`src/config`](src/config) + [`src/services`](src/services) (mock), designed to swap onto migration [`db/migrations/0014`](db/migrations) in production.
 - **Docs** — [AI Management Platform](docs/architecture/13-ai-platform.md) · [Admin Portal & User Dashboard](docs/architecture/14-admin-and-dashboard.md).
 
+## The AI business (Phase 4)
+
+The platform is organised around the **customer journey**, not an AI builder — it demonstrates how a client operates an AI business:
+
+- **Receptionist AI** ([`/start`](src/app/(marketing)/start)) — the front door: consults every visitor, recommends a specialist AI with a confidence score, creates a CRM lead, hands off to WhatsApp, and **escalates to a human expert** when confidence is low.
+- **Specialist AIs** ([`/specialists`](<src/app/(marketing)/specialists>)) — subscription **products**, each with its own identity, knowledge, prompts, memory, subscribers and analytics.
+- **AI-centric CRM** ([`/admin/crm`](<src/app/(admin)/admin/crm>)) — leads storing the receptionist assessment, recommendation confidence, assigned specialist, follow-up status and progress.
+- **Admin** reorganised as **Business · Receptionist AI · Specialist AIs · CRM · Administration**, reusing every Phase 2–3 module.
+- **Docs** — [The AI Business Lifecycle](docs/architecture/15-ai-business-lifecycle.md).
+
 ## Client decisions captured (2026-07-10)
 
 Standalone `/founder` page · pricing on cards · one Resources surface · forms fully mocked · Remote Selfie Scan is an interactive mocked flow. Brand palette and typography are **proposals pending client confirmation**.

@@ -43,8 +43,9 @@ Run in numeric order — later migrations depend on earlier ones.
 | 0012 | `knowledge` | `knowledge_categories`, `knowledge_tags`, `knowledge_documents`, `knowledge_document_tags`, `knowledge_document_versions`, `knowledge_chunks`, `knowledge_embeddings`, `knowledge_permissions`, `knowledge_workflow_events` |
 | 0013 | `platform` | `notifications`, `audit_logs`, `activity_logs`, `system_settings`, `feature_flags`, `feature_flag_overrides` |
 | 0014 | `ai_platform_management` | `ai_prompts`, `ai_prompt_versions`, `ai_safety_policies`, `ai_agent_safety_policies`, `knowledge_collections`, `knowledge_collection_documents`, `analytics_events`, `analytics_daily_rollup`, `ai_run_logs` (Phase 3) |
+| 0015 | `ai_business` | extends `ai_agents` (`kind`, `product`); `crm_leads`, `crm_lead_events`, `specialist_subscriptions` (Phase 4 — the AI-business lifecycle) |
 
-**~64 tables across 14 migrations.** Migrations 0001–0013 are the Phase-2 foundation; 0014 adds the Phase-3 AI-management surface (prompt management, safety policies, knowledge collections, analytics, playground/run logs).
+**~67 tables across 15 migrations.** 0001–0013 = Phase-2 foundation; 0014 = Phase-3 AI-management surface; 0015 = Phase-4 AI business (receptionist routing, specialist products, AI-centric CRM).
 
 ## Entity map
 

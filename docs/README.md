@@ -21,6 +21,7 @@ The complete backend & platform architecture for the Ask Juice Doctor AI platfor
 | 12 | [Decision records (ADR)](architecture/12-decisions-adr.md) | The key decisions and why they were made |
 | 13 | [AI Management Platform](architecture/13-ai-platform.md) | Agents, prompts, knowledge, playground, safety, memory, analytics — all DB-driven (Phase 3) |
 | 14 | [Admin Portal & User Dashboard](architecture/14-admin-and-dashboard.md) | The admin portal, the reusable UI kit, and the member dashboard (Phase 3) |
+| 15 | [The AI Business Lifecycle](architecture/15-ai-business-lifecycle.md) | Receptionist AI → Specialist AI products → AI-centric CRM → Administration (Phase 4) |
 
 ## Related
 
@@ -33,4 +34,5 @@ The complete backend & platform architecture for the Ask Juice Doctor AI platfor
 - **Phase 1** — marketing site, design system, mock services (shipped).
 - **Phase 2** — the enterprise backend foundation (auth/RBAC, database + RLS, AI/knowledge/memory frameworks, admin, security). **No AI.**
 - **Phase 3** — the AI management platform + admin portal + user dashboard (shipped): agent/prompt/knowledge management, playground, safety, memory, analytics — all DB-driven and admin-managed. **Still no live AI** (mocked, "build once, configure forever").
-- **Phase 4** — implement the live AI experience on this platform (real inference, pgvector embeddings/vector search, connected services).
+- **Phase 4** — refocus the product around the customer journey (shipped): the **Receptionist AI** front door, **Specialist AI** subscription products, and an **AI-centric CRM**, reusing all Phase 2–3 infrastructure. Still mocked (no live AI/payments).
+- **Phase 5** — implement the live AI experience on this platform (real inference, pgvector embeddings/vector search, connected services & payments).
