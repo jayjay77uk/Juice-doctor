@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { site } from '@/content/site';
 import { Container } from '@/components/ui/container';
+import { ph } from '@/content/placeholder';
 
 /**
  * "As featured in" strip. Uses styled wordmarks as placeholders — real,
@@ -11,7 +12,7 @@ export function PressStrip() {
     <section className="border-y border-border bg-cream-50 py-8">
       <Container>
         <p className="mb-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          As featured in
+          {ph.eyebrow}
         </p>
         <ul className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4 sm:gap-x-16">
           {site.pressLogos.map((name) => (

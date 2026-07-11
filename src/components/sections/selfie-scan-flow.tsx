@@ -6,6 +6,7 @@ import { Camera, Upload, ShieldCheck, RefreshCw, ArrowRight, Loader2 } from 'luc
 import { routes } from '@/config/routes';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
+import { ph } from '@/content/placeholder';
 
 /**
  * Remote Selfie Scan — an interactive MOCK. Everything is client-side: no image
@@ -22,22 +23,22 @@ interface PillarScore {
 }
 
 const questions = [
-  { name: 'energy', label: 'How are your energy levels lately?' },
-  { name: 'sleep', label: 'How well have you been sleeping?' },
-  { name: 'hydration', label: 'How much water do you usually drink?' },
+  { name: 'energy', label: 'Lorem ipsum dolor sit amet consectetur?' },
+  { name: 'sleep', label: 'Lorem ipsum dolor sit amet elit?' },
+  { name: 'hydration', label: 'Lorem ipsum dolor sit amet adipiscing?' },
 ] as const;
 
 const options = [
-  { value: 4, label: 'Great' },
-  { value: 3, label: 'Okay' },
-  { value: 2, label: 'Not great' },
-  { value: 1, label: 'Struggling' },
+  { value: 4, label: 'Lorem' },
+  { value: 3, label: 'Ipsum' },
+  { value: 2, label: 'Dolor' },
+  { value: 1, label: 'Amet' },
 ];
 
 const processingStages = [
-  'Reading your snapshot…',
-  'Mapping the HERNE pillars…',
-  'Preparing your indicative reading…',
+  'Lorem ipsum dolor sit amet…',
+  'Consectetur adipiscing elit…',
+  'Sed do eiusmod tempor…',
 ];
 
 export function SelfieScanFlow() {
@@ -81,11 +82,11 @@ export function SelfieScanFlow() {
     const base = (name: string) => (answers[name] ?? 3) * 20 + 10;
     const jitter = () => Math.round((Math.random() - 0.5) * 12);
     const next: PillarScore[] = [
-      { label: 'Hydration', value: clamp(base('hydration') + jitter()) },
-      { label: 'Rest', value: clamp(base('sleep') + jitter()) },
-      { label: 'Energy', value: clamp(base('energy') + jitter()) },
-      { label: 'Nutrition', value: clamp(64 + jitter()) },
-      { label: 'Elimination', value: clamp(60 + jitter()) },
+      { label: 'Lorem', value: clamp(base('hydration') + jitter()) },
+      { label: 'Ipsum', value: clamp(base('sleep') + jitter()) },
+      { label: 'Dolor', value: clamp(base('energy') + jitter()) },
+      { label: 'Amet', value: clamp(64 + jitter()) },
+      { label: 'Elit', value: clamp(60 + jitter()) },
     ];
     setScores(next);
     setOverall(Math.round(next.reduce((sum, s) => sum + s.value, 0) / next.length));
@@ -119,19 +120,19 @@ export function SelfieScanFlow() {
               >
                 {preview ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={preview} alt="Your selected photo preview" className="absolute inset-0 size-full object-cover" />
+                  <img src={preview} alt={ph.imageAlt} className="absolute inset-0 size-full object-cover" />
                 ) : (
                   <>
                     <span className="grid size-14 place-items-center rounded-full bg-teal-100 text-primary">
                       <Camera className="size-6" />
                     </span>
-                    <span className="font-medium text-foreground">Position your camera</span>
-                    <span className="text-sm text-muted-foreground">or upload a photo to begin</span>
+                    <span className="font-medium text-foreground">{ph.short}</span>
+                    <span className="text-sm text-muted-foreground">{ph.short}</span>
                   </>
                 )}
                 <input type="file" accept="image/*" capture="user" onChange={onFile} className="sr-only" />
                 <span className="absolute bottom-3 inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5 text-xs font-medium text-foreground shadow-[var(--shadow-crisp)]">
-                  <Upload className="size-3.5" /> {preview ? 'Change photo' : 'Choose photo'}
+                  <Upload className="size-3.5" /> {ph.cta}
                 </span>
               </label>
               <button
@@ -139,16 +140,16 @@ export function SelfieScanFlow() {
                 onClick={() => setPreview(null)}
                 className={cn('text-sm text-muted-foreground underline-offset-2 hover:underline', !preview && 'invisible')}
               >
-                Remove photo — you can scan without one
+                {ph.cta}
               </button>
             </div>
 
             <div className="flex flex-col gap-6">
               <p className="text-muted-foreground">
-                Answer three quick questions and we’ll generate an indicative wellbeing snapshot.
+                {ph.body}
               </p>
-              {questions.map((q) => (
-                <fieldset key={q.name} className="flex flex-col gap-2">
+              {questions.map((q, i) => (
+                <fieldset key={i} className="flex flex-col gap-2">
                   <legend className="mb-1 text-sm font-medium text-foreground">{q.label}</legend>
                   <div className="flex flex-wrap gap-2">
                     {options.map((opt) => {
@@ -179,7 +180,7 @@ export function SelfieScanFlow() {
                 onClick={startScan}
                 disabled={Object.keys(answers).length < questions.length}
               >
-                Generate my snapshot <ArrowRight className="size-4" />
+                {ph.cta} <ArrowRight className="size-4" />
               </Button>
             </div>
           </div>
@@ -209,12 +210,12 @@ export function SelfieScanFlow() {
                 Sample result — not a medical assessment
               </span>
               <p className="mt-2 font-serif text-5xl text-primary">{overall}</p>
-              <p className="text-muted-foreground">Your indicative wellbeing score</p>
+              <p className="text-muted-foreground">{ph.short}</p>
             </div>
 
             <ul className="flex flex-col gap-3">
-              {scores.map((s) => (
-                <li key={s.label} className="flex items-center gap-4">
+              {scores.map((s, i) => (
+                <li key={i} className="flex items-center gap-4">
                   <span className="w-24 shrink-0 text-sm font-medium text-foreground">{s.label}</span>
                   <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-surface-muted">
                     <span
@@ -230,14 +231,14 @@ export function SelfieScanFlow() {
             </ul>
 
             <div className="rounded-2xl bg-surface-muted p-5">
-              <p className="font-medium text-foreground">Your recommended next step</p>
+              <p className="font-medium text-foreground">{ph.subheading}</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                A full Body MOT will turn this indicative snapshot into a precise, personalised plan.
+                {ph.body}
               </p>
               <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                 <Button asChild>
                   <Link href={routes.bodyMot.href}>
-                    Explore the Body MOT <ArrowRight className="size-4" />
+                    {ph.cta} <ArrowRight className="size-4" />
                   </Link>
                 </Button>
                 <Button type="button" intent="ghost" onClick={reset}>

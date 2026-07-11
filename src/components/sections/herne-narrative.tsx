@@ -4,6 +4,7 @@ import * as React from 'react';
 import { hernePillars } from '@/content/herne';
 import type { BrandTone } from '@/types/content';
 import { cn } from '@/lib/cn';
+import { ph } from '@/content/placeholder';
 
 /**
  * The signature design device: a scroll-linked vertical narrative through the
@@ -53,7 +54,7 @@ export function HerneNarrative() {
       {/* Sticky rail */}
       <div className="lg:sticky lg:top-[calc(var(--header-h)+3rem)] lg:h-fit">
         <p className="mb-6 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-          The Five Pillars
+          {ph.eyebrow}
         </p>
         <div className="flex gap-2 lg:flex-col lg:gap-1">
           {hernePillars.map((pillar, i) => {
@@ -116,9 +117,9 @@ export function HerneNarrative() {
             <p className="mt-1 font-serif text-lg text-muted-foreground">{pillar.tagline}</p>
             <p className="measure mt-4 text-muted-foreground">{pillar.description}</p>
             <ul className="mt-5 flex flex-wrap gap-2">
-              {pillar.points.map((point) => (
+              {pillar.points.map((point, i) => (
                 <li
-                  key={point}
+                  key={i}
                   className="rounded-full bg-surface-muted px-3 py-1.5 text-sm text-foreground"
                 >
                   {point}

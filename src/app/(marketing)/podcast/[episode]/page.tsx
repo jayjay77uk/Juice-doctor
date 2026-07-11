@@ -9,6 +9,7 @@ import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
 import { Badge } from '@/components/ui/badge';
 import { ComingSoon } from '@/components/sections/coming-soon';
+import { ph } from '@/content/placeholder';
 
 export async function generateStaticParams() {
   const slugs = await podcastService.allSlugs();
@@ -22,7 +23,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { episode } = await params;
   const result = await podcastService.bySlug(episode);
-  if (!result.ok) return createMetadata({ title: 'Episode' });
+  if (!result.ok) return createMetadata({ title: ph.metaTitle });
   return createMetadata({
     title: result.data.title,
     description: result.data.summary,
@@ -44,24 +45,21 @@ export default async function EpisodePage({
     <>
       <PageHero eyebrow={`Episode ${ep.number}`} title={ep.title} lede={ep.summary}>
         <div className="flex flex-wrap gap-2">
-          {ep.topics.map((topic) => (
-            <Badge key={topic} tone="secondary">
+          {ep.topics.map((topic, i) => (
+            <Badge key={i} tone="secondary">
               {topic}
             </Badge>
           ))}
         </div>
       </PageHero>
       <Section tone="default" spacing="lg" containerSize="narrow">
-        <ComingSoon
-          title="Player coming in the full platform"
-          body={`In production, episode ${ep.number} streams right here with show notes and chapter markers. Media hosting is connected in Phase 2.`}
-        />
+        <ComingSoon title={ph.short} body={ph.body} />
         <div className="mt-8">
           <Link
             href={routes.podcast.href}
             className="inline-flex items-center gap-2 font-medium text-primary hover:gap-3 transition-all"
           >
-            <ArrowLeft className="size-4" /> All episodes
+            <ArrowLeft className="size-4" /> {ph.cta}
           </Link>
         </div>
       </Section>

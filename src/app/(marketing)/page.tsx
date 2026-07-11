@@ -14,6 +14,7 @@ import { ProgrammeCard } from '@/components/sections/programme-card';
 import { StatBand } from '@/components/sections/stat-band';
 import { TestimonialsCarousel } from '@/components/sections/testimonials-carousel';
 import { CtaSection } from '@/components/sections/cta-section';
+import { ph } from '@/content/placeholder';
 
 export default async function HomePage() {
   const [programmesResult, testimonialsResult] = await Promise.all([
@@ -33,13 +34,13 @@ export default async function HomePage() {
       <Section tone="default" spacing="lg">
         <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
           <SectionHeading
-            eyebrow="Work with Erran"
-            title="Programmes built around your body"
-            intro="Whether you’re starting with three weeks or committing to a full transformation, every programme is delivered through the HERNE Protocol."
+            eyebrow={ph.eyebrow}
+            title={ph.heading}
+            intro={ph.lead}
           />
           <Button asChild intent="outline" className="shrink-0">
             <Link href={routes.programmes.href}>
-              All programmes <ArrowRight className="size-4" />
+              {ph.cta} <ArrowRight className="size-4" />
             </Link>
           </Button>
         </div>
@@ -51,7 +52,7 @@ export default async function HomePage() {
       </Section>
 
       <StatBand
-        heading="Results you can feel. Science you can trust."
+        heading={ph.heading}
         stats={herneStats}
         tone="inverse"
       />
@@ -59,9 +60,9 @@ export default async function HomePage() {
       {/* Testimonials */}
       <Section tone="cream" spacing="lg">
         <SectionHeading
-          eyebrow="In their words"
-          title="Real people. Real change."
-          intro="A few of the stories behind the method. Consented, named testimonials are added in the full platform."
+          eyebrow={ph.eyebrow}
+          title={ph.heading}
+          intro={ph.lead}
         />
         <div className="mt-10">
           <TestimonialsCarousel testimonials={testimonials} />

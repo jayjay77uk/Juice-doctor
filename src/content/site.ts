@@ -1,10 +1,12 @@
+import { ph } from './placeholder';
+
 /**
- * Brand identity — the founder's name, mission, and contact details.
+ * Brand identity — CONTENT REMOVED.
  *
- * IMPORTANT: the founder's name lives here and ONLY here (sourced everywhere via
- * this module). The current live site renders "Edward Warden" in its footer by
- * mistake — the correct name is "Erran Warden". Centralising it structurally
- * prevents that class of bug from recurring.
+ * The previous website's wording (brand, tagline, founder biography, press
+ * references, etc.) has been removed. These are neutral, development-only
+ * placeholders that hold the approved layout only; real client-approved content
+ * is supplied later. No wording from the old website is retained.
  */
 
 export interface SocialLink {
@@ -15,42 +17,33 @@ export interface SocialLink {
 }
 
 export const site = {
-  name: 'Ask Juice Doctor',
-  brandline: 'Ask Juice Doctor AI',
-  tagline: 'Transform Your Wellbeing From the Inside Out',
-  shortDescription:
-    'Premium natural-health coaching built on the HERNE Protocol — helping you restore your body from the inside out.',
-  belief: 'The body is not broken. It is responsive.',
-  ethos: 'Care first. Act second.',
+  name: ph.brand,
+  brandline: ph.brand,
+  tagline: ph.subheading,
+  shortDescription: ph.metaDescription,
+  belief: ph.subheading,
+  ethos: ph.short,
 
   founder: {
-    name: 'Erran Warden',
-    knownAs: 'The Juice Doctor',
-    title: 'Clinical Nutritionist & Regenerative Health Specialist',
-    // Credentials shown publicly — CONFIRM with client before production
-    // (approval-gate item: which qualifications/registrations may be stated).
-    credentials: [
-      'Clinical Nutritionist',
-      'Regenerative Health Specialist',
-      'Natural Health Researcher',
-    ],
-    shortBio:
-      'Erran Warden — known to millions as The Juice Doctor — has spent his life asking one question: why does conventional medicine so often manage symptoms rather than restore health? His answer became the HERNE Protocol.',
+    name: ph.name,
+    knownAs: ph.short,
+    title: ph.role,
+    credentials: [ph.short, ph.short, ph.short],
+    shortBio: ph.body,
   },
 
   contact: {
-    email: 'hello@askjuicedoctor.com',
-    location: 'United Kingdom',
-    // No phone published in the prototype.
+    email: ph.email,
+    location: ph.short,
   },
 
   socials: [
-    { label: 'Instagram', href: 'https://instagram.com', icon: 'instagram' },
-    { label: 'YouTube', href: 'https://youtube.com', icon: 'youtube' },
-    { label: 'Spotify', href: 'https://spotify.com', icon: 'spotify' },
-    { label: 'LinkedIn', href: 'https://linkedin.com', icon: 'linkedin' },
+    { label: 'Instagram', href: '#', icon: 'instagram' },
+    { label: 'YouTube', href: '#', icon: 'youtube' },
+    { label: 'Spotify', href: '#', icon: 'spotify' },
+    { label: 'LinkedIn', href: '#', icon: 'linkedin' },
   ] satisfies SocialLink[],
 
-  /** Media the brand has appeared in. CONFIRM verifiable outlets with client. */
-  pressLogos: ['Channel 4', 'Sky', 'Best You Expo', 'HMPTV'],
+  /** Neutral placeholders — old press references removed. */
+  pressLogos: [ph.item(1), ph.item(2), ph.item(3), ph.item(4)],
 } as const;

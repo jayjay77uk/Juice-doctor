@@ -4,7 +4,7 @@ import { cn } from '@/lib/cn';
 import { site } from '@/content/site';
 
 /**
- * Brand wordmark. A simple, premium lockup: a hydration-drop glyph + the name.
+ * Brand wordmark. A simple, premium lockup: a drop glyph + the name.
  * Placeholder mark for the prototype — a real logo would be supplied by the client.
  */
 export function Logo({ className, inverse = false }: { className?: string; inverse?: boolean }) {

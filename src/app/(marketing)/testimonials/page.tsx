@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Quote } from 'lucide-react';
 import { createMetadata } from '@/config/metadata';
+import { ph } from '@/content/placeholder';
 import { testimonials as testimonialsService } from '@/services';
 import { herneStats } from '@/content/herne';
 import { Section } from '@/components/ui/section';
@@ -11,8 +12,8 @@ import { Reveal } from '@/components/ui/reveal';
 import { CtaSection } from '@/components/sections/cta-section';
 
 export const metadata: Metadata = createMetadata({
-  title: 'Testimonials',
-  description: 'Real stories of transformation from clients of the Ask Juice Doctor practice.',
+  title: ph.metaTitle,
+  description: ph.metaDescription,
   path: '/testimonials',
 });
 
@@ -23,9 +24,9 @@ export default async function TestimonialsPage() {
   return (
     <>
       <PageHero
-        eyebrow="In their words"
-        title="Real people. Real change."
-        lede="Every story here is rooted in the same idea — restore the inner environment, and the body responds."
+        eyebrow={ph.eyebrow}
+        title={ph.heading}
+        lede={ph.lead}
       />
 
       <Section tone="default" spacing="lg">

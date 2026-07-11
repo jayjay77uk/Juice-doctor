@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Logo } from './logo';
 import { MobileMenu } from './mobile-menu';
 import { cn } from '@/lib/cn';
+import { ph } from '@/content/placeholder';
 
 export function Header() {
   const [condensed, setCondensed] = React.useState(false);
@@ -34,8 +35,8 @@ export function Header() {
 
         <NavigationMenu.Root className="relative hidden lg:block" delayDuration={80}>
           <NavigationMenu.List className="flex items-center gap-1">
-            {primaryNav.map((group) => (
-              <NavigationMenu.Item key={group.label}>
+            {primaryNav.map((group, i) => (
+              <NavigationMenu.Item key={i}>
                 <NavigationMenu.Trigger className="group inline-flex items-center gap-1 rounded-full px-4 py-2 text-[0.95rem] font-medium text-foreground transition-colors hover:bg-surface-muted data-[state=open]:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-ring)]">
                   {group.label}
                   <ChevronDown
@@ -74,7 +75,7 @@ export function Header() {
                   href={routes.contact.href}
                   className="inline-flex items-center rounded-full px-4 py-2 text-[0.95rem] font-medium text-foreground transition-colors hover:bg-surface-muted"
                 >
-                  Contact
+                  {routes.contact.label}
                 </Link>
               </NavigationMenu.Link>
             </NavigationMenu.Item>
@@ -83,10 +84,10 @@ export function Header() {
 
         <div className="flex items-center gap-2">
           <Button asChild intent="ghost" size="sm" className="hidden sm:inline-flex">
-            <Link href={routes.login.href}>Log in</Link>
+            <Link href={routes.login.href}>{ph.cta}</Link>
           </Button>
           <Button asChild intent="primary" size="sm" className="hidden sm:inline-flex">
-            <Link href={routes.book.href}>Book a session</Link>
+            <Link href={routes.book.href}>{ph.cta}</Link>
           </Button>
           <MobileMenu />
         </div>

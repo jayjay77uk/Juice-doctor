@@ -5,6 +5,7 @@ import type { Programme } from '@/types/content';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Media } from '@/components/ui/media';
+import { ph } from '@/content/placeholder';
 
 const formatLabel: Record<Programme['format'], string> = {
   '1:1': 'One-to-one',
@@ -31,8 +32,8 @@ export function ProgrammeCard({ programme }: { programme: Programme }) {
           <p className="mt-2 text-muted-foreground">{programme.summary}</p>
         </div>
         <ul className="flex flex-col gap-2">
-          {programme.includes.slice(0, 3).map((item) => (
-            <li key={item} className="flex items-start gap-2 text-sm text-foreground">
+          {programme.includes.slice(0, 3).map((item, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm text-foreground">
               <Check className="mt-0.5 size-4 shrink-0 text-secondary" />
               {item}
             </li>
@@ -44,7 +45,7 @@ export function ProgrammeCard({ programme }: { programme: Programme }) {
             href={`/programmes/${programme.slug}`}
             className="inline-flex items-center gap-1 text-sm font-medium text-primary group-hover:gap-2 transition-all"
           >
-            Learn more <ArrowUpRight className="size-4" />
+            {ph.cta} <ArrowUpRight className="size-4" />
           </Link>
         </div>
       </div>

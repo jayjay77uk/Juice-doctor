@@ -3,17 +3,18 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { routes } from '@/config/routes';
 import { site } from '@/content/site';
+import { ph } from '@/content/placeholder';
 import { Container } from '@/components/ui/container';
 import { Button } from '@/components/ui/button';
 
 /** Closing call-to-action band. Reused across marketing pages. */
 export function CtaSection({
-  title = 'Do you have the courage to transform your health?',
-  body = 'Start with a free, no-pressure conversation. We’ll help you understand your body and recommend the right first step — no obligation.',
+  title = ph.heading,
+  body = ph.body,
   primaryHref = routes.book.href,
-  primaryLabel = 'Book a free discovery call',
+  primaryLabel = ph.cta,
   secondaryHref = routes.herne.href,
-  secondaryLabel = 'Explore the method',
+  secondaryLabel = ph.cta,
 }: {
   title?: string;
   body?: string;

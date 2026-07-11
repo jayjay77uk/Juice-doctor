@@ -9,6 +9,7 @@ import { idleAction } from '@/services/result';
 import { Field, Input, Textarea } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
+import { ph } from '@/content/placeholder';
 
 export interface BookingService {
   slug: string;
@@ -31,7 +32,7 @@ function SubmitButton() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" size="lg" disabled={pending}>
-      {pending ? 'Confirming…' : 'Request booking'}
+      {pending ? 'Confirming…' : ph.cta}
     </Button>
   );
 }
@@ -57,7 +58,7 @@ export function BookingFlow({
         <span className="grid size-14 place-items-center rounded-full bg-green-100 text-secondary">
           <CalendarCheck className="size-7" />
         </span>
-        <h2 className="text-h2 text-foreground">Request received</h2>
+        <h2 className="text-h2 text-foreground">{ph.heading}</h2>
         <p className="measure text-muted-foreground">{state.message}</p>
         {chosen && (
           <p className="rounded-full bg-surface-muted px-4 py-2 text-sm text-foreground">
@@ -77,7 +78,7 @@ export function BookingFlow({
       <ol className="flex border-b border-border">
         {steps.map((label, i) => (
           <li
-            key={label}
+            key={i}
             className={cn(
               'flex flex-1 items-center justify-center gap-2 py-4 text-sm font-medium',
               i === step ? 'text-primary' : 'text-muted-foreground',
@@ -104,7 +105,7 @@ export function BookingFlow({
       <div className="p-6 sm:p-8">
         {step === 0 && (
           <fieldset className="flex flex-col gap-3">
-            <legend className="mb-2 font-serif text-lg text-foreground">Choose your service</legend>
+            <legend className="mb-2 font-serif text-lg text-foreground">{ph.subheading}</legend>
             {services.map((s) => (
               <button
                 key={s.slug}
@@ -127,11 +128,11 @@ export function BookingFlow({
 
         {step === 1 && (
           <fieldset className="flex flex-col gap-3">
-            <legend className="mb-2 font-serif text-lg text-foreground">Pick a time</legend>
+            <legend className="mb-2 font-serif text-lg text-foreground">{ph.subheading}</legend>
             <div className="grid gap-3 sm:grid-cols-2">
-              {slots.map((s) => (
+              {slots.map((s, i) => (
                 <button
-                  key={s}
+                  key={i}
                   type="button"
                   onClick={() => setSlot(s)}
                   aria-pressed={slot === s}

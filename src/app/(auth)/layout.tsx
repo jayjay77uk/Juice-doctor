@@ -1,6 +1,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { site } from '@/content/site';
+import { ph } from '@/content/placeholder';
 import { Logo } from '@/components/layout/logo';
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -18,10 +19,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
         <div className="relative flex flex-col gap-4">
           <p className="font-serif text-3xl leading-tight">“{site.belief}”</p>
-          <p className="max-w-sm text-cream-100/90">
-            Your space to track your programme, review your plan and continue your transformation —
-            all in one place.
-          </p>
+          <p className="max-w-sm text-cream-100/90">{ph.body}</p>
         </div>
         <p className="relative text-xs text-cream-200/70">
           Prototype environment — for demonstration only.

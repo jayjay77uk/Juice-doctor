@@ -1,56 +1,56 @@
 import type { PodcastEpisode } from '@/types/content';
 
 /**
- * The Juice Doctor Podcast — placeholder episodes. `audioUrl` is null in the
- * prototype (no media is hosted); Phase 2 points it at real hosting.
+ * Placeholder episodes. `audioUrl` is null in the prototype (no media is
+ * hosted); Phase 2 points it at real hosting.
  */
 export const podcastEpisodes: PodcastEpisode[] = [
   {
     id: 'ep-012',
-    slug: 'hidden-toxins-draining-your-energy',
+    slug: 'episode-1',
     number: 12,
-    title: 'The Hidden Toxins Draining Your Energy — And How to Eliminate Them',
+    title: 'Lorem ipsum dolor sit amet consectetur',
     summary:
-      'Why modern life quietly overloads the body, how to spot the signs, and the simple eliminations that give your energy back.',
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
     durationLabel: '48 min',
     publishedLabel: 'Latest',
-    topics: ['Detox', 'Energy', 'Elimination'],
+    topics: ['Lorem', 'Ipsum', 'Dolor'],
     audioUrl: null,
   },
   {
     id: 'ep-011',
-    slug: 'the-truth-about-hydration',
+    slug: 'episode-2',
     number: 11,
-    title: 'The Truth About Hydration (It’s Not About Drinking More Water)',
+    title: 'Lorem ipsum dolor sit amet consectetur',
     summary:
-      'Cellular hydration explained — the difference between water passing through you and water that actually reaches your cells.',
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
     durationLabel: '41 min',
     publishedLabel: 'Episode 11',
-    topics: ['Hydration', 'Physiology'],
+    topics: ['Lorem', 'Ipsum'],
     audioUrl: null,
   },
   {
     id: 'ep-010',
-    slug: 'sleep-the-forgotten-pillar',
+    slug: 'episode-3',
     number: 10,
-    title: 'Sleep: The Forgotten Pillar of Healing',
+    title: 'Lorem ipsum dolor sit amet',
     summary:
-      'Why recovery is where real change happens, and how to rebuild a night’s sleep that actually restores you.',
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
     durationLabel: '39 min',
     publishedLabel: 'Episode 10',
-    topics: ['Rest', 'Recovery'],
+    topics: ['Lorem', 'Ipsum'],
     audioUrl: null,
   },
   {
     id: 'ep-009',
-    slug: 'food-as-information',
+    slug: 'episode-4',
     number: 9,
-    title: 'Food as Information: Rethinking What You Eat',
+    title: 'Lorem ipsum dolor sit amet consectetur',
     summary:
-      'Every meal sends a signal to your cells. A grounded conversation on nutrient density over restriction.',
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
     durationLabel: '45 min',
     publishedLabel: 'Episode 9',
-    topics: ['Nutrition', 'Metabolism'],
+    topics: ['Lorem', 'Ipsum'],
     audioUrl: null,
   },
 ];

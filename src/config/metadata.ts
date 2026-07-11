@@ -6,7 +6,8 @@ import { site } from '@/content/site';
  * The prototype sets `robots: noindex` globally (see `app/robots.ts`) — access
  * is guarded by Vercel Deployment Protection, not by SEO directives.
  */
-export const SITE_URL = 'https://prototype.askjuicedoctor.ai';
+// Neutral placeholder host — old-business domain removed.
+export const SITE_URL = 'https://prototype.example.com';
 
 export const baseMetadata: Metadata = {
   metadataBase: new URL(SITE_URL),

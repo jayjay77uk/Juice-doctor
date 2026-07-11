@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ArrowRight, Mic, Users, Building2 } from 'lucide-react';
 import { createMetadata } from '@/config/metadata';
 import { routes } from '@/config/routes';
-import { site } from '@/content/site';
+import { ph } from '@/content/placeholder';
 import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
 import { SectionHeading } from '@/components/sections/section-heading';
@@ -11,44 +11,44 @@ import { Button } from '@/components/ui/button';
 import { CtaSection } from '@/components/sections/cta-section';
 
 export const metadata: Metadata = createMetadata({
-  title: 'Speaking',
-  description: `Book ${site.founder.name} to speak — keynotes and workshops on restorative health and the HERNE Protocol.`,
+  title: ph.metaTitle,
+  description: ph.metaDescription,
   path: '/speaking',
 });
 
 const formats = [
-  { icon: Mic, title: 'Keynotes', body: 'An inspiring, science-grounded talk that reframes how an audience thinks about their health.' },
-  { icon: Users, title: 'Workshops', body: 'Interactive sessions that turn the HERNE Protocol into practical daily habits.' },
-  { icon: Building2, title: 'Corporate', body: 'Programmes for teams and organisations — energy, focus and resilience at work.' },
+  { icon: Mic, title: ph.subheading, body: ph.body },
+  { icon: Users, title: ph.subheading, body: ph.body },
+  { icon: Building2, title: ph.subheading, body: ph.body },
 ];
 
 const topics = [
-  'You’re not broken — you’re responsive',
-  'The irrefutable power of water',
-  'The five pillars of lasting energy',
-  'Restoring health in a depleting world',
+  ph.item(1),
+  ph.item(2),
+  ph.item(3),
+  ph.item(4),
 ];
 
 export default function SpeakingPage() {
   return (
     <>
       <PageHero
-        eyebrow="Speaking"
-        title="Bring restorative health to your stage"
-        lede={`${site.founder.name} has shared the HERNE message with audiences from conference stages to television screens seen by millions.`}
+        eyebrow={ph.eyebrow}
+        title={ph.heading}
+        lede={ph.lead}
       >
         <Button asChild size="lg">
           <Link href={routes.contact.href}>
-            Enquire about speaking <ArrowRight className="size-4" />
+            {ph.cta} <ArrowRight className="size-4" />
           </Link>
         </Button>
       </PageHero>
 
       <Section tone="default" spacing="lg">
-        <SectionHeading eyebrow="Formats" title="Ways to work together" />
+        <SectionHeading eyebrow={ph.eyebrow} title={ph.subheading} />
         <div className="mt-10 grid gap-6 sm:grid-cols-3">
-          {formats.map((f) => (
-            <div key={f.title} className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-6">
+          {formats.map((f, i) => (
+            <div key={i} className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-6">
               <span className="grid size-11 place-items-center rounded-full bg-teal-100 text-primary">
                 <f.icon className="size-5" />
               </span>
@@ -60,10 +60,10 @@ export default function SpeakingPage() {
       </Section>
 
       <Section tone="sage" spacing="lg">
-        <SectionHeading eyebrow="Signature talks" title="Topics" />
+        <SectionHeading eyebrow={ph.eyebrow} title={ph.subheading} />
         <ul className="mt-8 grid gap-4 sm:grid-cols-2">
-          {topics.map((t) => (
-            <li key={t} className="rounded-xl border border-border bg-surface px-5 py-4 font-serif text-lg text-foreground">
+          {topics.map((t, i) => (
+            <li key={i} className="rounded-xl border border-border bg-surface px-5 py-4 font-serif text-lg text-foreground">
               {t}
             </li>
           ))}
@@ -74,10 +74,10 @@ export default function SpeakingPage() {
       </Section>
 
       <CtaSection
-        title="Let’s talk about your event"
-        primaryLabel="Enquire about speaking"
+        title={ph.heading}
+        primaryLabel={ph.cta}
         primaryHref={routes.contact.href}
-        secondaryLabel="Meet Erran"
+        secondaryLabel={ph.cta}
         secondaryHref={routes.founder.href}
       />
     </>

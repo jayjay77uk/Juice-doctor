@@ -20,7 +20,7 @@ export interface FeatureFlagDef {
 export const FEATURE_FLAGS = {
   'ai.chat': {
     key: 'ai.chat',
-    description: 'The Ask Juice Doctor AI chat experience (Phase 3).',
+    description: 'The AI chat experience (Phase 3).',
     defaultEnabled: false,
     category: 'ai',
   },

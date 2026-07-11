@@ -9,10 +9,11 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CtaSection } from '@/components/sections/cta-section';
+import { ph } from '@/content/placeholder';
 
 export const metadata: Metadata = createMetadata({
-  title: 'Consultations',
-  description: 'One-to-one and group consultations — the entry points to working with Erran.',
+  title: ph.metaTitle,
+  description: ph.metaDescription,
   path: '/consultations',
 });
 
@@ -23,9 +24,9 @@ export default async function ConsultationsPage() {
   return (
     <>
       <PageHero
-        eyebrow="Work with Erran"
-        title="Consultations"
-        lede="Start the conversation. Every path begins with understanding your body — book the session that fits where you are."
+        eyebrow={ph.eyebrow}
+        title={ph.heading}
+        lede={ph.lead}
       />
       <Section tone="default" spacing="lg">
         <div className="grid gap-6 md:grid-cols-3">
@@ -40,8 +41,8 @@ export default async function ConsultationsPage() {
                 <p className="mt-2 text-muted-foreground">{c.summary}</p>
               </div>
               <ul className="flex flex-col gap-2">
-                {c.includes.map((item) => (
-                  <li key={item} className="flex items-start gap-2 text-sm text-foreground">
+                {c.includes.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-foreground">
                     <Check className="mt-0.5 size-4 shrink-0 text-secondary" />
                     {item}
                   </li>
@@ -49,7 +50,7 @@ export default async function ConsultationsPage() {
               </ul>
               <p className="text-sm text-muted-foreground">For: {c.forWhom}</p>
               <Button asChild full className="mt-auto">
-                <Link href={`/book?service=${c.slug}`}>Book {c.title.toLowerCase()}</Link>
+                <Link href={`/book?service=${c.slug}`}>{ph.cta}</Link>
               </Button>
             </Card>
           ))}

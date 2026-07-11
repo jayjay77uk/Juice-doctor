@@ -6,15 +6,16 @@ import { routes } from '@/config/routes';
 import { Section } from '@/components/ui/section';
 import { SectionHeading } from './section-heading';
 import { Reveal } from '@/components/ui/reveal';
+import { ph } from '@/content/placeholder';
 
-/** Compact HERNE overview for the Home page — a taste of the full narrative. */
+/** Compact overview for the Home page. */
 export function HerneOverview() {
   return (
     <Section tone="sage" spacing="lg">
       <SectionHeading
-        eyebrow="The Method"
-        title={<>One protocol. Five pillars. A responsive body.</>}
-        intro="The HERNE Protocol connects the five things your body needs to restore itself — not treated in isolation, but as one system, sequenced to you."
+        eyebrow={ph.eyebrow}
+        title={<>{ph.heading}</>}
+        intro={ph.lead}
       />
       <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {hernePillars.map((pillar, i) => (
@@ -32,7 +33,7 @@ export function HerneOverview() {
           href={routes.herne.href}
           className="inline-flex items-center gap-2 font-medium text-primary hover:gap-3 transition-all"
         >
-          Explore the HERNE Protocol <ArrowRight className="size-4" />
+          {ph.cta} <ArrowRight className="size-4" />
         </Link>
       </div>
     </Section>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { createMetadata } from '@/config/metadata';
+import { ph } from '@/content/placeholder';
 import { resources as resourcesService } from '@/services';
 import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
@@ -9,16 +10,16 @@ import { Badge } from '@/components/ui/badge';
 import { Media } from '@/components/ui/media';
 
 export const metadata: Metadata = createMetadata({
-  title: 'Resources',
-  description: 'Articles, guides and recipes to help you restore your health from the inside out.',
+  title: ph.metaTitle,
+  description: ph.metaDescription,
   path: '/resources',
 });
 
 const categoryLabel = {
-  article: 'Article',
-  guide: 'Guide',
-  recipe: 'Recipe',
-  video: 'Video',
+  article: ph.short,
+  guide: ph.short,
+  recipe: ph.short,
+  video: ph.short,
 } as const;
 
 export default async function ResourcesPage() {
@@ -28,9 +29,9 @@ export default async function ResourcesPage() {
   return (
     <>
       <PageHero
-        eyebrow="Learn"
-        title="Resources"
-        lede="Practical, grounded reading on hydration, elimination, rest, nutrition and movement — the five pillars in everyday life."
+        eyebrow={ph.eyebrow}
+        title={ph.heading}
+        lede={ph.lead}
       />
       <Section tone="default" spacing="lg">
         {resources.length > 0 ? (
@@ -54,7 +55,7 @@ export default async function ResourcesPage() {
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground">Articles are on their way.</p>
+          <p className="text-muted-foreground">{ph.body}</p>
         )}
       </Section>
     </>

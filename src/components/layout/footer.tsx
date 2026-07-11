@@ -6,6 +6,7 @@ import { site } from '@/content/site';
 import { Container } from '@/components/ui/container';
 import { Logo } from './logo';
 import { NewsletterForm } from '@/components/sections/newsletter-form';
+import { ph } from '@/content/placeholder';
 
 const socialIcons = {
   instagram: Instagram,
@@ -27,16 +28,16 @@ export function Footer() {
             <p className="measure text-cream-200">{site.shortDescription}</p>
             <div>
               <p className="mb-2 text-sm font-medium text-cream-100">
-                Restorative health, straight to your inbox
+                {ph.subheading}
               </p>
               <NewsletterForm inverse />
             </div>
             <div className="flex items-center gap-2">
-              {site.socials.map((social) => {
+              {site.socials.map((social, i) => {
                 const Icon = socialIcons[social.icon];
                 return (
                   <a
-                    key={social.label}
+                    key={i}
                     href={social.href}
                     aria-label={social.label}
                     target="_blank"
@@ -51,8 +52,8 @@ export function Footer() {
           </div>
 
           <nav aria-label="Footer" className="grid grid-cols-2 gap-8 sm:grid-cols-4">
-            {footerNav.map((group) => (
-              <div key={group.label}>
+            {footerNav.map((group, i) => (
+              <div key={i}>
                 <h2 className="mb-3 font-sans text-xs font-semibold uppercase tracking-[0.16em] text-cream-200">
                   {group.label}
                 </h2>

@@ -21,7 +21,7 @@ export function StatBand({
       )}
       <dl className="grid gap-8 sm:grid-cols-3">
         {stats.map((stat, i) => (
-          <Reveal key={stat.label} delay={i * 80}>
+          <Reveal key={i} delay={i * 80}>
             <div className="flex flex-col gap-1">
               <dt className="font-serif text-5xl text-current sm:text-6xl">{stat.value}</dt>
               <dd className="text-current/80">{stat.label}</dd>
@@ -31,8 +31,7 @@ export function StatBand({
       </dl>
       {hasNote && (
         <p className="mt-8 text-sm text-current/60">
-          Figures are self-reported by clients of the existing practice and are shown for
-          illustration in this prototype.
+          Prototype: figures shown are placeholder values for illustration only.
         </p>
       )}
     </Section>

@@ -1,8 +1,9 @@
 /**
  * Route registry — one source of truth for navigation, footer, and the sitemap.
  *
- * Adding a page here wires it into the header nav, footer, and `sitemap.ts`
- * with no drift. Grouped to mirror the App Router route groups.
+ * WORDING REMOVED: nav labels and descriptions are neutral development-only
+ * placeholders. The routes, hrefs and navigation STRUCTURE (groups, positions)
+ * are unchanged — only the old-website text has been stripped.
  */
 
 export interface RouteDef {
@@ -18,57 +19,59 @@ export interface NavGroup {
 }
 
 export const routes = {
-  home: { href: '/', label: 'Home' },
-  about: { href: '/about', label: 'About' },
-  founder: { href: '/founder', label: 'Erran Warden' },
-  programmes: { href: '/programmes', label: 'Programmes' },
-  consultations: { href: '/consultations', label: 'Consultations' },
-  bodyMot: { href: '/body-mot', label: 'Body MOT' },
-  selfieScan: { href: '/remote-selfie-scan', label: 'Remote Selfie Scan' },
-  herne: { href: '/herne-protocol', label: 'HERNE Protocol' },
-  podcast: { href: '/podcast', label: 'Podcast' },
-  resources: { href: '/resources', label: 'Resources' },
-  theBook: { href: '/the-book', label: 'The Book' },
-  book: { href: '/book', label: 'Book a session' },
-  speaking: { href: '/speaking', label: 'Speaking' },
-  testimonials: { href: '/testimonials', label: 'Testimonials' },
-  contact: { href: '/contact', label: 'Contact' },
+  home: { href: '/', label: 'Prototype' },
+  about: { href: '/about', label: 'Lorem 1' },
+  founder: { href: '/founder', label: 'Lorem 2' },
+  programmes: { href: '/programmes', label: 'Lorem 3' },
+  consultations: { href: '/consultations', label: 'Lorem 4' },
+  bodyMot: { href: '/body-mot', label: 'Lorem 5' },
+  selfieScan: { href: '/remote-selfie-scan', label: 'Lorem 6' },
+  herne: { href: '/herne-protocol', label: 'Lorem 7' },
+  podcast: { href: '/podcast', label: 'Lorem 8' },
+  resources: { href: '/resources', label: 'Lorem 9' },
+  theBook: { href: '/the-book', label: 'Lorem 10' },
+  book: { href: '/book', label: 'Lorem 11' },
+  speaking: { href: '/speaking', label: 'Lorem 12' },
+  testimonials: { href: '/testimonials', label: 'Lorem 13' },
+  contact: { href: '/contact', label: 'Lorem 14' },
   login: { href: '/login', label: 'Log in' },
   register: { href: '/register', label: 'Register' },
   dashboard: { href: '/dashboard', label: 'Dashboard' },
   admin: { href: '/admin', label: 'Admin' },
-  privacy: { href: '/privacy', label: 'Privacy' },
-  terms: { href: '/terms', label: 'Terms' },
-  cookies: { href: '/cookies', label: 'Cookies' },
-  disclaimer: { href: '/disclaimer', label: 'Medical Disclaimer' },
+  privacy: { href: '/privacy', label: 'Lorem 15' },
+  terms: { href: '/terms', label: 'Lorem 16' },
+  cookies: { href: '/cookies', label: 'Lorem 17' },
+  disclaimer: { href: '/disclaimer', label: 'Lorem 18' },
 } as const satisfies Record<string, RouteDef>;
 
-/** Primary header navigation, organised into mega-menu groups. */
+const D = 'Lorem ipsum dolor sit amet';
+
+/** Primary header navigation — group labels and descriptions are placeholders. */
 export const primaryNav: NavGroup[] = [
   {
-    label: 'Work with Erran',
+    label: 'Lorem ipsum',
     items: [
-      { ...routes.programmes, description: 'HERNE-led coaching programmes' },
-      { ...routes.consultations, description: 'One-to-one and group sessions' },
-      { ...routes.bodyMot, description: 'Your full-body health assessment' },
-      { ...routes.selfieScan, description: 'An at-home wellbeing scan' },
+      { ...routes.programmes, description: D },
+      { ...routes.consultations, description: D },
+      { ...routes.bodyMot, description: D },
+      { ...routes.selfieScan, description: D },
     ],
   },
   {
-    label: 'The Method',
+    label: 'Lorem ipsum',
     items: [
-      { ...routes.herne, description: 'The five pillars of restoration' },
-      { ...routes.about, description: 'The story and the mission' },
-      { ...routes.founder, description: 'Meet the Juice Doctor' },
+      { ...routes.herne, description: D },
+      { ...routes.about, description: D },
+      { ...routes.founder, description: D },
     ],
   },
   {
-    label: 'Learn',
+    label: 'Lorem ipsum',
     items: [
-      { ...routes.podcast, description: 'Real conversations on natural health' },
-      { ...routes.resources, description: 'Articles, guides and recipes' },
-      { ...routes.theBook, description: 'The Irrefutable Power of Water' },
-      { ...routes.speaking, description: 'Keynotes and events' },
+      { ...routes.podcast, description: D },
+      { ...routes.resources, description: D },
+      { ...routes.theBook, description: D },
+      { ...routes.speaking, description: D },
     ],
   },
 ];
@@ -86,19 +89,19 @@ export const flatNav: RouteDef[] = [
 
 export const footerNav: NavGroup[] = [
   {
-    label: 'Programmes',
+    label: 'Lorem ipsum',
     items: [routes.programmes, routes.consultations, routes.bodyMot, routes.selfieScan],
   },
   {
-    label: 'The Method',
+    label: 'Lorem ipsum',
     items: [routes.herne, routes.about, routes.founder, routes.testimonials],
   },
   {
-    label: 'Learn',
+    label: 'Lorem ipsum',
     items: [routes.podcast, routes.resources, routes.theBook, routes.speaking],
   },
   {
-    label: 'Company',
+    label: 'Lorem ipsum',
     items: [routes.contact, routes.privacy, routes.terms, routes.disclaimer],
   },
 ];

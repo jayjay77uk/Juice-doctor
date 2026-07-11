@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { createMetadata } from '@/config/metadata';
+import { ph } from '@/content/placeholder';
 import { selfieScan } from '@/content/features';
 import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
@@ -10,15 +11,15 @@ import { SelfieScanFlow } from '@/components/sections/selfie-scan-flow';
 import { CtaSection } from '@/components/sections/cta-section';
 
 export const metadata: Metadata = createMetadata({
-  title: selfieScan.title,
-  description: selfieScan.lede,
+  title: ph.metaTitle,
+  description: ph.metaDescription,
   path: '/remote-selfie-scan',
 });
 
 export default function SelfieScanPage() {
   return (
     <>
-      <PageHero eyebrow={selfieScan.eyebrow} title={selfieScan.title} lede={selfieScan.lede} />
+      <PageHero eyebrow={ph.eyebrow} title={ph.heading} lede={ph.lead} />
 
       {/* The interactive mock flow — the point of the feature. */}
       <Section tone="default" spacing="lg" containerSize="narrow">
@@ -26,17 +27,17 @@ export default function SelfieScanPage() {
       </Section>
 
       <Section tone="sage" spacing="lg">
-        <SectionHeading eyebrow="Why people love it" title="Your easiest first step" />
+        <SectionHeading eyebrow={ph.eyebrow} title={ph.subheading} />
         <div className="mt-10">
           <FeatureGrid items={selfieScan.what} />
         </div>
       </Section>
 
       <Section tone="default" spacing="lg" containerSize="narrow">
-        <SectionHeading eyebrow="How it works" title="Three steps, two minutes" />
+        <SectionHeading eyebrow={ph.eyebrow} title={ph.subheading} />
         <ol className="mt-8 flex flex-col gap-6">
           {selfieScan.steps.map((step, i) => (
-            <li key={step.title} className="flex gap-4">
+            <li key={i} className="flex gap-4">
               <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary font-serif text-primary-foreground">
                 {i + 1}
               </span>
@@ -48,7 +49,7 @@ export default function SelfieScanPage() {
           ))}
         </ol>
         <div className="mt-12">
-          <SectionHeading eyebrow="Questions" title="Privacy & what to expect" />
+          <SectionHeading eyebrow={ph.eyebrow} title={ph.subheading} />
           <div className="mt-6">
             <Accordion items={selfieScan.faqs} />
           </div>
@@ -56,8 +57,8 @@ export default function SelfieScanPage() {
       </Section>
 
       <CtaSection
-        title="Go deeper with a Body MOT"
-        primaryLabel="Explore the Body MOT"
+        title={ph.heading}
+        primaryLabel={ph.cta}
         primaryHref="/body-mot"
       />
     </>

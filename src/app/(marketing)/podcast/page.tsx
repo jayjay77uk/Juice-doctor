@@ -7,10 +7,11 @@ import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
 import { Badge } from '@/components/ui/badge';
 import { ComingSoon } from '@/components/sections/coming-soon';
+import { ph } from '@/content/placeholder';
 
 export const metadata: Metadata = createMetadata({
-  title: 'The Juice Doctor Podcast',
-  description: 'Real conversations on detox, nutrition science, longevity and natural health.',
+  title: ph.metaTitle,
+  description: ph.metaDescription,
   path: '/podcast',
 });
 
@@ -21,9 +22,9 @@ export default async function PodcastPage() {
   return (
     <>
       <PageHero
-        eyebrow="Listen"
-        title="The Juice Doctor Podcast"
-        lede="Real conversations on detox, nutrition science, longevity and the future of natural health."
+        eyebrow={ph.eyebrow}
+        title={ph.heading}
+        lede={ph.lead}
       />
       <Section tone="default" spacing="lg">
         <ul className="flex flex-col divide-y divide-border">
@@ -54,8 +55,8 @@ export default async function PodcastPage() {
         </ul>
         <div className="mt-12">
           <ComingSoon
-            title="Listen anywhere"
-            body="In the full platform, every episode streams here and on Spotify, Apple Podcasts and YouTube. Distribution links are added once confirmed."
+            title={ph.short}
+            body={ph.body}
           />
         </div>
       </Section>

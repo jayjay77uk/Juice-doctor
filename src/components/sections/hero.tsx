@@ -2,7 +2,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { routes } from '@/config/routes';
-import { site } from '@/content/site';
+import { ph } from '@/content/placeholder';
 import { Container } from '@/components/ui/container';
 import { Button } from '@/components/ui/button';
 import { Media } from '@/components/ui/media';
@@ -21,33 +21,32 @@ export function Hero() {
         <div className="flex flex-col items-start gap-6">
           <span className="reveal inline-flex items-center gap-2 rounded-full border border-border-strong bg-surface px-3.5 py-1.5 text-xs font-medium text-muted-foreground">
             <Sparkles className="size-3.5 text-accent-strong" />
-            Built on the HERNE Protocol
+            {ph.eyebrow}
           </span>
           <h1 className="reveal reveal-2 text-display text-foreground">
-            Your body is not broken.
-            <span className="block text-primary">It’s responsive.</span>
+            {ph.heading}
+            <span className="block text-primary">{ph.subheading}</span>
           </h1>
           <p className="reveal reveal-3 measure text-lg text-muted-foreground sm:text-xl">
-            {site.tagline}. Premium natural-health coaching that restores your inner environment —
-            so you feel the difference, backed by science you can trust.
+            {ph.lead}
           </p>
           <div className="reveal reveal-3 flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg">
               <Link href={routes.programmes.href}>
-                Explore programmes <ArrowRight className="size-4" />
+                {ph.cta} <ArrowRight className="size-4" />
               </Link>
             </Button>
             <Button asChild size="lg" intent="outline">
-              <Link href={routes.selfieScan.href}>Try the free scan</Link>
+              <Link href={routes.selfieScan.href}>{ph.cta}</Link>
             </Button>
           </div>
           <dl className="reveal reveal-4 mt-4 flex flex-wrap gap-x-8 gap-y-3">
             {[
-              { v: '20+ yrs', l: 'restoring health' },
-              { v: '3M+', l: 'reached on TV' },
-              { v: '5 pillars', l: 'one protocol' },
-            ].map((s) => (
-              <div key={s.l} className="flex flex-col">
+              { v: ph.short, l: ph.item(1) },
+              { v: ph.short, l: ph.item(2) },
+              { v: ph.short, l: ph.item(3) },
+            ].map((s, i) => (
+              <div key={i} className="flex flex-col">
                 <dt className="font-serif text-2xl text-foreground">{s.v}</dt>
                 <dd className="text-sm text-muted-foreground">{s.l}</dd>
               </div>
@@ -57,7 +56,7 @@ export function Hero() {
 
         <div className="reveal reveal-2 relative">
           <Media
-            image={{ alt: `${site.founder.name}, ${site.founder.knownAs}`, tone: 'teal', ratio: '4/5' }}
+            image={{ alt: ph.imageAlt, tone: 'teal', ratio: '4/5' }}
             className="shadow-[var(--shadow-soft-lg)]"
             priority
             sizes="(max-width: 1024px) 100vw, 45vw"
@@ -65,12 +64,12 @@ export function Hero() {
           <div className="absolute -bottom-5 -left-4 max-w-[15rem] rounded-2xl border border-border bg-surface/95 p-4 shadow-[var(--shadow-soft)] backdrop-blur sm:-left-6">
             <p className="font-serif text-3xl text-primary">92%</p>
             <p className="text-sm text-muted-foreground">
-              reported more daily energy
-              <span className="mt-0.5 block text-xs text-muted-foreground/70">self-reported</span>
+              {ph.short}
+              <span className="mt-0.5 block text-xs text-muted-foreground/70">{ph.short}</span>
             </p>
           </div>
           <div className="absolute -right-3 top-6 hidden rounded-2xl border border-border bg-surface/95 px-4 py-3 shadow-[var(--shadow-soft)] backdrop-blur sm:block">
-            <p className="text-sm font-medium text-foreground">“{site.belief}”</p>
+            <p className="text-sm font-medium text-foreground">“{ph.quote}”</p>
           </div>
         </div>
       </Container>

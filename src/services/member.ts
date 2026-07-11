@@ -71,8 +71,8 @@ export const member = {
   },
   async recommendations(): Promise<Result<Recommendation[]>> {
     return ok([
-      { title: 'The five-minute morning hydration ritual', description: 'A simple way to start the day properly hydrated.', href: '/resources/the-five-minute-morning-hydration-ritual' },
-      { title: 'Book your follow-up', description: 'Keep your momentum with a check-in.', href: '/book?service=follow-up-session' },
+      { title: 'The five-minute morning hydration ritual', description: 'A simple way to start the day properly hydrated.', href: '/resources/resource-3' },
+      { title: 'Book your follow-up', description: 'Keep your momentum with a check-in.', href: '/book?service=consultation-3' },
       { title: 'Sleep & Recovery Guide', description: 'Recommended based on your goals.', href: '/resources' },
     ]);
   },
