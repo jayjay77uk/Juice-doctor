@@ -17,6 +17,8 @@ import {
   Stethoscope,
   Settings2,
   ScrollText,
+  Wrench,
+  ContactRound,
   Target,
   HeartPulse,
   CalendarDays,
@@ -49,35 +51,22 @@ export type NavVariant = 'admin' | 'dashboard';
  */
 const NAV: Record<NavVariant, ShellNavSection[]> = {
   admin: [
+    { title: 'Business', items: [{ label: 'Business Dashboard', href: '/admin', icon: LayoutDashboard }] },
+    { title: 'Receptionist AI', items: [{ label: 'The Receptionist', href: '/admin/receptionist', icon: Sparkles }] },
+    { title: 'Specialist AIs', items: [{ label: 'Specialists', href: '/admin/specialists', icon: Bot }] },
+    { title: 'CRM', items: [{ label: 'Leads', href: '/admin/crm', icon: ContactRound }] },
     {
-      title: 'Overview',
+      title: 'Administration',
       items: [
-        { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-        { label: 'AI Dashboard', href: '/admin/ai', icon: Sparkles },
-      ],
-    },
-    {
-      title: 'AI Platform',
-      items: [
-        { label: 'Agents', href: '/admin/ai/agents', icon: Bot },
+        { label: 'Knowledge Base', href: '/admin/knowledge', icon: BookOpen },
         { label: 'Prompts', href: '/admin/ai/prompts', icon: MessageSquareText },
         { label: 'Playground', href: '/admin/ai/playground', icon: FlaskConical },
-        { label: 'Safety Centre', href: '/admin/ai/safety', icon: ShieldCheck },
-        { label: 'Memory Centre', href: '/admin/ai/memory', icon: Brain },
+        { label: 'Safety', href: '/admin/ai/safety', icon: ShieldCheck },
+        { label: 'Memory', href: '/admin/ai/memory', icon: Brain },
         { label: 'Analytics', href: '/admin/ai/analytics', icon: BarChart3 },
-      ],
-    },
-    { title: 'Knowledge', items: [{ label: 'Knowledge Base', href: '/admin/knowledge', icon: BookOpen }] },
-    {
-      title: 'Operations',
-      items: [
-        { label: 'Users', href: '/admin/users', icon: Users },
+        { label: 'Agent config', href: '/admin/ai/agents', icon: Wrench },
         { label: 'Consultations', href: '/admin/consultations', icon: Stethoscope },
-      ],
-    },
-    {
-      title: 'System',
-      items: [
+        { label: 'Users', href: '/admin/users', icon: Users },
         { label: 'Configuration', href: '/admin/config', icon: Settings2 },
         { label: 'Audit Logs', href: '/admin/audit', icon: ScrollText },
       ],
