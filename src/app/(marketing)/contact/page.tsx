@@ -17,9 +17,9 @@ export default function ContactPage() {
   return (
     <>
       <PageHero
-        eyebrow={ph.eyebrow}
-        title={ph.heading}
-        lede={ph.lead}
+        eyebrow="Contact"
+        title="Get in touch"
+        lede="This is placeholder text in clear English. Final wording will be supplied later."
       />
       <Section tone="default" spacing="lg">
         <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr]">
@@ -27,9 +27,9 @@ export default function ContactPage() {
           <aside className="flex flex-col gap-6">
             <div className="flex flex-col gap-5 rounded-2xl border border-border bg-surface p-7">
               {[
-                { icon: Mail, label: ph.short, value: site.contact.email },
-                { icon: MapPin, label: ph.short, value: site.contact.location },
-                { icon: Clock, label: ph.short, value: ph.short },
+                { icon: Mail, label: 'Email', value: site.contact.email },
+                { icon: MapPin, label: 'Location', value: site.contact.location },
+                { icon: Clock, label: 'Hours', value: 'Monday to Friday, 9am to 5pm' },
               ].map((row, index) => (
                 <div key={index} className="flex items-start gap-3">
                   <span className="grid size-10 shrink-0 place-items-center rounded-full bg-teal-100 text-primary">

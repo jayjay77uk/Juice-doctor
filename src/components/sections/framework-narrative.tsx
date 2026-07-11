@@ -4,7 +4,6 @@ import * as React from 'react';
 import { frameworkPillars } from '@/content/framework';
 import type { BrandTone } from '@/types/content';
 import { cn } from '@/lib/cn';
-import { ph } from '@/content/placeholder';
 
 /**
  * The signature design device: a scroll-linked vertical narrative through the
@@ -54,7 +53,7 @@ export function FrameworkNarrative() {
       {/* Sticky rail */}
       <div className="lg:sticky lg:top-[calc(var(--header-h)+3rem)] lg:h-fit">
         <p className="mb-6 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-          {ph.eyebrow}
+          The five pillars
         </p>
         <div className="flex gap-2 lg:flex-col lg:gap-1">
           {frameworkPillars.map((pillar, i) => {

@@ -6,11 +6,13 @@ import { createMetadata } from '@/config/metadata';
 import { AdminHeader } from '@/components/admin/admin-header';
 import { Panel } from '@/components/admin/panel';
 import { StatusBadge } from '@/components/admin/status-badge';
+import { LeadReviewActions } from '@/components/admin/lead-review-actions';
 import { crm } from '@/services/crm';
+import { specialists } from '@/services/specialists';
 
 export const metadata = createMetadata({ title: 'CRM lead' });
 
-/** "mainConcern" → "Main concern", "water" → "Water". */
+/** "mainConcern" → "Main concern", "firstName" → "First name". */
 function humaniseKey(key: string): string {
   const spaced = key
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
@@ -30,8 +32,15 @@ export default async function CrmLeadDetailPage({
   if (!leadResult.ok) notFound();
   const lead = leadResult.data;
 
-  const eventsResult = await crm.events(lead.id);
+  const [eventsResult, specialistsResult] = await Promise.all([
+    crm.events(lead.id),
+    specialists.all(),
+  ]);
   const events = eventsResult.ok ? eventsResult.data : [];
+  const specialistOptions = (specialistsResult.ok ? specialistsResult.data : []).map((s) => ({
+    slug: s.slug,
+    name: s.name,
+  }));
 
   const confidencePct = Math.round(lead.recommendationConfidence * 100);
   const assessmentEntries = Object.entries(lead.assessment);
@@ -67,6 +76,30 @@ export default async function CrmLeadDetailPage({
                   </div>
                 ))}
               </dl>
+            )}
+          </Panel>
+
+          <Panel title="Conversation" padded={false}>
+            {lead.conversation.length === 0 ? (
+              <p className="px-5 py-6 text-sm text-muted-foreground sm:px-6">
+                No conversation recorded for this lead.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3 px-5 py-6 sm:px-6">
+                {lead.conversation.map((turn, index) => (
+                  <div key={index} className={turn.role === 'visitor' ? 'flex justify-end' : 'flex justify-start'}>
+                    <p
+                      className={
+                        turn.role === 'visitor'
+                          ? 'max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground'
+                          : 'max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-surface-muted px-4 py-2.5 text-sm text-foreground'
+                      }
+                    >
+                      {turn.text}
+                    </p>
+                  </div>
+                ))}
+              </div>
             )}
           </Panel>
 
@@ -224,9 +257,50 @@ export default async function CrmLeadDetailPage({
         </div>
       </div>
 
+      <Panel
+        title="Human review & takeover"
+        description="Approve or change the recommendation, reply to the visitor, add notes, assign the lead, and manage follow-up."
+      >
+        <div className="mb-6 grid gap-x-6 gap-y-4 sm:grid-cols-3">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Review status</span>
+            <span className="text-sm text-foreground">
+              {lead.reviewClosed ? 'Closed' : lead.humanReviewStatus === 'pending' ? 'Pending review' : lead.humanReviewStatus}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Responsible</span>
+            <span className="text-sm text-foreground">{lead.responsibleAdmin ?? 'Unassigned'}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">WhatsApp</span>
+            <span className="text-sm text-foreground">{lead.whatsappStatus}</span>
+          </div>
+        </div>
+
+        {lead.notes && (
+          <div className="mb-6 flex flex-col gap-1">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</span>
+            <p className="whitespace-pre-wrap text-sm text-foreground">{lead.notes}</p>
+          </div>
+        )}
+
+        <LeadReviewActions
+          lead={{
+            id: lead.id,
+            recommendedSpecialistSlug: lead.recommendedSpecialistSlug,
+            assignedSpecialistSlug: lead.assignedSpecialistSlug,
+            reviewClosed: lead.reviewClosed,
+            followUpStatus: lead.followUpStatus,
+            whatsappStatus: lead.whatsappStatus,
+            responsibleAdmin: lead.responsibleAdmin,
+          }}
+          specialists={specialistOptions}
+        />
+      </Panel>
+
       <p className="text-sm text-muted-foreground">
-        Prototype — mock data through the service layer. No live AI, payments or
-        patient data.
+        Prototype — mock data through the service layer. No live AI or payments.
       </p>
     </div>
   );

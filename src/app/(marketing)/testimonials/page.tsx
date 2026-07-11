@@ -24,9 +24,9 @@ export default async function TestimonialsPage() {
   return (
     <>
       <PageHero
-        eyebrow={ph.eyebrow}
-        title={ph.heading}
-        lede={ph.lead}
+        eyebrow="Testimonials"
+        title="What people say"
+        lede="This is placeholder text in clear English. Final approved client stories will be supplied later."
       />
 
       <Section tone="default" spacing="lg">

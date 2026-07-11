@@ -6,7 +6,6 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Menu, X } from 'lucide-react';
 import { primaryNav, routes } from '@/config/routes';
 import { Button } from '@/components/ui/button';
-import { ph } from '@/content/placeholder';
 
 /** Focus-trapped mobile navigation drawer (Radix Dialog). */
 export function MobileMenu() {
@@ -64,12 +63,12 @@ export function MobileMenu() {
           <div className="flex flex-col gap-3 border-t border-border p-5">
             <Button asChild intent="primary" full>
               <Link href={routes.book.href} onClick={() => setOpen(false)}>
-                {ph.cta}
+                Book now
               </Link>
             </Button>
             <Button asChild intent="ghost" full>
               <Link href={routes.login.href} onClick={() => setOpen(false)}>
-                {ph.cta}
+                Sign in
               </Link>
             </Button>
           </div>

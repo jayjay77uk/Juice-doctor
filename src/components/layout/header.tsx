@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Logo } from './logo';
 import { MobileMenu } from './mobile-menu';
 import { cn } from '@/lib/cn';
-import { ph } from '@/content/placeholder';
 
 export function Header() {
   const [condensed, setCondensed] = React.useState(false);
@@ -84,10 +83,10 @@ export function Header() {
 
         <div className="flex items-center gap-2">
           <Button asChild intent="ghost" size="sm" className="hidden sm:inline-flex">
-            <Link href={routes.login.href}>{ph.cta}</Link>
+            <Link href={routes.login.href}>{routes.login.label}</Link>
           </Button>
           <Button asChild intent="primary" size="sm" className="hidden sm:inline-flex">
-            <Link href={routes.book.href}>{ph.cta}</Link>
+            <Link href={routes.assistant.href}>{routes.assistant.label}</Link>
           </Button>
           <MobileMenu />
         </div>

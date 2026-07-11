@@ -1,9 +1,9 @@
 /**
  * Route registry — one source of truth for navigation, footer, and the sitemap.
  *
- * WORDING REMOVED: nav labels and descriptions are neutral development-only
- * placeholders. The routes, hrefs and navigation STRUCTURE (groups, positions)
- * are unchanged — only the old-website text has been stripped.
+ * Labels and descriptions are clear, neutral English placeholders until final
+ * approved wording is supplied. The routes, hrefs and navigation STRUCTURE
+ * (groups, positions) are unchanged.
  */
 
 export interface RouteDef {
@@ -19,65 +19,65 @@ export interface NavGroup {
 }
 
 export const routes = {
-  home: { href: '/', label: 'Prototype' },
-  about: { href: '/about', label: 'Lorem 1' },
-  founder: { href: '/founder', label: 'Lorem 2' },
-  programmes: { href: '/programmes', label: 'Lorem 3' },
-  consultations: { href: '/consultations', label: 'Lorem 4' },
-  assessment: { href: '/assessment', label: 'Lorem 5' },
-  selfieScan: { href: '/remote-selfie-scan', label: 'Lorem 6' },
-  framework: { href: '/framework', label: 'Lorem 7' },
-  podcast: { href: '/podcast', label: 'Lorem 8' },
-  resources: { href: '/resources', label: 'Lorem 9' },
-  theBook: { href: '/the-book', label: 'Lorem 10' },
-  book: { href: '/book', label: 'Lorem 11' },
-  speaking: { href: '/speaking', label: 'Lorem 12' },
-  testimonials: { href: '/testimonials', label: 'Lorem 13' },
-  contact: { href: '/contact', label: 'Lorem 14' },
-  login: { href: '/login', label: 'Log in' },
-  register: { href: '/register', label: 'Register' },
+  home: { href: '/', label: 'Home' },
+  assistant: { href: '/assistant', label: 'AI receptionist' },
+  about: { href: '/about', label: 'About' },
+  founder: { href: '/founder', label: 'Founder' },
+  programmes: { href: '/programmes', label: 'Programmes' },
+  consultations: { href: '/consultations', label: 'Consultations' },
+  assessment: { href: '/assessment', label: 'Assessment' },
+  selfieScan: { href: '/remote-selfie-scan', label: 'Selfie scan' },
+  framework: { href: '/framework', label: 'Framework' },
+  podcast: { href: '/podcast', label: 'Podcast' },
+  resources: { href: '/resources', label: 'Resources' },
+  theBook: { href: '/the-book', label: 'The book' },
+  book: { href: '/book', label: 'Book' },
+  speaking: { href: '/speaking', label: 'Speaking' },
+  testimonials: { href: '/testimonials', label: 'Testimonials' },
+  contact: { href: '/contact', label: 'Contact' },
+  login: { href: '/login', label: 'Sign in' },
+  register: { href: '/register', label: 'Create account' },
   dashboard: { href: '/dashboard', label: 'Dashboard' },
   admin: { href: '/admin', label: 'Admin' },
-  privacy: { href: '/privacy', label: 'Lorem 15' },
-  terms: { href: '/terms', label: 'Lorem 16' },
-  cookies: { href: '/cookies', label: 'Lorem 17' },
-  disclaimer: { href: '/disclaimer', label: 'Lorem 18' },
+  privacy: { href: '/privacy', label: 'Privacy' },
+  terms: { href: '/terms', label: 'Terms' },
+  cookies: { href: '/cookies', label: 'Cookies' },
+  disclaimer: { href: '/disclaimer', label: 'Disclaimer' },
 } as const satisfies Record<string, RouteDef>;
 
-const D = 'Lorem ipsum dolor sit amet';
-
-/** Primary header navigation — group labels and descriptions are placeholders. */
+/** Primary header navigation — clear English group and item labels. */
 export const primaryNav: NavGroup[] = [
   {
-    label: 'Lorem ipsum',
+    label: 'Services',
     items: [
-      { ...routes.programmes, description: D },
-      { ...routes.consultations, description: D },
-      { ...routes.assessment, description: D },
-      { ...routes.selfieScan, description: D },
+      { ...routes.programmes, description: 'Structured programmes' },
+      { ...routes.consultations, description: 'One-to-one consultations' },
+      { ...routes.assessment, description: 'The assessment' },
+      { ...routes.selfieScan, description: 'The remote selfie scan' },
     ],
   },
   {
-    label: 'Lorem ipsum',
+    label: 'About',
     items: [
-      { ...routes.framework, description: D },
-      { ...routes.about, description: D },
-      { ...routes.founder, description: D },
+      { ...routes.framework, description: 'How the framework works' },
+      { ...routes.about, description: 'About us' },
+      { ...routes.founder, description: 'Meet the founder' },
     ],
   },
   {
-    label: 'Lorem ipsum',
+    label: 'Resources',
     items: [
-      { ...routes.podcast, description: D },
-      { ...routes.resources, description: D },
-      { ...routes.theBook, description: D },
-      { ...routes.speaking, description: D },
+      { ...routes.podcast, description: 'The podcast' },
+      { ...routes.resources, description: 'Guides and articles' },
+      { ...routes.theBook, description: 'The book' },
+      { ...routes.speaking, description: 'Speaking and events' },
     ],
   },
 ];
 
 /** Flat list of the top-level nav destinations (mobile + simple contexts). */
 export const flatNav: RouteDef[] = [
+  routes.assistant,
   routes.programmes,
   routes.framework,
   routes.podcast,
@@ -89,19 +89,19 @@ export const flatNav: RouteDef[] = [
 
 export const footerNav: NavGroup[] = [
   {
-    label: 'Lorem ipsum',
+    label: 'Services',
     items: [routes.programmes, routes.consultations, routes.assessment, routes.selfieScan],
   },
   {
-    label: 'Lorem ipsum',
+    label: 'About',
     items: [routes.framework, routes.about, routes.founder, routes.testimonials],
   },
   {
-    label: 'Lorem ipsum',
+    label: 'Resources',
     items: [routes.podcast, routes.resources, routes.theBook, routes.speaking],
   },
   {
-    label: 'Lorem ipsum',
+    label: 'Company',
     items: [routes.contact, routes.privacy, routes.terms, routes.disclaimer],
   },
 ];
@@ -117,6 +117,7 @@ export const legalNav: RouteDef[] = [
 /** Every public URL, for `sitemap.ts`. Dynamic slugs are appended by the sitemap. */
 export const publicRoutes: RouteDef[] = [
   routes.home,
+  routes.assistant,
   routes.about,
   routes.founder,
   routes.programmes,

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { createMetadata } from '@/config/metadata';
-import { ph } from '@/content/placeholder';
 import { programmes as programmesService } from '@/services';
 import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
@@ -8,8 +7,9 @@ import { ProgrammeCard } from '@/components/sections/programme-card';
 import { CtaSection } from '@/components/sections/cta-section';
 
 export const metadata: Metadata = createMetadata({
-  title: ph.metaTitle,
-  description: ph.metaDescription,
+  title: 'Our programmes',
+  description:
+    'This is placeholder text in clear English. Final wording will be supplied later.',
   path: '/programmes',
 });
 
@@ -20,9 +20,9 @@ export default async function ProgrammesPage() {
   return (
     <>
       <PageHero
-        eyebrow={ph.eyebrow}
-        title={ph.heading}
-        lede={ph.lead}
+        eyebrow="Our programmes"
+        title="Browse our programmes"
+        lede="This is placeholder text in clear English. Final wording will be supplied later."
       />
       <Section tone="default" spacing="lg">
         {programmes.length > 0 ? (
@@ -32,7 +32,9 @@ export default async function ProgrammesPage() {
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground">{ph.body}</p>
+          <p className="text-muted-foreground">
+            No programmes are available right now. Please check back later.
+          </p>
         )}
       </Section>
       <CtaSection />

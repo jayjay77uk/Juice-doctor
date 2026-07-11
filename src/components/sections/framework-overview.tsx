@@ -6,16 +6,15 @@ import { routes } from '@/config/routes';
 import { Section } from '@/components/ui/section';
 import { SectionHeading } from './section-heading';
 import { Reveal } from '@/components/ui/reveal';
-import { ph } from '@/content/placeholder';
 
 /** Compact overview for the Home page. */
 export function FrameworkOverview() {
   return (
     <Section tone="sage" spacing="lg">
       <SectionHeading
-        eyebrow={ph.eyebrow}
-        title={<>{ph.heading}</>}
-        intro={ph.lead}
+        eyebrow="Our framework"
+        title={<>How the framework works</>}
+        intro="This is placeholder text in clear English. It introduces the five pillars of the framework. Final approved wording will be supplied later."
       />
       <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {frameworkPillars.map((pillar, i) => (
@@ -33,7 +32,7 @@ export function FrameworkOverview() {
           href={routes.framework.href}
           className="inline-flex items-center gap-2 font-medium text-primary hover:gap-3 transition-all"
         >
-          {ph.cta} <ArrowRight className="size-4" />
+          Explore the framework <ArrowRight className="size-4" />
         </Link>
       </div>
     </Section>

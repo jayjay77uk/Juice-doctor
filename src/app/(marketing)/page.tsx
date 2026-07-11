@@ -14,7 +14,6 @@ import { ProgrammeCard } from '@/components/sections/programme-card';
 import { StatBand } from '@/components/sections/stat-band';
 import { TestimonialsCarousel } from '@/components/sections/testimonials-carousel';
 import { CtaSection } from '@/components/sections/cta-section';
-import { ph } from '@/content/placeholder';
 
 export default async function HomePage() {
   const [programmesResult, testimonialsResult] = await Promise.all([
@@ -34,13 +33,13 @@ export default async function HomePage() {
       <Section tone="default" spacing="lg">
         <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
           <SectionHeading
-            eyebrow={ph.eyebrow}
-            title={ph.heading}
-            intro={ph.lead}
+            eyebrow="Programmes"
+            title="Featured programmes"
+            intro="This is placeholder text in clear English. Final approved wording will be supplied later."
           />
           <Button asChild intent="outline" className="shrink-0">
             <Link href={routes.programmes.href}>
-              {ph.cta} <ArrowRight className="size-4" />
+              View all programmes <ArrowRight className="size-4" />
             </Link>
           </Button>
         </div>
@@ -52,7 +51,7 @@ export default async function HomePage() {
       </Section>
 
       <StatBand
-        heading={ph.heading}
+        heading="By the numbers"
         stats={frameworkStats}
         tone="inverse"
       />
@@ -60,9 +59,9 @@ export default async function HomePage() {
       {/* Testimonials */}
       <Section tone="cream" spacing="lg">
         <SectionHeading
-          eyebrow={ph.eyebrow}
-          title={ph.heading}
-          intro={ph.lead}
+          eyebrow="Testimonials"
+          title="What people say"
+          intro="This is placeholder text in clear English. Final approved wording will be supplied later."
         />
         <div className="mt-10">
           <TestimonialsCarousel testimonials={testimonials} />

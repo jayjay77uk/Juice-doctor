@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { createMetadata } from '@/config/metadata';
 import { routes } from '@/config/routes';
-import { ph } from '@/content/placeholder';
 import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
 import { SectionHeading } from '@/components/sections/section-heading';
@@ -12,8 +11,8 @@ import { Button } from '@/components/ui/button';
 import { CtaSection } from '@/components/sections/cta-section';
 
 export const metadata: Metadata = createMetadata({
-  title: ph.metaTitle,
-  description: ph.metaDescription,
+  title: 'About us',
+  description: 'This is placeholder text in clear English. Final approved wording will be supplied later.',
   path: '/about',
 });
 
@@ -21,27 +20,27 @@ export default function AboutPage() {
   return (
     <>
       <PageHero
-        eyebrow={ph.eyebrow}
-        title={ph.heading}
-        lede={ph.lead}
+        eyebrow="About"
+        title="About us"
+        lede="This is placeholder text in clear English. Final approved wording will be supplied later."
       />
 
       <Section tone="default" spacing="lg">
         <div className="grid items-center gap-12 lg:grid-cols-2">
           <Media
-            image={{ alt: ph.imageAlt, tone: 'teal', ratio: '4/5' }}
+            image={{ alt: 'Placeholder image', tone: 'teal', ratio: '4/5' }}
             className="shadow-[var(--shadow-soft)]"
           />
           <div className="flex flex-col gap-5">
-            <SectionHeading eyebrow={ph.eyebrow} title={ph.subheading} />
-            <p className="measure text-lg text-muted-foreground">{ph.lead}</p>
+            <SectionHeading eyebrow="Our story" title="Who we are" />
+            <p className="measure text-lg text-muted-foreground">This is placeholder text in clear English. Final approved wording will be supplied later.</p>
             <p className="measure text-muted-foreground">
-              {ph.body}
+              This is placeholder text in clear English. It stands in for the final content until approved wording is supplied.
             </p>
             <div>
               <Button asChild intent="outline">
                 <Link href={routes.founder.href}>
-                  {ph.cta} <ArrowRight className="size-4" />
+                  Meet the founder <ArrowRight className="size-4" />
                 </Link>
               </Button>
             </div>
@@ -51,15 +50,15 @@ export default function AboutPage() {
 
       <Section tone="sage" spacing="lg">
         <SectionHeading
-          eyebrow={ph.eyebrow}
-          title={ph.subheading}
-          intro={ph.lead}
+          eyebrow="Our values"
+          title="What we stand for"
+          intro="This is placeholder text in clear English. Final approved wording will be supplied later."
         />
         <div className="mt-10 grid gap-6 sm:grid-cols-3">
           {[
-            { t: ph.item(1), d: ph.body },
-            { t: ph.item(2), d: ph.body },
-            { t: ph.item(3), d: ph.body },
+            { t: 'Value one', d: 'This is placeholder text in clear English. Final approved wording will be supplied later.' },
+            { t: 'Value two', d: 'This is placeholder text in clear English. Final approved wording will be supplied later.' },
+            { t: 'Value three', d: 'This is placeholder text in clear English. Final approved wording will be supplied later.' },
           ].map((v, i) => (
             <div key={i} className="rounded-2xl border border-border bg-surface p-6">
               <h3 className="font-serif text-lg text-foreground">{v.t}</h3>

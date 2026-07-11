@@ -17,35 +17,47 @@ export const metadata: Metadata = createMetadata({
 });
 
 const formats = [
-  { icon: Mic, title: ph.subheading, body: ph.body },
-  { icon: Users, title: ph.subheading, body: ph.body },
-  { icon: Building2, title: ph.subheading, body: ph.body },
+  {
+    icon: Mic,
+    title: 'Keynote talks',
+    body: 'This is placeholder text in clear English. Final wording will be supplied later.',
+  },
+  {
+    icon: Users,
+    title: 'Workshops',
+    body: 'This is placeholder text in clear English. Final wording will be supplied later.',
+  },
+  {
+    icon: Building2,
+    title: 'Corporate sessions',
+    body: 'This is placeholder text in clear English. Final wording will be supplied later.',
+  },
 ];
 
 const topics = [
-  ph.item(1),
-  ph.item(2),
-  ph.item(3),
-  ph.item(4),
+  'Topic one — placeholder speaking topic in clear English.',
+  'Topic two — placeholder speaking topic in clear English.',
+  'Topic three — placeholder speaking topic in clear English.',
+  'Topic four — placeholder speaking topic in clear English.',
 ];
 
 export default function SpeakingPage() {
   return (
     <>
       <PageHero
-        eyebrow={ph.eyebrow}
-        title={ph.heading}
-        lede={ph.lead}
+        eyebrow="Speaking"
+        title="Speaking"
+        lede="This is placeholder text in clear English. Final wording about speaking engagements will be supplied later."
       >
         <Button asChild size="lg">
           <Link href={routes.contact.href}>
-            {ph.cta} <ArrowRight className="size-4" />
+            Enquire about speaking <ArrowRight className="size-4" />
           </Link>
         </Button>
       </PageHero>
 
       <Section tone="default" spacing="lg">
-        <SectionHeading eyebrow={ph.eyebrow} title={ph.subheading} />
+        <SectionHeading eyebrow="Formats" title="Ways to work together" />
         <div className="mt-10 grid gap-6 sm:grid-cols-3">
           {formats.map((f, i) => (
             <div key={i} className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-6">
@@ -60,7 +72,7 @@ export default function SpeakingPage() {
       </Section>
 
       <Section tone="sage" spacing="lg">
-        <SectionHeading eyebrow={ph.eyebrow} title={ph.subheading} />
+        <SectionHeading eyebrow="Topics" title="Talk topics" />
         <ul className="mt-8 grid gap-4 sm:grid-cols-2">
           {topics.map((t, i) => (
             <li key={i} className="rounded-xl border border-border bg-surface px-5 py-4 font-serif text-lg text-foreground">
@@ -74,10 +86,10 @@ export default function SpeakingPage() {
       </Section>
 
       <CtaSection
-        title={ph.heading}
-        primaryLabel={ph.cta}
+        title="Book a talk"
+        primaryLabel="Get in touch"
         primaryHref={routes.contact.href}
-        secondaryLabel={ph.cta}
+        secondaryLabel="About the speaker"
         secondaryHref={routes.founder.href}
       />
     </>

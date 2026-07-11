@@ -7,11 +7,11 @@ import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
 import { Badge } from '@/components/ui/badge';
 import { ComingSoon } from '@/components/sections/coming-soon';
-import { ph } from '@/content/placeholder';
 
 export const metadata: Metadata = createMetadata({
-  title: ph.metaTitle,
-  description: ph.metaDescription,
+  title: 'Podcast',
+  description:
+    'This is placeholder text written in clear English. Final approved wording will be supplied later.',
   path: '/podcast',
 });
 
@@ -22,9 +22,9 @@ export default async function PodcastPage() {
   return (
     <>
       <PageHero
-        eyebrow={ph.eyebrow}
-        title={ph.heading}
-        lede={ph.lead}
+        eyebrow="Podcast"
+        title="Our podcast"
+        lede="This is placeholder text written in clear English. Final approved wording will be supplied later."
       />
       <Section tone="default" spacing="lg">
         <ul className="flex flex-col divide-y divide-border">
@@ -55,8 +55,8 @@ export default async function PodcastPage() {
         </ul>
         <div className="mt-12">
           <ComingSoon
-            title={ph.short}
-            body={ph.body}
+            title="More episodes coming soon"
+            body="This is placeholder text written in clear English. Final approved wording will be supplied later."
           />
         </div>
       </Section>

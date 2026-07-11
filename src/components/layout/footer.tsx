@@ -6,7 +6,6 @@ import { site } from '@/content/site';
 import { Container } from '@/components/ui/container';
 import { Logo } from './logo';
 import { NewsletterForm } from '@/components/sections/newsletter-form';
-import { ph } from '@/content/placeholder';
 
 const socialIcons = {
   instagram: Instagram,
@@ -28,7 +27,7 @@ export function Footer() {
             <p className="measure text-cream-200">{site.shortDescription}</p>
             <div>
               <p className="mb-2 text-sm font-medium text-cream-100">
-                {ph.subheading}
+                Subscribe to our newsletter
               </p>
               <NewsletterForm inverse />
             </div>

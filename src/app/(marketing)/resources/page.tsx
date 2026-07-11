@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { createMetadata } from '@/config/metadata';
-import { ph } from '@/content/placeholder';
 import { resources as resourcesService } from '@/services';
 import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
@@ -10,16 +9,17 @@ import { Badge } from '@/components/ui/badge';
 import { Media } from '@/components/ui/media';
 
 export const metadata: Metadata = createMetadata({
-  title: ph.metaTitle,
-  description: ph.metaDescription,
+  title: 'Resources',
+  description:
+    'This is placeholder text written in clear English. Final approved wording will be supplied later.',
   path: '/resources',
 });
 
 const categoryLabel = {
-  article: ph.short,
-  guide: ph.short,
-  recipe: ph.short,
-  video: ph.short,
+  article: 'Article',
+  guide: 'Guide',
+  recipe: 'Recipe',
+  video: 'Video',
 } as const;
 
 export default async function ResourcesPage() {
@@ -29,9 +29,9 @@ export default async function ResourcesPage() {
   return (
     <>
       <PageHero
-        eyebrow={ph.eyebrow}
-        title={ph.heading}
-        lede={ph.lead}
+        eyebrow="Resources"
+        title="Resources"
+        lede="This is placeholder text written in clear English. Final approved wording will be supplied later."
       />
       <Section tone="default" spacing="lg">
         {resources.length > 0 ? (
@@ -55,7 +55,10 @@ export default async function ResourcesPage() {
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground">{ph.body}</p>
+          <p className="text-muted-foreground">
+            No resources are available yet. This is placeholder text written in clear
+            English. Final approved wording will be supplied later.
+          </p>
         )}
       </Section>
     </>

@@ -3,18 +3,17 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { routes } from '@/config/routes';
 import { site } from '@/content/site';
-import { ph } from '@/content/placeholder';
 import { Container } from '@/components/ui/container';
 import { Button } from '@/components/ui/button';
 
 /** Closing call-to-action band. Reused across marketing pages. */
 export function CtaSection({
-  title = ph.heading,
-  body = ph.body,
+  title = 'Ready to get started?',
+  body = 'This is placeholder text written in clear English. Final approved wording will be supplied later.',
   primaryHref = routes.book.href,
-  primaryLabel = ph.cta,
+  primaryLabel = 'Get in touch',
   secondaryHref = routes.framework.href,
-  secondaryLabel = ph.cta,
+  secondaryLabel = 'Learn more',
 }: {
   title?: string;
   body?: string;

@@ -9,7 +9,6 @@ import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
 import { Badge } from '@/components/ui/badge';
 import { ComingSoon } from '@/components/sections/coming-soon';
-import { ph } from '@/content/placeholder';
 
 export async function generateStaticParams() {
   const slugs = await podcastService.allSlugs();
@@ -23,7 +22,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { episode } = await params;
   const result = await podcastService.bySlug(episode);
-  if (!result.ok) return createMetadata({ title: ph.metaTitle });
+  if (!result.ok) return createMetadata({ title: 'Podcast' });
   return createMetadata({
     title: result.data.title,
     description: result.data.summary,
@@ -53,13 +52,16 @@ export default async function EpisodePage({
         </div>
       </PageHero>
       <Section tone="default" spacing="lg" containerSize="narrow">
-        <ComingSoon title={ph.short} body={ph.body} />
+        <ComingSoon
+          title="Episode notes coming soon"
+          body="This is placeholder text written in clear English. Final approved wording will be supplied later."
+        />
         <div className="mt-8">
           <Link
             href={routes.podcast.href}
             className="inline-flex items-center gap-2 font-medium text-primary hover:gap-3 transition-all"
           >
-            <ArrowLeft className="size-4" /> {ph.cta}
+            <ArrowLeft className="size-4" /> Back to all episodes
           </Link>
         </div>
       </Section>

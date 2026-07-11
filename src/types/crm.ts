@@ -29,6 +29,13 @@ export interface ConversationTurn {
   at: string;
 }
 
+/** One structured answer captured during the receptionist consultation. */
+export interface ConsultAnswer {
+  id: string;
+  prompt: string;
+  answer: string;
+}
+
 export interface CrmLead {
   id: string;
   organisationId: string;
@@ -64,6 +71,8 @@ export interface CrmLead {
   /** The admin or team member responsible for this lead. */
   responsibleAdmin: string | null;
   notes: string | null;
+  /** Whether a human has closed the review for this lead (reopenable). */
+  reviewClosed: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -97,6 +106,8 @@ export interface ReceptionistRecommendation {
   reasoning: string;
   escalate: boolean;
   alternativeSlug: string | null;
+  /** Other possible specialist matches the receptionist considered. */
+  alternatives: { slug: string; name: string }[];
 }
 
 export type SubscriptionState = 'trialing' | 'active' | 'past_due' | 'canceled';

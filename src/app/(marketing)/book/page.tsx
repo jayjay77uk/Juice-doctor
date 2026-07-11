@@ -25,8 +25,8 @@ export default async function BookPage({
   ]);
 
   const services: BookingService[] = [
-    { slug: 'consultation-1', title: ph.short, priceLabel: ph.price },
-    { slug: 'assessment', title: ph.short, priceLabel: ph.price },
+    { slug: 'consultation-1', title: 'Initial consultation', priceLabel: ph.price },
+    { slug: 'assessment', title: 'Assessment', priceLabel: ph.price },
     ...(consResult.ok
       ? consResult.data.map((c) => ({ slug: c.slug, title: c.title, priceLabel: c.priceLabel }))
       : []),
@@ -40,18 +40,22 @@ export default async function BookPage({
   return (
     <>
       <PageHero
-        eyebrow={ph.eyebrow}
-        title={ph.heading}
-        lede={ph.lead}
+        eyebrow="Book"
+        title="Book an appointment"
+        lede="This is placeholder text in clear English. Final wording will be supplied later."
       />
       <Section tone="default" spacing="lg" containerSize="narrow">
         <div className="grid gap-8 lg:grid-cols-[1.6fr_1fr]">
           <BookingFlow services={services} {...(service ? { initialService: service } : {})} />
           <aside className="flex flex-col gap-4 lg:sticky lg:top-[calc(var(--header-h)+2rem)] lg:h-fit">
             <div className="rounded-2xl border border-border bg-surface p-6">
-              <h2 className="font-serif text-lg text-foreground">{ph.subheading}</h2>
+              <h2 className="font-serif text-lg text-foreground">What to expect</h2>
               <ul className="mt-4 flex flex-col gap-3 text-sm text-muted-foreground">
-                {[ph.item(1), ph.item(2), ph.item(3)].map(
+                {[
+                  'Point one — placeholder detail in clear English.',
+                  'Point two — placeholder detail in clear English.',
+                  'Point three — placeholder detail in clear English.',
+                ].map(
                   (item, i) => (
                     <li key={i} className="flex items-start gap-2">
                       <Check className="mt-0.5 size-4 shrink-0 text-secondary" />

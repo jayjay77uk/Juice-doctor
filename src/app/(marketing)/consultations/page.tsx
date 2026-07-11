@@ -9,11 +9,11 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CtaSection } from '@/components/sections/cta-section';
-import { ph } from '@/content/placeholder';
 
 export const metadata: Metadata = createMetadata({
-  title: ph.metaTitle,
-  description: ph.metaDescription,
+  title: 'Consultations',
+  description:
+    'This is placeholder text written in clear English. Final approved wording will be supplied later.',
   path: '/consultations',
 });
 
@@ -24,9 +24,9 @@ export default async function ConsultationsPage() {
   return (
     <>
       <PageHero
-        eyebrow={ph.eyebrow}
-        title={ph.heading}
-        lede={ph.lead}
+        eyebrow="Consultations"
+        title="Book a consultation"
+        lede="This is placeholder text written in clear English. Final approved wording will be supplied later."
       />
       <Section tone="default" spacing="lg">
         <div className="grid gap-6 md:grid-cols-3">
@@ -50,7 +50,7 @@ export default async function ConsultationsPage() {
               </ul>
               <p className="text-sm text-muted-foreground">For: {c.forWhom}</p>
               <Button asChild full className="mt-auto">
-                <Link href={`/book?service=${c.slug}`}>{ph.cta}</Link>
+                <Link href={`/book?service=${c.slug}`}>Book now</Link>
               </Button>
             </Card>
           ))}

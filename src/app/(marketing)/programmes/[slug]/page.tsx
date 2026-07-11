@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowRight, Check } from 'lucide-react';
 import { createMetadata } from '@/config/metadata';
-import { ph } from '@/content/placeholder';
 import { programmes as programmesService } from '@/services';
 import { frameworkPillars } from '@/content/framework';
 import { Section } from '@/components/ui/section';
@@ -25,7 +24,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const result = await programmesService.bySlug(slug);
-  if (!result.ok) return createMetadata({ title: ph.metaTitle });
+  if (!result.ok) return createMetadata({ title: 'Programme' });
   return createMetadata({
     title: result.data.title,
     description: result.data.summary,
@@ -46,7 +45,7 @@ export default async function ProgrammeDetailPage({
 
   return (
     <>
-      <PageHero eyebrow={ph.eyebrow} title={programme.title} lede={programme.summary}>
+      <PageHero eyebrow="Programme" title={programme.title} lede={programme.summary}>
         <div className="flex flex-wrap gap-2">
           <Badge tone="primary">{programme.durationLabel}</Badge>
           <Badge tone="secondary">{programme.priceLabel}</Badge>
@@ -57,11 +56,11 @@ export default async function ProgrammeDetailPage({
         <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr]">
           <div className="flex flex-col gap-8">
             <div>
-              <h2 className="text-h2">{ph.heading}</h2>
+              <h2 className="text-h2">About this programme</h2>
               <p className="measure mt-4 text-lg text-muted-foreground">{programme.description}</p>
             </div>
             <div>
-              <h3 className="text-h3">{ph.subheading}</h3>
+              <h3 className="text-h3">What&apos;s included</h3>
               <ul className="mt-4 grid gap-3 sm:grid-cols-2">
                 {programme.includes.map((item, i) => (
                   <li key={i} className="flex items-start gap-2 text-foreground">
@@ -73,7 +72,7 @@ export default async function ProgrammeDetailPage({
             </div>
             {pillars.length > 0 && (
               <div>
-                <h3 className="text-h3">{ph.subheading}</h3>
+                <h3 className="text-h3">Framework pillars</h3>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {pillars.map((p, i) => (
                     <span
@@ -95,11 +94,11 @@ export default async function ProgrammeDetailPage({
               <p className="mt-1 text-sm text-muted-foreground">{programme.durationLabel}</p>
               <Button asChild size="lg" full className="mt-5">
                 <Link href={`/book?service=${programme.slug}`}>
-                  {ph.cta} <ArrowRight className="size-4" />
+                  Book this programme <ArrowRight className="size-4" />
                 </Link>
               </Button>
               <Button asChild intent="ghost" full className="mt-2">
-                <Link href="/book?service=consultation-1">{ph.cta}</Link>
+                <Link href="/book?service=consultation-1">Book a consultation</Link>
               </Button>
             </div>
           </aside>

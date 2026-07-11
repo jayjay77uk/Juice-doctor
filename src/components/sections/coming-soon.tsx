@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { Sparkles } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { ph } from '@/content/placeholder';
 
 /**
  * A designed "coming soon (prototype)" panel — a real branded moment for
@@ -27,7 +26,7 @@ export function ComingSoon({
         <Sparkles className="size-5" />
       </span>
       <p className="mx-auto mb-1 inline-flex items-center gap-2 rounded-full bg-surface px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        {ph.eyebrow}
+        Coming soon
       </p>
       <h3 className="mt-3 text-h3 text-foreground">{title}</h3>
       <p className="measure mx-auto mt-2 text-muted-foreground">{body}</p>

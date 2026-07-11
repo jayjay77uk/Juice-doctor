@@ -11,77 +11,77 @@ import type { SignatureFeature } from '@/types/content';
 
 export const assessment: SignatureFeature = {
   slug: 'assessment',
-  eyebrow: 'Lorem ipsum dolor',
-  title: 'Lorem ipsum dolor sit amet',
+  eyebrow: 'Feature eyebrow',
+  title: 'Assessment feature title',
   lede:
-    'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco.',
+    'This is a short introductory paragraph describing the assessment feature. It explains, in plain placeholder language, what the feature is for and what a visitor can expect from it.',
   what: [
     {
-      title: 'Lorem ipsum dolor',
-      body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+      title: 'What it does — point one',
+      body: 'A clear placeholder sentence describing the first thing this feature offers to the person using it.',
     },
     {
-      title: 'Lorem ipsum dolor',
-      body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+      title: 'What it does — point two',
+      body: 'A clear placeholder sentence describing the second thing this feature offers to the person using it.',
     },
     {
-      title: 'Lorem ipsum dolor',
-      body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+      title: 'What it does — point three',
+      body: 'A clear placeholder sentence describing the third thing this feature offers to the person using it.',
     },
   ],
   steps: [
-    { title: 'Lorem ipsum dolor', body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
-    { title: 'Lorem ipsum dolor', body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
-    { title: 'Lorem ipsum dolor', body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
+    { title: 'Step one', body: 'A short description of the first step in the process.' },
+    { title: 'Step two', body: 'A short description of the second step in the process.' },
+    { title: 'Step three', body: 'A short description of the third step in the process.' },
   ],
   faqs: [
     {
-      question: 'Lorem ipsum dolor sit amet?',
+      question: 'Frequently asked question one?',
       answer:
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+        'A clear placeholder answer to the first frequently asked question about this feature.',
     },
     {
-      question: 'Lorem ipsum dolor sit amet?',
-      answer: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+      question: 'Frequently asked question two?',
+      answer: 'A clear placeholder answer to the second frequently asked question.',
     },
   ],
 };
 
 export const selfieScan: SignatureFeature = {
   slug: 'remote-selfie-scan',
-  eyebrow: 'Lorem ipsum dolor',
-  title: 'Lorem ipsum dolor sit amet',
+  eyebrow: 'Feature eyebrow',
+  title: 'Remote selfie scan feature title',
   lede:
-    'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.',
+    'This is a short introductory paragraph describing the remote selfie scan feature. It explains, in plain placeholder language, what the feature is for and what a visitor can expect from it.',
   what: [
     {
-      title: 'Lorem ipsum dolor',
-      body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt.',
+      title: 'What it does — point one',
+      body: 'A clear placeholder sentence describing the first thing the selfie scan offers to the person using it.',
     },
     {
-      title: 'Lorem ipsum dolor',
-      body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt.',
+      title: 'What it does — point two',
+      body: 'A clear placeholder sentence describing the second thing the selfie scan offers to the person using it.',
     },
     {
-      title: 'Lorem ipsum dolor',
-      body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt.',
+      title: 'What it does — point three',
+      body: 'A clear placeholder sentence describing the third thing the selfie scan offers to the person using it.',
     },
   ],
   steps: [
-    { title: 'Lorem ipsum dolor', body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
-    { title: 'Lorem ipsum dolor', body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
-    { title: 'Lorem ipsum dolor', body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
+    { title: 'Step one', body: 'A short description of the first step in the scan process.' },
+    { title: 'Step two', body: 'A short description of the second step in the scan process.' },
+    { title: 'Step three', body: 'A short description of the third step in the scan process.' },
   ],
   faqs: [
     {
-      question: 'Lorem ipsum dolor sit amet?',
+      question: 'Is my image kept private?',
       answer:
         'In this prototype, nothing leaves your device — the scan is a demonstration only and no image is uploaded, stored or sent anywhere.',
     },
     {
-      question: 'Lorem ipsum dolor sit amet?',
+      question: 'Frequently asked question two?',
       answer:
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore.',
+        'A clear placeholder answer to the second frequently asked question about the selfie scan.',
     },
   ],
 };

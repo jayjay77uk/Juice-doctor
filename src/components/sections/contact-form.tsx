@@ -8,13 +8,12 @@ import { submitContact } from '@/services/actions';
 import { idleAction } from '@/services/result';
 import { Field, Input, Textarea } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
-import { ph } from '@/content/placeholder';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" size="lg" disabled={pending}>
-      {pending ? 'Sending…' : ph.cta}
+      {pending ? 'Sending…' : 'Send message'}
     </Button>
   );
 }
@@ -28,7 +27,7 @@ export function ContactForm() {
         <span className="grid size-12 place-items-center rounded-full bg-green-100 text-secondary">
           <Check className="size-6" />
         </span>
-        <h3 className="text-h3 text-foreground">{ph.short}</h3>
+        <h3 className="text-h3 text-foreground">Message received</h3>
         <p className="text-muted-foreground">{state.message}</p>
       </div>
     );

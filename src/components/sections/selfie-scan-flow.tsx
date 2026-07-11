@@ -23,22 +23,22 @@ interface PillarScore {
 }
 
 const questions = [
-  { name: 'metric-1', label: 'Lorem ipsum dolor sit amet consectetur?' },
-  { name: 'metric-2', label: 'Lorem ipsum dolor sit amet elit?' },
-  { name: 'metric-3', label: 'Lorem ipsum dolor sit amet adipiscing?' },
+  { name: 'metric-1', label: 'How would you rate this first sample question?' },
+  { name: 'metric-2', label: 'How would you rate this second sample question?' },
+  { name: 'metric-3', label: 'How would you rate this third sample question?' },
 ] as const;
 
 const options = [
-  { value: 4, label: 'Lorem' },
-  { value: 3, label: 'Ipsum' },
-  { value: 2, label: 'Dolor' },
-  { value: 1, label: 'Amet' },
+  { value: 4, label: 'Very good' },
+  { value: 3, label: 'Good' },
+  { value: 2, label: 'Fair' },
+  { value: 1, label: 'Poor' },
 ];
 
 const processingStages = [
-  'Lorem ipsum dolor sit amet…',
-  'Consectetur adipiscing elit…',
-  'Sed do eiusmod tempor…',
+  'Preparing the sample…',
+  'Running the sample check…',
+  'Getting your result ready…',
 ];
 
 export function SelfieScanFlow() {
@@ -82,11 +82,11 @@ export function SelfieScanFlow() {
     const base = (name: string) => (answers[name] ?? 3) * 20 + 10;
     const jitter = () => Math.round((Math.random() - 0.5) * 12);
     const next: PillarScore[] = [
-      { label: 'Lorem', value: clamp(base('metric-3') + jitter()) },
-      { label: 'Ipsum', value: clamp(base('metric-2') + jitter()) },
-      { label: 'Dolor', value: clamp(base('metric-1') + jitter()) },
-      { label: 'Amet', value: clamp(64 + jitter()) },
-      { label: 'Elit', value: clamp(60 + jitter()) },
+      { label: 'Area one', value: clamp(base('metric-3') + jitter()) },
+      { label: 'Area two', value: clamp(base('metric-2') + jitter()) },
+      { label: 'Area three', value: clamp(base('metric-1') + jitter()) },
+      { label: 'Area four', value: clamp(64 + jitter()) },
+      { label: 'Area five', value: clamp(60 + jitter()) },
     ];
     setScores(next);
     setOverall(Math.round(next.reduce((sum, s) => sum + s.value, 0) / next.length));
@@ -126,13 +126,13 @@ export function SelfieScanFlow() {
                     <span className="grid size-14 place-items-center rounded-full bg-teal-100 text-primary">
                       <Camera className="size-6" />
                     </span>
-                    <span className="font-medium text-foreground">{ph.short}</span>
-                    <span className="text-sm text-muted-foreground">{ph.short}</span>
+                    <span className="font-medium text-foreground">Take or upload a photo</span>
+                    <span className="text-sm text-muted-foreground">Use your camera or choose a file</span>
                   </>
                 )}
                 <input type="file" accept="image/*" capture="user" onChange={onFile} className="sr-only" />
                 <span className="absolute bottom-3 inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5 text-xs font-medium text-foreground shadow-[var(--shadow-crisp)]">
-                  <Upload className="size-3.5" /> {ph.cta}
+                  <Upload className="size-3.5" /> Choose a photo
                 </span>
               </label>
               <button
@@ -140,13 +140,13 @@ export function SelfieScanFlow() {
                 onClick={() => setPreview(null)}
                 className={cn('text-sm text-muted-foreground underline-offset-2 hover:underline', !preview && 'invisible')}
               >
-                {ph.cta}
+                Remove photo
               </button>
             </div>
 
             <div className="flex flex-col gap-6">
               <p className="text-muted-foreground">
-                {ph.body}
+                Answer a few quick questions to go with your photo. This is placeholder text in clear English. Final wording will be supplied later.
               </p>
               {questions.map((q, i) => (
                 <fieldset key={i} className="flex flex-col gap-2">
@@ -180,7 +180,7 @@ export function SelfieScanFlow() {
                 onClick={startScan}
                 disabled={Object.keys(answers).length < questions.length}
               >
-                {ph.cta} <ArrowRight className="size-4" />
+                Run the scan <ArrowRight className="size-4" />
               </Button>
             </div>
           </div>
@@ -210,7 +210,7 @@ export function SelfieScanFlow() {
                 Sample result — not a medical assessment
               </span>
               <p className="mt-2 font-serif text-5xl text-primary">{overall}</p>
-              <p className="text-muted-foreground">{ph.short}</p>
+              <p className="text-muted-foreground">Your overall sample score</p>
             </div>
 
             <ul className="flex flex-col gap-3">
@@ -231,14 +231,14 @@ export function SelfieScanFlow() {
             </ul>
 
             <div className="rounded-2xl bg-surface-muted p-5">
-              <p className="font-medium text-foreground">{ph.subheading}</p>
+              <p className="font-medium text-foreground">Want a fuller picture?</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {ph.body}
+                This is placeholder text in clear English. Final wording will be supplied later.
               </p>
               <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                 <Button asChild>
                   <Link href={routes.assessment.href}>
-                    {ph.cta} <ArrowRight className="size-4" />
+                    Take the full assessment <ArrowRight className="size-4" />
                   </Link>
                 </Button>
                 <Button type="button" intent="ghost" onClick={reset}>

@@ -5,9 +5,9 @@ export const resources: Resource[] = [
   {
     id: 'res-1',
     slug: 'resource-1',
-    title: 'Lorem ipsum dolor sit amet',
+    title: 'Article one',
     excerpt:
-      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.',
+      'A clear introduction to the topic, covering the key ideas readers need to get started.',
     category: 'article',
     readingTimeLabel: '6 min read',
     publishedLabel: 'Guides',
@@ -16,8 +16,8 @@ export const resources: Resource[] = [
   {
     id: 'res-2',
     slug: 'resource-2',
-    title: 'Lorem ipsum dolor sit amet',
-    excerpt: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor incididunt.',
+    title: 'Article two',
+    excerpt: 'A short overview that walks through the main points and offers practical next steps.',
     category: 'article',
     readingTimeLabel: '8 min read',
     publishedLabel: 'Guides',
@@ -26,8 +26,8 @@ export const resources: Resource[] = [
   {
     id: 'res-3',
     slug: 'resource-3',
-    title: 'Lorem ipsum dolor sit amet',
-    excerpt: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore.',
+    title: 'Guide one',
+    excerpt: 'A step-by-step guide that explains the process clearly from beginning to end.',
     category: 'guide',
     readingTimeLabel: '4 min read',
     publishedLabel: 'Guides',
@@ -36,8 +36,8 @@ export const resources: Resource[] = [
   {
     id: 'res-4',
     slug: 'resource-4',
-    title: 'Lorem ipsum dolor sit amet',
-    excerpt: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor.',
+    title: 'Recipe one',
+    excerpt: 'A simple, step-by-step example with a short list and easy-to-follow instructions.',
     category: 'recipe',
     readingTimeLabel: '3 min read',
     publishedLabel: 'Recipes',
