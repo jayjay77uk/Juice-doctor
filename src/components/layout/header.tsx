@@ -86,7 +86,7 @@ export function Header() {
             <Link href={routes.login.href}>Log in</Link>
           </Button>
           <Button asChild intent="primary" size="sm" className="hidden sm:inline-flex">
-            <Link href={routes.start.href}>Get matched</Link>
+            <Link href={routes.book.href}>Book a session</Link>
           </Button>
           <MobileMenu />
         </div>

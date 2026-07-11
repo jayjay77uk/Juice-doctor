@@ -62,8 +62,8 @@ export function MobileMenu() {
 
           <div className="flex flex-col gap-3 border-t border-border p-5">
             <Button asChild intent="primary" full>
-              <Link href={routes.start.href} onClick={() => setOpen(false)}>
-                Get matched
+              <Link href={routes.book.href} onClick={() => setOpen(false)}>
+                Book a session
               </Link>
             </Button>
             <Button asChild intent="ghost" full>

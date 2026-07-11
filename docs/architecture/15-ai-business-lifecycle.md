@@ -1,5 +1,12 @@
 # 15 · The AI Business Lifecycle
 
+> **⚠️ Correction (2026‑07‑11) — read first.** An earlier draft of this document introduced **unauthorised assumptions** that have since been corrected in code. The authoritative model is:
+> - **Four** specialist AIs, not five — currently **configurable placeholders** (`Specialist AI 1–4`). Their names, codes, purposes, behaviour, pricing and knowledge are client‑supplied, admin‑configurable data. Any specific specialist names/descriptions/prices below were invented and are **void**.
+> - Escalation goes to a **configurable escalation target** (the client or an authorised team member), **not** a generic "human expert".
+> - The confidence threshold, consultation questions and routing are a **replaceable mock in configuration** (`config/receptionist.ts`), **not** approved rules.
+> - No public receptionist/specialist pages exist — the accepted frontend is unchanged; the receptionist operates via **backend hooks** pending an approved integration point.
+> - This is an **AI agent system representing the client**, not a generic wellness marketplace.
+
 > **Scope.** How the platform was refocused from an *AI builder* into an *AI business*. The product we demonstrate is not "how to build AI models" — it is **how a client operates an AI business** with a Receptionist AI front door, Specialist AI subscription products, and an AI‑centric CRM. All the reusable infrastructure from Phases 2–3 (versioning, prompts, knowledge, safety, analytics, audit, configuration, publishing workflows, admin framework) is **preserved and reused**; only the *experience* is reorganised.
 
 > **Prototype status.** Everything below runs on mock services (in‑process stores) with **no live AI, payments or patient data**. The receptionist's recommendation is rule‑based; production swaps that one function for a model call and the stores for the `0015` tables.

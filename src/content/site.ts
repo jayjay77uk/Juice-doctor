@@ -19,7 +19,7 @@ export const site = {
   brandline: 'Ask Juice Doctor AI',
   tagline: 'Transform Your Wellbeing From the Inside Out',
   shortDescription:
-    'Your AI wellness team — an AI receptionist matches you with specialist AI coaches, guided by the HERNE Protocol, with a human expert on hand.',
+    'Premium natural-health coaching built on the HERNE Protocol — helping you restore your body from the inside out.',
   belief: 'The body is not broken. It is responsive.',
   ethos: 'Care first. Act second.',
 

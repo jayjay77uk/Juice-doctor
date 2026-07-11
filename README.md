@@ -96,14 +96,14 @@ The **AI management platform** — "build once, configure forever". Every assist
 - **Data-driven** — agents/prompts/models/tools/safety/knowledge are data in [`src/config`](src/config) + [`src/services`](src/services) (mock), designed to swap onto migration [`db/migrations/0014`](db/migrations) in production.
 - **Docs** — [AI Management Platform](docs/architecture/13-ai-platform.md) · [Admin Portal & User Dashboard](docs/architecture/14-admin-and-dashboard.md).
 
-## The AI business (Phase 4)
+## The AI agent system (Phase 4)
 
-The platform is organised around the **customer journey**, not an AI builder — it demonstrates how a client operates an AI business:
+An AI agent system **representing the client** — not an AI builder, and not a generic wellness marketplace. The lifecycle is **Receptionist AI → Specialist AIs → CRM → Administration**, reusing every Phase 2–3 module. It operates through the **existing, accepted frontend** (no new public site was imposed).
 
-- **Receptionist AI** ([`/start`](src/app/(marketing)/start)) — the front door: consults every visitor, recommends a specialist AI with a confidence score, creates a CRM lead, hands off to WhatsApp, and **escalates to a human expert** when confidence is low.
-- **Specialist AIs** ([`/specialists`](<src/app/(marketing)/specialists>)) — subscription **products**, each with its own identity, knowledge, prompts, memory, subscribers and analytics.
-- **AI-centric CRM** ([`/admin/crm`](<src/app/(admin)/admin/crm>)) — leads storing the receptionist assessment, recommendation confidence, assigned specialist, follow-up status and progress.
-- **Admin** reorganised as **Business · Receptionist AI · Specialist AIs · CRM · Administration**, reusing every Phase 2–3 module.
+- **Receptionist AI** — the free front door (backend service + Server Actions): receives the visitor, qualifies, summarises, recommends an approved specialist, creates/updates the CRM lead, and escalates to a **configurable escalation target** (the client or an authorised team member) with WhatsApp handoff. Its routing rules, questions and confidence threshold are a **replaceable mock**, moved to configuration.
+- **Specialist AIs** — **four configurable placeholders** (`Specialist AI 1–4`); their final names, codes, purposes, behaviour, pricing and knowledge are admin-configurable data, supplied by the client.
+- **AI-centric CRM** ([`/admin/crm`](<src/app/(admin)/admin/crm>)) — leads storing the full conversation, consultation summary, recommendation + confidence, alternative matches, human-review/WhatsApp/subscription/follow-up status, progress, notes and the responsible team member.
+- **Admin** organised as **Business · Receptionist AI · Specialist AIs · CRM · Administration**.
 - **Docs** — [The AI Business Lifecycle](docs/architecture/15-ai-business-lifecycle.md).
 
 ## Client decisions captured (2026-07-10)

@@ -2,123 +2,82 @@ import 'server-only';
 
 import type { AiAgent } from '@/types/ai';
 import type { ReceptionistRecommendation } from '@/types/crm';
+import {
+  CONFIDENCE_THRESHOLD,
+  RECEPTIONIST_QUESTIONS,
+  ROUTING_MAP,
+  ESCALATION_TARGET,
+  type ReceptionistQuestion,
+  type EscalationTarget,
+} from '@/config/receptionist';
 import { agents } from './agents';
 import { specialists } from './specialists';
 import { ok, err, type Result } from './result';
 
 /**
- * The Receptionist AI — the single front door of the business. It consults every
- * visitor, qualifies them, recommends the best specialist AI with a confidence
- * score, and escalates to a human expert when confidence is low. Prototype logic
- * is deterministic and rule-based (no inference); production replaces `consult()`
- * with a real model call. The routing rules and threshold are CONFIGURABLE data.
+ * The Receptionist AI — the free front door. Its FUNCTION (receive → qualify →
+ * summarise → recommend a specialist → create/update the CRM lead → escalate to
+ * the client) is fixed; its behaviour is configuration.
+ *
+ * The recommendation below is a REPLACEABLE MOCK: it reads the configurable
+ * threshold + routing map from `config/receptionist.ts`. It contains no approved
+ * business rules (no wellness matching, no symptom logic). Production swaps
+ * `consult()` for live AI inference reading the same configuration, with no
+ * change to the CRM or the frontend.
  */
 
-/** Below this confidence the receptionist escalates to a human instead of routing. */
-export const CONFIDENCE_THRESHOLD = 0.6;
-
-export interface ReceptionistQuestion {
-  id: string;
-  label: string;
-  options: { value: string; label: string }[];
-}
-
-/** The consultation script — data, editable in admin in production. */
-export const RECEPTIONIST_QUESTIONS: ReceptionistQuestion[] = [
-  {
-    id: 'goal',
-    label: 'What would you most like to improve?',
-    options: [
-      { value: 'hydration', label: 'Energy & hydration' },
-      { value: 'nutrition', label: 'The way I eat' },
-      { value: 'sleep', label: 'My sleep' },
-      { value: 'movement', label: 'Moving more' },
-      { value: 'everything', label: 'A full reset' },
-    ],
-  },
-  {
-    id: 'concern',
-    label: 'Is anything specific troubling you?',
-    options: [
-      { value: 'tired', label: 'I feel tired a lot' },
-      { value: 'cravings', label: 'Cravings / appetite' },
-      { value: 'focus', label: 'Focus & clarity' },
-      { value: 'pain', label: 'Persistent pain or a symptom' },
-      { value: 'none', label: 'Nothing specific' },
-    ],
-  },
-  {
-    id: 'commitment',
-    label: 'How ready are you to start?',
-    options: [
-      { value: 'now', label: 'Ready now' },
-      { value: 'soon', label: 'Soon' },
-      { value: 'exploring', label: 'Just exploring' },
-    ],
-  },
-];
-
-const GOAL_TO_SPECIALIST: Record<string, string> = {
-  hydration: 'hydration-specialist',
-  nutrition: 'nutrition-specialist',
-  sleep: 'sleep-specialist',
-  movement: 'movement-specialist',
-  everything: 'wellbeing-companion',
-};
-
-// Concerns that must go to a human, not an AI specialist.
-const RED_FLAGS = new Set(['pain']);
+export { CONFIDENCE_THRESHOLD };
+export type { ReceptionistQuestion, EscalationTarget };
 
 export const receptionist = {
-  /** The receptionist agent record (its identity/prompt/etc. are managed like any agent). */
+  /** The receptionist agent record (identity/prompt/etc. managed like any agent). */
   async agent(): Promise<Result<AiAgent>> {
     const result = await agents.list();
     const match = (result.ok ? result.data : []).find((a) => a.kind === 'receptionist');
     return match ? ok(match) : err({ code: 'not_found', message: 'Receptionist not configured.' });
   },
 
+  /** The (configurable, placeholder) consultation script. */
   questions: RECEPTIONIST_QUESTIONS,
 
-  /** Produce a recommendation from consultation answers (mock, rule-based). */
+  /** The configurable escalation target (the client or an authorised team member). */
+  escalationTarget: ESCALATION_TARGET,
+
+  /**
+   * Produce a recommendation from consultation answers. MOCK: routes via the
+   * configurable ROUTING_MAP and returns a placeholder confidence; escalates
+   * below the configurable threshold. No approved rules are encoded here.
+   */
   async consult(answers: Record<string, string>): Promise<Result<ReceptionistRecommendation>> {
-    const goal = answers.goal ?? 'everything';
-    const concern = answers.concern ?? 'none';
-    const commitment = answers.commitment ?? 'exploring';
+    const all = await specialists.all();
+    const list = all.ok ? all.data : [];
+    const firstSlug = list[0]?.slug ?? null;
 
-    const redFlag = RED_FLAGS.has(concern);
-    const slug = GOAL_TO_SPECIALIST[goal] ?? 'wellbeing-companion';
+    const routedSlug = ROUTING_MAP[answers.q1 ?? ''] ?? firstSlug;
+    const answered = Object.keys(answers).length;
 
-    // Confidence: strong when the goal is clear, weaker when "exploring", and
-    // driven to zero by a red-flag symptom (which forces escalation).
-    let confidence = 0.9;
-    if (goal === 'everything') confidence = 0.78;
-    if (commitment === 'exploring') confidence -= 0.15;
-    if (concern === 'none') confidence -= 0.03;
-    if (redFlag) confidence = 0.3;
-    confidence = Math.max(0.2, Math.min(0.96, confidence));
+    // Placeholder confidence — a stand-in only, not an approved rule.
+    let confidence = answered >= RECEPTIONIST_QUESTIONS.length ? 0.72 : 0.5;
+    confidence = Math.max(0.2, Math.min(0.9, confidence));
+    const escalate = !routedSlug || confidence < CONFIDENCE_THRESHOLD;
 
-    const escalate = redFlag || confidence < CONFIDENCE_THRESHOLD;
-
-    const catalogue = await specialists.catalogue();
-    const name =
-      (catalogue.ok ? catalogue.data : []).find((s) => s.slug === slug)?.name ?? 'a specialist';
-
-    const reasoning = redFlag
-      ? 'A specific symptom was mentioned, so I’m routing this to our human expert rather than an AI specialist.'
-      : `Based on the goal of "${goal}"${commitment === 'exploring' ? ' (still exploring)' : ''}, ${name} is the strongest fit.`;
+    const name = list.find((s) => s.slug === routedSlug)?.name ?? 'a specialist';
+    const alternativeSlug = list.find((s) => s.slug !== routedSlug)?.slug ?? null;
 
     return ok({
-      specialistSlug: slug,
+      specialistSlug: routedSlug ?? '',
       specialistName: name,
       confidence,
-      reasoning,
+      reasoning: escalate
+        ? `The receptionist could not confidently decide, so this has been routed to ${ESCALATION_TARGET.name} for review. (Prototype: replaceable mock.)`
+        : `Based on the consultation, ${name} is the suggested specialist. (Prototype: replaceable mock — routing is admin-configurable.)`,
       escalate,
-      alternativeSlug: goal === 'everything' ? null : 'wellbeing-companion',
+      alternativeSlug,
     });
   },
 
   /** Business stats about the receptionist's performance (mock). */
   async stats(): Promise<Result<{ consultations30d: number; recommendationRate: number; escalationRate: number; avgConfidence: number }>> {
-    return ok({ consultations30d: 428, recommendationRate: 0.82, escalationRate: 0.11, avgConfidence: 0.84 });
+    return ok({ consultations30d: 0, recommendationRate: 0, escalationRate: 0, avgConfidence: 0 });
   },
 };

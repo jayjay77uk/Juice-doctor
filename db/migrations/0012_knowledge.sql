@@ -37,6 +37,13 @@ create type knowledge_source_type as enum (
   'pdf', 'docx', 'txt', 'csv', 'markdown', 'url', 'manual', 'ocr', 'audio_transcript'
 );
 
+-- Retrieval-readiness in the AI's knowledge brain (NOT the editorial workflow, and
+-- NOT "trained"). A document is uploaded → processing → indexed → available; or
+-- failed / archived. Supports future images/audio/video/website ingestion too.
+create type knowledge_index_state as enum (
+  'uploaded', 'processing', 'indexed', 'available', 'failed', 'archived'
+);
+
 -- Coarse-grained document reach. Refined further by knowledge_permissions.
 --   private      → owner + explicit grants + staff only
 --   organisation → any authenticated member of the owning organisation
@@ -98,6 +105,9 @@ create table public.knowledge_documents (
   source_uri      text,
   current_version int not null default 1,
   publish_status  publish_status not null default 'draft',
+  -- Retrieval-readiness in the AI's knowledge brain, DISTINCT from publish_status.
+  -- A document is never "trained"; it moves through these accurate ingestion states.
+  index_state     knowledge_index_state not null default 'uploaded',
   visibility      knowledge_visibility not null default 'organisation',
   owner_id        uuid not null references auth.users (id) on delete cascade,
   approved_by     uuid references auth.users (id) on delete set null,

@@ -183,10 +183,10 @@ export default async function CrmLeadDetailPage({
                 <ShieldAlert className="h-5 w-5 shrink-0 text-danger" aria-hidden />
                 <div className="flex flex-col gap-1">
                   <p className="text-sm font-medium text-foreground">
-                    Escalated to {lead.escalatedTo ?? 'a human expert'}
+                    Escalated to {lead.escalatedTo ?? 'the escalation target'}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    A human expert will review this lead and follow up directly.
+                    The client (or an authorised team member) will review this lead and follow up directly.
                   </p>
                 </div>
               </div>

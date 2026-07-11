@@ -30,19 +30,21 @@ const CUSTOMER_NAMES = ['Rachel Adeyemi', 'Tom Blake', 'Priya Shah', 'Marcus Col
 function subscriptionsFor(specialist: AiAgent): SpecialistSubscription[] {
   const seed = seedFromSlug(specialist.slug);
   const count = 3 + Math.round(seed * 5);
-  const mrrUnit = specialist.product?.priceAmount ?? 1900;
+  // No invented pricing: priceAmount is a placeholder (0) until the client sets it.
+  const mrrUnit = specialist.product?.priceAmount ?? 0;
   return Array.from({ length: count }, (_, i) => {
     const name = CUSTOMER_NAMES[(i + Math.round(seed * 7)) % CUSTOMER_NAMES.length] ?? 'Customer';
     const state = i % 5 === 0 ? 'trialing' : i % 7 === 0 ? 'past_due' : 'active';
     return {
       id: `sub_${specialist.slug}_${i}`,
       specialistSlug: specialist.slug,
+      scope: 'single',
       customerName: name,
       customerEmail: `${name.split(' ')[0]?.toLowerCase()}@example.com`,
       state,
       mrr: mrrUnit,
       startedAt: '2026-06-15',
-      plan: specialist.product?.priceLabel ?? 'Monthly',
+      plan: specialist.product?.priceLabel ?? '[Plan required]',
     } satisfies SpecialistSubscription;
   });
 }

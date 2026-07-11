@@ -91,7 +91,7 @@ export default async function BusinessDashboardPage() {
         </Panel>
 
         {/* Escalation queue */}
-        <Panel title="Escalation queue" description="Leads awaiting a human expert" padded={false}>
+        <Panel title="Escalation queue" description="Leads awaiting review by the escalation target" padded={false}>
           {escalations.length > 0 ? (
             <ul className="divide-y divide-border">
               {escalations.map((lead) => (

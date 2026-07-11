@@ -18,6 +18,16 @@ export type LeadStatus =
 
 export type LeadFollowUp = 'none' | 'scheduled' | 'in_progress' | 'done';
 export type LeadSource = 'receptionist' | 'website' | 'referral' | 'whatsapp';
+export type LeadHumanReview = 'not_required' | 'pending' | 'approved' | 'changed';
+export type LeadWhatsapp = 'none' | 'requested' | 'sent' | 'connected';
+export type LeadSubscription = 'none' | 'trial' | 'active' | 'canceled';
+
+/** One turn of the receptionist ↔ visitor conversation. */
+export interface ConversationTurn {
+  role: 'visitor' | 'receptionist';
+  text: string;
+  at: string;
+}
 
 export interface CrmLead {
   id: string;
@@ -27,7 +37,9 @@ export interface CrmLead {
   phone: string | null;
   whatsapp: string | null;
   source: LeadSource;
-  /** The receptionist AI's short qualification summary. */
+  /** The complete receptionist ↔ visitor conversation. */
+  conversation: ConversationTurn[];
+  /** The receptionist AI's structured consultation summary. */
   assessmentSummary: string;
   /** Structured answers captured during the receptionist consultation. */
   assessment: Record<string, string>;
@@ -35,13 +47,23 @@ export interface CrmLead {
   recommendedSpecialistName: string | null;
   /** How confident the receptionist was in the recommendation (0..1). */
   recommendationConfidence: number;
+  /** Other possible specialist matches the receptionist considered. */
+  alternativeMatches: { slug: string; name: string }[];
+  /** Set by a human when a lead is reviewed / the recommendation is approved or changed. */
+  humanReviewStatus: LeadHumanReview;
   assignedSpecialistSlug: string | null;
   status: LeadStatus;
   followUpStatus: LeadFollowUp;
+  whatsappStatus: LeadWhatsapp;
+  subscriptionStatus: LeadSubscription;
   /** Customer progress once subscribed (0..100). */
   progress: number;
   escalated: boolean;
+  /** The escalation target (client / authorised team member) — configurable. */
   escalatedTo: string | null;
+  /** The admin or team member responsible for this lead. */
+  responsibleAdmin: string | null;
+  notes: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -79,9 +101,18 @@ export interface ReceptionistRecommendation {
 
 export type SubscriptionState = 'trialing' | 'active' | 'past_due' | 'canceled';
 
+/**
+ * Access scope of a subscription — one specialist, several selected specialists,
+ * or all available specialists. Final packages/pricing are NOT yet defined; this
+ * only keeps the architecture open to all three.
+ */
+export type SubscriptionScope = 'single' | 'multiple' | 'all';
+
 export interface SpecialistSubscription {
   id: string;
-  specialistSlug: string;
+  /** For scope='single', the subscribed specialist; null for 'multiple'/'all'. */
+  specialistSlug: string | null;
+  scope: SubscriptionScope;
   customerName: string;
   customerEmail: string;
   state: SubscriptionState;

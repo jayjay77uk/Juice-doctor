@@ -130,8 +130,9 @@ export default async function ReceptionistPage() {
           </p>
           <p>
             When confidence falls below{' '}
-            <strong>{Math.round(CONFIDENCE_THRESHOLD * 100)}%</strong>, the visitor is escalated to a human expert
-            instead of being auto-routed — so uncertain cases always reach a person.
+            <strong>{Math.round(CONFIDENCE_THRESHOLD * 100)}%</strong> (a configurable, prototype-mock
+            threshold), the visitor is escalated to the client (or an authorised team member) instead
+            of being auto-routed — so uncertain cases always reach a person.
           </p>
         </div>
       </Panel>

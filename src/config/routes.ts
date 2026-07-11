@@ -19,8 +19,6 @@ export interface NavGroup {
 
 export const routes = {
   home: { href: '/', label: 'Home' },
-  start: { href: '/start', label: 'Get matched' },
-  specialists: { href: '/specialists', label: 'Specialist AIs' },
   about: { href: '/about', label: 'About' },
   founder: { href: '/founder', label: 'Erran Warden' },
   programmes: { href: '/programmes', label: 'Programmes' },
@@ -48,12 +46,12 @@ export const routes = {
 /** Primary header navigation, organised into mega-menu groups. */
 export const primaryNav: NavGroup[] = [
   {
-    label: 'Your AI team',
+    label: 'Work with Erran',
     items: [
-      { ...routes.start, description: 'Meet the receptionist — get matched' },
-      { ...routes.specialists, description: 'Subscribe to a specialist AI' },
-      { ...routes.consultations, description: 'One-to-one with a human expert' },
+      { ...routes.programmes, description: 'HERNE-led coaching programmes' },
+      { ...routes.consultations, description: 'One-to-one and group sessions' },
       { ...routes.bodyMot, description: 'Your full-body health assessment' },
+      { ...routes.selfieScan, description: 'An at-home wellbeing scan' },
     ],
   },
   {
@@ -61,7 +59,7 @@ export const primaryNav: NavGroup[] = [
     items: [
       { ...routes.herne, description: 'The five pillars of restoration' },
       { ...routes.about, description: 'The story and the mission' },
-      { ...routes.founder, description: 'Meet the human expert' },
+      { ...routes.founder, description: 'Meet the Juice Doctor' },
     ],
   },
   {
@@ -77,9 +75,9 @@ export const primaryNav: NavGroup[] = [
 
 /** Flat list of the top-level nav destinations (mobile + simple contexts). */
 export const flatNav: RouteDef[] = [
-  routes.specialists,
-  routes.start,
+  routes.programmes,
   routes.herne,
+  routes.podcast,
   routes.resources,
   routes.about,
   routes.testimonials,
@@ -88,8 +86,8 @@ export const flatNav: RouteDef[] = [
 
 export const footerNav: NavGroup[] = [
   {
-    label: 'Your AI team',
-    items: [routes.specialists, routes.start, routes.consultations, routes.bodyMot],
+    label: 'Programmes',
+    items: [routes.programmes, routes.consultations, routes.bodyMot, routes.selfieScan],
   },
   {
     label: 'The Method',
@@ -116,8 +114,6 @@ export const legalNav: RouteDef[] = [
 /** Every public URL, for `sitemap.ts`. Dynamic slugs are appended by the sitemap. */
 export const publicRoutes: RouteDef[] = [
   routes.home,
-  routes.start,
-  routes.specialists,
   routes.about,
   routes.founder,
   routes.programmes,

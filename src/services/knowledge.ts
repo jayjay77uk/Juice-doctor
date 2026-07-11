@@ -47,6 +47,8 @@ function doc(partial: Partial<KnowledgeDocument> & Pick<KnowledgeDocument, 'id' 
     description: null,
     sourceUri: null,
     currentVersion: 1,
+    // Retrieval readiness: published docs are 'available', others 'uploaded'.
+    indexState: partial.publishStatus === 'published' ? 'available' : 'uploaded',
     visibility: 'organisation',
     ownerId: 'usr_admin',
     approvedBy: partial.publishStatus === 'published' ? 'usr_admin' : null,

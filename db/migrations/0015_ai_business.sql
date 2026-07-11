@@ -27,6 +27,10 @@ create type lead_status as enum ('new', 'qualified', 'recommended', 'subscribed'
 create type lead_follow_up as enum ('none', 'scheduled', 'in_progress', 'done');
 create type lead_source as enum ('receptionist', 'website', 'referral', 'whatsapp');
 
+create type lead_human_review as enum ('not_required', 'pending', 'approved', 'changed');
+create type lead_whatsapp_status as enum ('none', 'requested', 'sent', 'connected');
+create type lead_subscription_status as enum ('none', 'trial', 'active', 'canceled');
+
 create table public.crm_leads (
   id                       uuid primary key default gen_random_uuid(),
   organisation_id          uuid not null references public.organisations (id) on delete cascade,
@@ -36,18 +40,30 @@ create table public.crm_leads (
   phone                    text,
   whatsapp                 text,
   source                   lead_source not null default 'receptionist',
-  -- The receptionist AI's assessment + structured answers.
+  -- The complete receptionist ↔ visitor conversation.
+  conversation             jsonb not null default '[]'::jsonb,
+  -- The receptionist AI's structured consultation summary + answers.
   assessment_summary       text not null,
   assessment               jsonb not null default '{}'::jsonb,
-  -- The recommendation and how confident the receptionist was in it.
+  -- The recommendation, confidence and other possible matches considered.
   recommended_specialist   uuid references public.ai_agents (id) on delete set null,
   recommendation_confidence numeric not null default 0,
+  alternative_matches      jsonb not null default '[]'::jsonb,
+  -- Human review of an escalated/uncertain lead.
+  human_review_status      lead_human_review not null default 'not_required',
   assigned_specialist      uuid references public.ai_agents (id) on delete set null,
   status                   lead_status not null default 'new',
   follow_up_status         lead_follow_up not null default 'none',
+  whatsapp_status          lead_whatsapp_status not null default 'none',
+  subscription_status      lead_subscription_status not null default 'none',
   progress                 int not null default 0,
   escalated                boolean not null default false,
+  -- The escalation target (the client / an authorised team member). Configurable;
+  -- the display name is held in system_settings (key 'receptionist.escalation_target').
   escalated_to             uuid references auth.users (id) on delete set null,
+  -- The admin / team member responsible for this lead.
+  responsible_admin        uuid references auth.users (id) on delete set null,
+  notes                    text,
   created_at               timestamptz not null default now(),
   updated_at               timestamptz not null default now()
 );
@@ -72,11 +88,16 @@ comment on table public.crm_lead_events is 'Append-only activity timeline per CR
 
 -- ── Specialist subscriptions ─────────────────────────────────────────────────
 create type subscription_state as enum ('trialing', 'active', 'past_due', 'canceled');
+-- Access scope: one specialist, several selected specialists, or all of them.
+-- Final packages/pricing are NOT defined yet — this only keeps all three open.
+create type subscription_scope as enum ('single', 'multiple', 'all');
 
 create table public.specialist_subscriptions (
   id              uuid primary key default gen_random_uuid(),
   organisation_id uuid not null references public.organisations (id) on delete cascade,
-  specialist_id   uuid not null references public.ai_agents (id) on delete cascade,
+  -- Null for scope 'multiple'/'all'; set for 'single'.
+  specialist_id   uuid references public.ai_agents (id) on delete cascade,
+  scope           subscription_scope not null default 'single',
   user_id         uuid references auth.users (id) on delete set null,
   lead_id         uuid references public.crm_leads (id) on delete set null,
   customer_name   text not null,

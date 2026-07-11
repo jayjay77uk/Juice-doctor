@@ -27,6 +27,19 @@ export type KnowledgeSourceType =
 export type KnowledgeVisibility = 'private' | 'organisation' | 'public';
 export type KnowledgeAccess = 'read' | 'edit' | 'approve';
 
+/**
+ * Retrieval-readiness of a document in an AI's knowledge brain — DISTINCT from
+ * the editorial `publishStatus`. A document is never "trained"; it moves through
+ * these accurate states as it is ingested for retrieval.
+ */
+export type KnowledgeIndexState =
+  | 'uploaded'
+  | 'processing'
+  | 'indexed'
+  | 'available'
+  | 'failed'
+  | 'archived';
+
 export interface KnowledgeCategory {
   id: string;
   organisationId: string;
@@ -55,7 +68,10 @@ export interface KnowledgeDocument {
   sourceType: KnowledgeSourceType;
   sourceUri: string | null;
   currentVersion: number;
+  /** Editorial workflow state. */
   publishStatus: PublishStatus;
+  /** Retrieval-readiness state (uploaded → processing → indexed → available). */
+  indexState: KnowledgeIndexState;
   visibility: KnowledgeVisibility;
   ownerId: string;
   approvedBy: string | null;
