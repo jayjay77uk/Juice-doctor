@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { assertRole } from '@/lib/auth/authorize';
 import { receptionistSettings, currentReceptionistSettings } from './receptionist-settings';
 import type { ActionResult } from './result';
 
@@ -13,6 +14,8 @@ export async function updateReceptionistSettingsAction(
   _prev: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
+  try { await assertRole('administrator'); } catch { return { status: 'error', message: 'You do not have permission to do this.' }; }
+
   const cur = currentReceptionistSettings();
 
   const greeting = String(formData.get('greeting') ?? '').trim();

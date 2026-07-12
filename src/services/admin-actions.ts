@@ -8,6 +8,7 @@ import { promptService } from './prompts';
 import { knowledge } from './knowledge';
 import { featureFlags } from './feature-flags';
 import { playground } from './playground';
+import { assertRole } from '@/lib/auth/authorize';
 import type { ActionResult } from './result';
 import type { AgentVisibility } from '@/types/ai';
 import type { PublishStatus } from '@/types/knowledge';
@@ -39,6 +40,7 @@ const createSchema = z.object({
 });
 
 export async function createAgentAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  try { await assertRole('administrator'); } catch { return { status: 'error', message: 'You do not have permission to do this.' }; }
   const parsed = createSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: 'error', message: 'Please check the fields.', fieldErrors: parsed.error.flatten().fieldErrors };
@@ -73,6 +75,7 @@ const updateSchema = z.object({
 });
 
 export async function updateAgentAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  try { await assertRole('administrator'); } catch { return { status: 'error', message: 'You do not have permission to do this.' }; }
   const parsed = updateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: 'error', message: 'Please check the fields.', fieldErrors: parsed.error.flatten().fieldErrors };
@@ -139,17 +142,20 @@ async function readId(formData: FormData): Promise<string> {
 }
 
 export async function publishAgentAction(formData: FormData): Promise<void> {
+  await assertRole('administrator');
   await agents.publish(await readId(formData));
   revalidatePath('/admin/ai/agents');
   revalidatePath(`/admin/ai/agents/${await readId(formData)}`);
 }
 
 export async function archiveAgentAction(formData: FormData): Promise<void> {
+  await assertRole('administrator');
   await agents.archive(await readId(formData));
   revalidatePath('/admin/ai/agents');
 }
 
 export async function toggleAgentAction(formData: FormData): Promise<void> {
+  await assertRole('administrator');
   const id = await readId(formData);
   const current = await agents.byId(id);
   if (current.ok) {
@@ -160,6 +166,7 @@ export async function toggleAgentAction(formData: FormData): Promise<void> {
 }
 
 export async function duplicateAgentAction(formData: FormData): Promise<void> {
+  await assertRole('administrator');
   const result = await agents.duplicate(await readId(formData));
   revalidatePath('/admin/ai/agents');
   if (result.ok) redirect(`/admin/ai/agents/${result.data.id}`);
@@ -174,6 +181,7 @@ const promptDraftSchema = z.object({
 });
 
 export async function savePromptDraftAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  try { await assertRole('administrator'); } catch { return { status: 'error', message: 'You do not have permission to do this.' }; }
   const parsed = promptDraftSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: 'error', message: 'Please check the fields.', fieldErrors: parsed.error.flatten().fieldErrors };
@@ -185,6 +193,7 @@ export async function savePromptDraftAction(_prev: ActionResult, formData: FormD
 }
 
 export async function publishPromptVersionAction(formData: FormData): Promise<void> {
+  await assertRole('administrator');
   const promptId = String(formData.get('promptId') ?? '');
   const version = Number(formData.get('version') ?? 0);
   await promptService.publishVersion(promptId, version);
@@ -193,6 +202,7 @@ export async function publishPromptVersionAction(formData: FormData): Promise<vo
 }
 
 export async function rollbackPromptAction(formData: FormData): Promise<void> {
+  await assertRole('administrator');
   const promptId = String(formData.get('promptId') ?? '');
   const version = Number(formData.get('version') ?? 0);
   await promptService.rollback(promptId, version);
@@ -202,6 +212,7 @@ export async function rollbackPromptAction(formData: FormData): Promise<void> {
 // ── Knowledge workflow ───────────────────────────────────────────────────────
 
 export async function transitionDocumentAction(formData: FormData): Promise<void> {
+  await assertRole('administrator');
   const id = String(formData.get('id') ?? '');
   const to = String(formData.get('to') ?? '') as PublishStatus;
   await knowledge.documents.transition(id, to);
@@ -220,6 +231,7 @@ const uploadSchema = z.object({
 });
 
 export async function uploadDocumentAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  try { await assertRole('administrator'); } catch { return { status: 'error', message: 'You do not have permission to do this.' }; }
   const parsed = uploadSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: 'error', message: 'Please check the fields.', fieldErrors: parsed.error.flatten().fieldErrors };
@@ -243,18 +255,21 @@ function revalidateKnowledge(id: string): void {
 }
 
 export async function advanceIndexAction(formData: FormData): Promise<void> {
+  await assertRole('administrator');
   const id = String(formData.get('id') ?? '');
   await knowledge.documents.advanceIndex(id);
   revalidateKnowledge(id);
 }
 
 export async function failIndexAction(formData: FormData): Promise<void> {
+  await assertRole('administrator');
   const id = String(formData.get('id') ?? '');
   await knowledge.documents.setIndexState(id, 'failed', 'Processing failed in the prototype demo.');
   revalidateKnowledge(id);
 }
 
 export async function setDocActiveAction(formData: FormData): Promise<void> {
+  await assertRole('administrator');
   const id = String(formData.get('id') ?? '');
   const active = String(formData.get('active') ?? '') === 'true';
   await knowledge.documents.setActive(id, active);
@@ -262,6 +277,7 @@ export async function setDocActiveAction(formData: FormData): Promise<void> {
 }
 
 export async function archiveDocAction(formData: FormData): Promise<void> {
+  await assertRole('administrator');
   const id = String(formData.get('id') ?? '');
   await knowledge.documents.archiveDoc(id);
   revalidateKnowledge(id);
@@ -270,6 +286,7 @@ export async function archiveDocAction(formData: FormData): Promise<void> {
 // ── Feature flags (Configuration Centre) ─────────────────────────────────────
 
 export async function toggleFeatureFlagAction(formData: FormData): Promise<void> {
+  await assertRole('administrator');
   const key = String(formData.get('key') ?? '');
   if (featureFlags.isValidKey(key)) {
     await featureFlags.toggle(key);
@@ -286,6 +303,7 @@ export async function runPlaygroundAction(input: {
   knowledgeCount?: number;
   modelKey?: string;
 }): Promise<{ ok: true; result: PlaygroundResult } | { ok: false; error: string }> {
+  try { await assertRole('administrator'); } catch { return { ok: false, error: 'Not authorised.' }; }
   if (!input.query.trim()) return { ok: false, error: 'Enter a question to test.' };
   const result = await playground.run(input);
   if (!result.ok) return { ok: false, error: result.error.message };
