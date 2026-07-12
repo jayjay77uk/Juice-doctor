@@ -9,6 +9,8 @@ import type {
 import { crm } from './crm';
 import { subscriptionsService } from './subscriptions';
 import { specialists } from './specialists';
+import { agents } from './agents';
+import { runLogRepo } from './repositories/run-log-repo';
 import { ok, type Result } from './result';
 
 export interface OperationalMetrics {
@@ -78,14 +80,21 @@ export const analytics = {
     const avgLatency = Math.round(DAILY_30.reduce((s, p) => s + p.avgLatencyMs, 0) / DAILY_30.length);
     const satisfaction =
       DAILY_30.reduce((s, p) => s + (p.satisfaction ?? 0), 0) / DAILY_30.length;
+
+    // Real AI-usage metrics from the run log; illustrative baselines until enough
+    // real traffic exists (so an empty platform still renders a sensible page).
+    const [runs, agentList] = await Promise.all([runLogRepo.stats(30), agents.list()]);
+    const activeAgents = agentList.ok ? agentList.data.filter((a) => a.status === 'active').length : 3;
+    const realTokens = runs.tokensIn + runs.tokensOut;
+
     return ok({
-      totalConversations,
+      totalConversations: runs.total > 0 ? runs.total : totalConversations,
       activeUsers: 342,
-      activeAgents: 3,
+      activeAgents,
       escalationRate: escalations / totalConversations,
-      avgResponseMs: avgLatency,
+      avgResponseMs: runs.avgLatencyMs > 0 ? runs.avgLatencyMs : avgLatency,
       satisfaction,
-      tokensThisMonth: tokens,
+      tokensThisMonth: realTokens > 0 ? realTokens : tokens,
       costThisMonthMicros: cost,
       currency: 'GBP',
     });

@@ -8,6 +8,7 @@ import { agents } from '@/services/agents';
 import { knowledgeRepo } from '@/services/repositories/knowledge-repo';
 import { memoryRepo } from '@/services/repositories/memory-repo';
 import { specialistReply } from '@/services/specialist-reply';
+import { orchestration } from '@/services/orchestration';
 
 /**
  * Public health / readiness endpoint — the deployment-verification instrument.
@@ -149,6 +150,29 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Opt-in orchestration probe (?orchestrate=1): receptionist routes → specialist
+  // answers the follow-up with the handed-over context (multi-agent flow).
+  let orchestrateProbe: Record<string, unknown> | undefined;
+  if (request.nextUrl.searchParams.get('orchestrate') === '1') {
+    const r = await orchestration.route({
+      conversation: [],
+      answers: [
+        { id: 'q1', prompt: 'What would you like help with today?', answer: 'I want help with my nutrition and a meal plan to lose weight.' },
+        { id: 'q2', prompt: 'What outcome are you hoping for?', answer: 'Lose about 8kg and eat more healthily.' },
+        { id: 'q3', prompt: 'How soon do you need help?', answer: 'As soon as possible.' },
+      ],
+      followUpQuestion: 'Can you give me a simple lunch idea to start with?',
+    });
+    orchestrateProbe = r.ok
+      ? {
+          routedTo: r.data.routedTo,
+          escalated: r.data.escalated,
+          confidence: r.data.confidence,
+          specialistReply: r.data.specialistReply?.slice(0, 300) ?? null,
+        }
+      : { error: r.error.message };
+  }
+
   return NextResponse.json({
     ok: true,
     commit,
@@ -156,6 +180,7 @@ export async function GET(request: NextRequest) {
     ...(receptionistProbe ? { receptionist: receptionistProbe } : {}),
     ...(specialistProbe ? { specialist: specialistProbe } : {}),
     ...(memoryProbe ? { memory: memoryProbe } : {}),
+    ...(orchestrateProbe ? { orchestrate: orchestrateProbe } : {}),
     supabase: {
       configured: isSupabaseConfigured(),
       adminConfigured: isSupabaseAdminConfigured(),
