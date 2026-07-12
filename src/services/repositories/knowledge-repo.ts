@@ -124,12 +124,18 @@ export const knowledgeRepo = {
     const docIds = await knowledgeRepo.assignedDocumentIds(sb, agentId);
     if (!docIds.length) return [];
 
-    const { data } = await sb
+    // OR-match the query's significant terms (a single chunk rarely contains
+    // every word of a natural-language question). Raw to_tsquery via textSearch.
+    const terms = [...new Set(query.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [])];
+    if (!terms.length) return [];
+    const tsquery = terms.join(' | ');
+    const { data, error } = await sb
       .from('knowledge_chunks')
       .select('document_id, content, chunk_index')
       .in('document_id', docIds)
-      .textSearch('content_tsv', query, { type: 'plain', config: 'english' })
+      .textSearch('content_tsv', tsquery, { config: 'english' })
       .limit(k);
+    if (error) return [];
     const chunks = (data ?? []) as Row[];
     if (!chunks.length) return [];
 
