@@ -201,7 +201,6 @@ export const receptionist = {
         {
           system: buildSystemPrompt(settings, roster),
           messages: [{ role: 'user', content: buildTranscript(input.conversation, input.answers) }],
-          temperature: 0.2,
           maxTokens: 1024,
         },
         parseReceptionistResult,

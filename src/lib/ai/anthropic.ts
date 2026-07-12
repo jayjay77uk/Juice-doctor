@@ -24,25 +24,43 @@ function firstText(content: Anthropic.Messages.ContentBlock[]): string {
   return block?.text ?? '';
 }
 
+function toResult(res: Anthropic.Messages.Message): AiChatResult {
+  return {
+    text: firstText(res.content),
+    model: res.model,
+    usage: { inputTokens: res.usage.input_tokens, outputTokens: res.usage.output_tokens },
+  };
+}
+
+/** Newer models (e.g. claude-sonnet-5) reject the `temperature` parameter. */
+function mentionsTemperature(cause: unknown): boolean {
+  const msg = cause instanceof Error ? cause.message : String(cause ?? '');
+  return /temperature/i.test(msg);
+}
+
 export function createAnthropicProvider(): AiProvider {
   const client = new Anthropic({ apiKey: env.anthropicApiKey, timeout: REQUEST_TIMEOUT_MS, maxRetries: 1 });
 
   async function chat(req: AiChatRequest): Promise<AiChatResult> {
     const model = req.model ?? env.aiModel;
+    const base: Anthropic.Messages.MessageCreateParamsNonStreaming = {
+      model,
+      max_tokens: req.maxTokens ?? DEFAULT_MAX_TOKENS,
+      ...(req.system ? { system: req.system } : {}),
+      messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
+    };
     try {
-      const res = await client.messages.create({
-        model,
-        max_tokens: req.maxTokens ?? DEFAULT_MAX_TOKENS,
-        ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
-        ...(req.system ? { system: req.system } : {}),
-        messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
-      });
-      return {
-        text: firstText(res.content),
-        model: res.model,
-        usage: { inputTokens: res.usage.input_tokens, outputTokens: res.usage.output_tokens },
-      };
+      const params = req.temperature !== undefined ? { ...base, temperature: req.temperature } : base;
+      return toResult(await client.messages.create(params));
     } catch (cause) {
+      // Some models reject `temperature`; retry once without it before failing.
+      if (req.temperature !== undefined && mentionsTemperature(cause)) {
+        try {
+          return toResult(await client.messages.create(base));
+        } catch (retryCause) {
+          throw new AiProviderError('The AI provider request failed.', retryCause);
+        }
+      }
       throw new AiProviderError('The AI provider request failed.', cause);
     }
   }
