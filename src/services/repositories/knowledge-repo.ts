@@ -1,6 +1,13 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type {
+  KnowledgeDocument,
+  KnowledgeSourceType,
+  KnowledgeIndexState,
+  KnowledgeVisibility,
+  PublishStatus,
+} from '@/types/knowledge';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ok, err, type Result } from '../result';
 
@@ -158,4 +165,102 @@ export const knowledgeRepo = {
     const { data } = await sb.from('knowledge_documents').select('id, title').in('id', docIds);
     return (data ?? []).map((d: Row) => ({ id: String(d.id), title: String(d.title) }));
   },
+
+  // ── Document management (admin knowledge list) ─────────────────────────────
+
+  async listDocuments(): Promise<KnowledgeDocument[]> {
+    const sb = createAdminClient();
+    if (!sb) return [];
+    const { data } = await sb.from('knowledge_documents').select('*').eq('organisation_id', ORG).order('created_at', { ascending: false });
+    const docs = (data ?? []) as Row[];
+    const slugMap = await docSpecialistMap(sb, docs.map((d) => String(d.id)));
+    return docs.map((d) => rowToDocument(d, slugMap));
+  },
+
+  async getDocument(id: string): Promise<KnowledgeDocument | null> {
+    const sb = createAdminClient();
+    if (!sb) return null;
+    const { data } = await sb.from('knowledge_documents').select('*').eq('id', id).maybeSingle();
+    if (!data) return null;
+    const slugMap = await docSpecialistMap(sb, [id]);
+    return rowToDocument(data as Row, slugMap);
+  },
+
+  async archiveDocument(id: string): Promise<boolean> {
+    const sb = createAdminClient();
+    if (!sb) return false;
+    const { error } = await sb
+      .from('knowledge_documents')
+      .update({ publish_status: 'archived', index_state: 'archived', updated_at: new Date().toISOString() })
+      .eq('id', id);
+    return !error;
+  },
+
+  async restoreDocument(id: string): Promise<boolean> {
+    const sb = createAdminClient();
+    if (!sb) return false;
+    const { error } = await sb
+      .from('knowledge_documents')
+      .update({ publish_status: 'draft', index_state: 'available', updated_at: new Date().toISOString() })
+      .eq('id', id);
+    return !error;
+  },
+
+  async documentStats(): Promise<{ total: number; published: number; inReview: number; drafts: number; archived: number }> {
+    const sb = createAdminClient();
+    if (!sb) return { total: 0, published: 0, inReview: 0, drafts: 0, archived: 0 };
+    const { data } = await sb.from('knowledge_documents').select('publish_status').eq('organisation_id', ORG);
+    const rows = (data ?? []) as Row[];
+    const by = (s: string) => rows.filter((r) => r.publish_status === s).length;
+    return { total: rows.length, published: by('published'), inReview: by('in_review'), drafts: by('draft'), archived: by('archived') };
+  },
 };
+
+function rowToDocument(r: Row, slugMap: Map<string, string>): KnowledgeDocument {
+  const id = String(r.id);
+  const indexState = String(r.index_state) as KnowledgeIndexState;
+  return {
+    id,
+    organisationId: String(r.organisation_id),
+    categoryId: (r.category_id as string | null) ?? null,
+    assignedSpecialistSlug: slugMap.get(id) ?? null,
+    title: String(r.title),
+    slug: String(r.slug),
+    description: (r.description as string | null) ?? null,
+    sourceType: String(r.source_type) as KnowledgeSourceType,
+    sourceUri: (r.source_uri as string | null) ?? null,
+    currentVersion: Number(r.current_version) || 1,
+    publishStatus: String(r.publish_status) as PublishStatus,
+    indexState,
+    active: indexState !== 'archived',
+    errorMessage: null,
+    visibility: String(r.visibility) as KnowledgeVisibility,
+    ownerId: String(r.owner_id),
+    approvedBy: (r.approved_by as string | null) ?? null,
+    approvedAt: (r.approved_at as string | null) ?? null,
+    tags: [],
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+/** Map document id → assigned specialist slug (via ai_agent_knowledge_sources). */
+async function docSpecialistMap(sb: SupabaseClient, docIds: string[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (!docIds.length) return map;
+  const { data: links } = await sb
+    .from('ai_agent_knowledge_sources')
+    .select('document_id, agent_id')
+    .in('document_id', docIds)
+    .not('document_id', 'is', null);
+  const rows = (links ?? []) as Row[];
+  const agentIds = [...new Set(rows.map((l) => String(l.agent_id)))];
+  if (!agentIds.length) return map;
+  const { data: ag } = await sb.from('ai_agents').select('id, slug').in('id', agentIds);
+  const agentSlug = new Map((ag ?? []).map((a: Row) => [String(a.id), String(a.slug)]));
+  for (const l of rows) {
+    const slug = agentSlug.get(String(l.agent_id));
+    if (slug) map.set(String(l.document_id), slug);
+  }
+  return map;
+}

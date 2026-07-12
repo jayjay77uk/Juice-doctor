@@ -9,6 +9,8 @@ import type {
   PublishStatus,
 } from '@/types/knowledge';
 import type { KnowledgeCollection } from '@/types/ai-platform';
+import { isSupabaseAdminConfigured } from '@/lib/env';
+import { knowledgeRepo } from './repositories/knowledge-repo';
 import { ok, err, type Page, type Result } from './result';
 import type { ListQuery } from './index';
 
@@ -114,7 +116,7 @@ export const knowledge = {
     async list(
       q: ListQuery & { status?: PublishStatus; categoryId?: string; specialistSlug?: string } = {},
     ): Promise<Result<Page<KnowledgeDocument>>> {
-      let rows = [...documents];
+      let rows = isSupabaseAdminConfigured() ? await knowledgeRepo.listDocuments() : [...documents];
       if (q.status) rows = rows.filter((d) => d.publishStatus === q.status);
       if (q.categoryId) rows = rows.filter((d) => d.categoryId === q.categoryId);
       if (q.specialistSlug) rows = rows.filter((d) => d.assignedSpecialistSlug === q.specialistSlug);
@@ -130,6 +132,10 @@ export const knowledge = {
       return ok(documents.filter((d) => d.assignedSpecialistSlug === slug && d.active && d.indexState === 'available'));
     },
     async byId(id: string): Promise<Result<KnowledgeDocument>> {
+      if (isSupabaseAdminConfigured()) {
+        const doc = await knowledgeRepo.getDocument(id);
+        return doc ? ok(doc) : err({ code: 'not_found', message: 'Document not found.' });
+      }
       const match = find(id);
       return match ? ok(match) : err({ code: 'not_found', message: 'Document not found.' });
     },
@@ -199,6 +205,12 @@ export const knowledge = {
       return ok(document);
     },
     async archiveDoc(id: string): Promise<Result<KnowledgeDocument>> {
+      if (isSupabaseAdminConfigured()) {
+        const okd = await knowledgeRepo.archiveDocument(id);
+        if (!okd) return err({ code: 'not_found', message: 'Document not found.' });
+        const doc = await knowledgeRepo.getDocument(id);
+        return doc ? ok(doc) : err({ code: 'not_found', message: 'Document not found.' });
+      }
       const document = find(id);
       if (!document) return err({ code: 'not_found', message: 'Document not found.' });
       document.indexState = 'archived';
@@ -233,6 +245,10 @@ export const knowledge = {
   },
 
   async stats(): Promise<Result<{ total: number; published: number; inReview: number; drafts: number; archived: number; categories: number; collections: number }>> {
+    if (isSupabaseAdminConfigured()) {
+      const s = await knowledgeRepo.documentStats();
+      return ok({ ...s, categories: SEED_CATEGORIES.length, collections: collections.length });
+    }
     return ok({
       total: documents.length,
       published: documents.filter((d) => d.publishStatus === 'published').length,
