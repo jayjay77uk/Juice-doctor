@@ -12,9 +12,12 @@ import {
 import { isSupabaseConfigured } from '@/lib/env';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { resolveLanding } from '@/lib/auth/landing';
-import type { AppRole } from '@/lib/auth/roles';
 import type { ActionResult } from './result';
+
+/** Post-auth landing resolver path (see src/app/continue/route.ts). */
+function continuePath(next: FormDataEntryValue | null): string {
+  return typeof next === 'string' && next ? `/continue?next=${encodeURIComponent(next)}` : '/continue';
+}
 
 /**
  * Write path — Server Actions. The MOCK implementation lives behind the
@@ -95,18 +98,13 @@ export async function signIn(_prev: ActionResult, formData: FormData): Promise<A
   }
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { status: 'error', message: 'Sign-in is currently unavailable. Please try again later.' };
-  const { data, error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
-  if (error || !data.user) return { status: 'error', message: 'Incorrect email or password.' };
+  const { error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
+  if (error) return { status: 'error', message: 'Incorrect email or password.' };
 
-  // Route to the area the user can actually enter (administrators → /admin),
-  // honouring a safe ?next=. Read the role via the just-authenticated user client
-  // (RLS self-read) so the landing decision does not depend on the service-role key
-  // and always agrees with the /admin layout gate.
-  let role: AppRole = 'member';
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).maybeSingle();
-  const resolved = profile?.role as AppRole | null | undefined;
-  if (resolved) role = resolved;
-  redirect(resolveLanding(role, next));
+  // The session cookie is set on THIS response; resolve the role-based landing on
+  // the next request via /continue (administrators → /admin, others → /dashboard),
+  // honouring a safe ?next=.
+  redirect(continuePath(next));
 }
 
 export async function register(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
@@ -133,10 +131,10 @@ export async function register(_prev: ActionResult, formData: FormData): Promise
   if (createErr || !created.user) {
     return { status: 'error', message: createErr?.message?.includes('already') ? 'An account with that email already exists.' : 'Could not create the account. Please try again.' };
   }
-  // Sign the new user in to establish a session, then route them to their area.
-  // New accounts are members, so this lands on /dashboard unless a safe next says otherwise.
+  // Sign the new user in to establish a session, then resolve their landing on
+  // the next request via /continue (a fresh member lands on /dashboard).
   await supabase.auth.signInWithPassword({ email, password });
-  redirect(resolveLanding('member', next));
+  redirect(continuePath(next));
 }
 
 /** Sign the current user out (clears the Supabase session) and return home. */
