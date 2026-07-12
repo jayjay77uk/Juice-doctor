@@ -4,17 +4,20 @@ import { AdminHeader } from '@/components/admin/admin-header';
 import { SpecialistChat } from '@/components/dashboard/specialist-chat';
 import { conversations_service } from '@/services/conversations';
 import { agents } from '@/services/agents';
+import { getSession } from '@/services/auth';
 
 export const metadata = createMetadata({ title: 'Conversation' });
 
 export default async function ConversationThreadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const session = await getSession();
   const convo = await conversations_service.byId(id);
-  if (!convo.ok) notFound();
+  // Only the owner may view a thread (defence in depth alongside the actions).
+  if (!convo.ok || (session && convo.data.userId !== session.user.id)) notFound();
 
   const [messagesResult, rememberedResult] = await Promise.all([
     conversations_service.messages(id),
-    conversations_service.remembered(),
+    conversations_service.remembered(session?.user.id),
   ]);
 
   let agentName = 'Specialist AI';

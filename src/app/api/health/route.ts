@@ -9,6 +9,7 @@ import { knowledgeRepo } from '@/services/repositories/knowledge-repo';
 import { memoryRepo } from '@/services/repositories/memory-repo';
 import { specialistReply } from '@/services/specialist-reply';
 import { orchestration } from '@/services/orchestration';
+import { conversations_service } from '@/services/conversations';
 
 /**
  * Public health / readiness endpoint — the deployment-verification instrument.
@@ -173,6 +174,34 @@ export async function GET(request: NextRequest) {
       : { error: r.error.message };
   }
 
+  // Opt-in conversation-persistence probe (?conversation=1): create → send →
+  // list, confirming threads + messages persist to the database.
+  let conversationProbe: Record<string, unknown> | undefined;
+  if (request.nextUrl.searchParams.get('conversation') === '1') {
+    const sb = createAdminClient();
+    const prof = sb ? await sb.from('profiles').select('id').limit(1).maybeSingle() : null;
+    const userId = prof?.data?.id as string | undefined;
+    const a = await agents.bySlug('specialist-ai-1');
+    if (!userId || !a.ok) {
+      conversationProbe = { error: 'setup failed' };
+    } else {
+      const created = await conversations_service.create({ userId, agentId: a.data.id, title: 'Persistence probe' });
+      if (!created.ok) {
+        conversationProbe = { error: created.error.message };
+      } else {
+        const sent = await conversations_service.send(created.data.id, 'Give me one quick nutrition tip.');
+        const listed = await conversations_service.list(userId);
+        conversationProbe = {
+          conversationId: created.data.id,
+          messageCount: sent.ok ? sent.data.length : 0,
+          listedForUser: listed.ok ? listed.data.length : 0,
+          lastRole: sent.ok ? sent.data[sent.data.length - 1]?.role : null,
+          lastReply: sent.ok ? (sent.data[sent.data.length - 1]?.content ?? '').slice(0, 160) : null,
+        };
+      }
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     commit,
@@ -181,6 +210,7 @@ export async function GET(request: NextRequest) {
     ...(specialistProbe ? { specialist: specialistProbe } : {}),
     ...(memoryProbe ? { memory: memoryProbe } : {}),
     ...(orchestrateProbe ? { orchestrate: orchestrateProbe } : {}),
+    ...(conversationProbe ? { conversation: conversationProbe } : {}),
     supabase: {
       configured: isSupabaseConfigured(),
       adminConfigured: isSupabaseAdminConfigured(),

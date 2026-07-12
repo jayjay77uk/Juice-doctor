@@ -1,10 +1,13 @@
 import 'server-only';
 
-import type { Conversation, Message, MessageFeedback, FeedbackRating } from '@/types/conversation';
+import type { Conversation, Message, MessageFeedback, FeedbackRating, ConversationStatus } from '@/types/conversation';
 import type { AiAgent } from '@/types/ai';
 import type { ChatMessage } from '@/lib/ai';
+import { isSupabaseAdminConfigured } from '@/lib/env';
 import { agents } from './agents';
 import { specialistReply } from './specialist-reply';
+import { conversationsRepo } from './repositories/conversations-repo';
+import { memoryRepo } from './repositories/memory-repo';
 import { ok, err, type Result } from './result';
 
 /**
@@ -57,7 +60,7 @@ async function resolveAgent(agentId: string | null): Promise<AiAgent | null> {
   return bySlug.ok ? bySlug.data : null;
 }
 
-export const conversations_service = {
+const mockConversations = {
   async list(userId = MEMBER): Promise<Result<Conversation[]>> {
     return ok(
       conversations
@@ -144,7 +147,7 @@ export const conversations_service = {
     messages.push({ id: `msg_new_${++mCounter}`, conversationId, role: 'assistant', content: replyText, tokenCount: null, toolCalls: null, toolCallId: null, modelKey, createdAt: nowIso() });
 
     conversation.lastMessageAt = nowIso();
-    return conversations_service.messages(conversationId);
+    return mockConversations.messages(conversationId);
   },
 
   async feedback(messageId: string, rating: FeedbackRating, userId = MEMBER): Promise<Result<MessageFeedback>> {
@@ -169,6 +172,68 @@ export const conversations_service = {
       createdAt: nowIso(),
     });
     conversation.lastMessageAt = nowIso();
-    return conversations_service.messages(conversationId);
+    return mockConversations.messages(conversationId);
+  },
+
+  async setStatus(id: string, status: ConversationStatus): Promise<Result<Conversation>> {
+    const conversation = findConversation(id);
+    if (!conversation) return err({ code: 'not_found', message: 'Conversation not found.' });
+    conversation.status = status;
+    return ok(conversation);
+  },
+};
+
+const dbConv = (): boolean => isSupabaseAdminConfigured();
+
+/**
+ * Public conversation API. Persists to the conversations + messages tables on the
+ * deployed platform; uses the in-process mock store for local dev. Same interface.
+ */
+export const conversations_service = {
+  list(userId = MEMBER, opts?: { status?: ConversationStatus; search?: string }): Promise<Result<Conversation[]>> {
+    return dbConv() ? conversationsRepo.list(userId, opts) : mockConversations.list(userId);
+  },
+  byId(id: string): Promise<Result<Conversation>> {
+    return dbConv() ? conversationsRepo.byId(id) : mockConversations.byId(id);
+  },
+  messages(conversationId: string): Promise<Result<Message[]>> {
+    return dbConv() ? conversationsRepo.messages(conversationId) : mockConversations.messages(conversationId);
+  },
+  create(input: { userId?: string; agentId: string; title?: string }): Promise<Result<Conversation>> {
+    if (dbConv()) {
+      return conversationsRepo.create({
+        userId: input.userId ?? MEMBER,
+        agentId: input.agentId,
+        ...(input.title ? { title: input.title } : {}),
+      });
+    }
+    return mockConversations.create(input);
+  },
+  send(conversationId: string, content: string): Promise<Result<Message[]>> {
+    return dbConv() ? conversationsRepo.send(conversationId, content) : mockConversations.send(conversationId, content);
+  },
+  setStatus(id: string, status: ConversationStatus): Promise<Result<Conversation>> {
+    return dbConv() ? conversationsRepo.setStatus(id, status) : mockConversations.setStatus(id, status);
+  },
+  archive(id: string): Promise<Result<Conversation>> {
+    return conversations_service.setStatus(id, 'archived');
+  },
+  remove(id: string): Promise<Result<Conversation>> {
+    return conversations_service.setStatus(id, 'deleted');
+  },
+  requestSupport(conversationId: string): Promise<Result<Message[]>> {
+    return dbConv() ? conversationsRepo.requestSupport(conversationId) : mockConversations.requestSupport(conversationId);
+  },
+  async feedback(messageId: string, rating: FeedbackRating, userId = MEMBER): Promise<Result<{ id: string }>> {
+    if (dbConv()) return conversationsRepo.feedback(messageId, userId, rating);
+    const r = await mockConversations.feedback(messageId, rating, userId);
+    return r.ok ? ok({ id: r.data.id }) : r;
+  },
+  async remembered(userId = MEMBER): Promise<Result<string[]>> {
+    if (dbConv()) {
+      const items = await memoryRepo.recall({ userId, limit: 8 });
+      return ok(items.map((i) => i.content));
+    }
+    return mockConversations.remembered(userId);
   },
 };

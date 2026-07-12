@@ -106,8 +106,8 @@ export const member = {
     return ok(list.filter((s) => slugs.includes(s.slug)));
   },
   /** The member's real conversations with their specialist AIs. */
-  async myConversations(): Promise<Result<Conversation[]>> {
-    return conversations_service.list(USER);
+  async myConversations(userId: string = USER): Promise<Result<Conversation[]>> {
+    return conversations_service.list(userId);
   },
   /** The member's subscriptions. */
   async mySubscriptions(): Promise<Result<CustomerSubscription[]>> {

@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/admin/empty-state';
 import { Button } from '@/components/ui/button';
 import { member } from '@/services/member';
 import { agents } from '@/services/agents';
+import { getSession } from '@/services/auth';
 
 export const metadata = createMetadata({
   title: 'Your conversations',
@@ -21,7 +22,11 @@ function formatUpdated(iso: string | null): string {
 }
 
 export default async function ConversationsPage() {
-  const [convosResult, agentsResult] = await Promise.all([member.myConversations(), agents.list()]);
+  const session = await getSession();
+  const [convosResult, agentsResult] = await Promise.all([
+    member.myConversations(session?.user.id),
+    agents.list(),
+  ]);
   const conversations = convosResult.ok ? convosResult.data : [];
   const agentList = agentsResult.ok ? agentsResult.data : [];
   const agentName = (id: string | null) => agentList.find((a) => a.id === id)?.name ?? 'Specialist AI';
