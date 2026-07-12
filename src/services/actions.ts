@@ -8,6 +8,9 @@ import {
   registerSchema,
   signInSchema,
 } from '@/lib/validation';
+import { isSupabaseConfigured } from '@/lib/env';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { ActionResult } from './result';
 
 /**
@@ -82,12 +85,15 @@ export async function signIn(_prev: ActionResult, formData: FormData): Promise<A
       fieldErrors: fieldErrorsFrom(parsed.error),
     };
   }
-  await simulateLatency();
-  // Prototype: no real account exists; the dashboard is a static shell.
-  return {
-    status: 'success',
-    message: 'Signed in. (Prototype: no real account is created — the dashboard is a demo.)',
-  };
+  if (!isSupabaseConfigured()) {
+    await simulateLatency();
+    return { status: 'success', message: 'Signed in. (Prototype: no real account — the dashboard is a demo.)' };
+  }
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return { status: 'error', message: 'Sign-in is currently unavailable. Please try again later.' };
+  const { error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
+  if (error) return { status: 'error', message: 'Incorrect email or password.' };
+  return { status: 'success', message: 'Signed in.' };
 }
 
 export async function register(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
@@ -99,11 +105,23 @@ export async function register(_prev: ActionResult, formData: FormData): Promise
       fieldErrors: fieldErrorsFrom(parsed.error),
     };
   }
-  await simulateLatency();
-  return {
-    status: 'success',
-    message: 'Account created. (Prototype: no real account is stored — this is a demonstration.)',
-  };
+  if (!isSupabaseConfigured()) {
+    await simulateLatency();
+    return { status: 'success', message: 'Account created. (Prototype: no real account is stored.)' };
+  }
+  const admin = createAdminClient();
+  const supabase = await createSupabaseServerClient();
+  if (!admin || !supabase) return { status: 'error', message: 'Registration is currently unavailable. Please try again later.' };
+
+  const email = parsed.data.email;
+  const password = parsed.data.password;
+  const { data: created, error: createErr } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+  if (createErr || !created.user) {
+    return { status: 'error', message: createErr?.message?.includes('already') ? 'An account with that email already exists.' : 'Could not create the account. Please try again.' };
+  }
+  // Sign the new user in to establish a session (role comes from their profile).
+  await supabase.auth.signInWithPassword({ email, password });
+  return { status: 'success', message: 'Account created and signed in.' };
 }
 
 export async function submitBooking(

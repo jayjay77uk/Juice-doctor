@@ -4,7 +4,9 @@ import { cache } from 'react';
 import type { AppRole } from './roles';
 import type { AuthContext } from './permissions';
 import type { PermissionKey } from '@/config/permissions';
-import { config } from '@/config/app';
+import { isSupabaseConfigured } from '@/lib/env';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 /**
  * The session seam — production-shaped from day one.
@@ -79,17 +81,42 @@ const CANNED: Record<AppRole, SessionUser> = {
  * shape returned here.
  */
 async function loadSession(roleHint: AppRole): Promise<Session | null> {
-  if (config.isPrototype) {
-    // Prototype: always "authenticated" as the hinted persona.
+  // Local dev without Supabase keys: fall back to the canned persona so the app
+  // still renders. On the deployed platform (Supabase configured) this branch is
+  // never taken — a real, verified session is loaded below.
+  if (!isSupabaseConfigured()) {
     return { user: CANNED[roleHint] };
   }
-  // Production (deferred):
-  //   const supabase = createServerClient(cookies());
-  //   const { data: { user } } = await supabase.auth.getUser();
-  //   if (!user) return null;
-  //   const profile = await loadProfile(user.id);   // role, org, overrides
-  //   return { user: toSessionUser(user, profile) };
-  return null;
+
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return { user: CANNED[roleHint] };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  // Load the role/profile via the service-role client (trusted server lookup).
+  let role: AppRole = 'member';
+  let organisationId: string | null = null;
+  let name = user.email ?? 'User';
+  let email = user.email ?? '';
+  const admin = createAdminClient();
+  if (admin) {
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('role, organisation_id, email, full_name, display_name')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (profile) {
+      role = (profile.role as AppRole | null) ?? 'member';
+      organisationId = (profile.organisation_id as string | null) ?? null;
+      name = (profile.display_name as string | null) ?? (profile.full_name as string | null) ?? name;
+      email = (profile.email as string | null) ?? email;
+    }
+  }
+
+  return { user: { id: user.id, name, email, role, organisationId } };
 }
 
 /**
