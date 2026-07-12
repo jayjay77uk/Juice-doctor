@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
-import { isSupabaseConfigured, isSupabaseAdminConfigured, isAiConfigured } from '@/lib/env';
+import { NextResponse, type NextRequest } from 'next/server';
+import { isSupabaseConfigured, isSupabaseAdminConfigured, isAiConfigured, env } from '@/lib/env';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getAiProvider } from '@/lib/ai';
 
 /**
  * Public health / readiness endpoint — the deployment-verification instrument.
@@ -11,7 +12,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const commit = (process.env.VERCEL_GIT_COMMIT_SHA ?? 'local').slice(0, 7);
   const vercelEnv = process.env.VERCEL_ENV ?? 'local';
 
@@ -27,6 +28,28 @@ export async function GET() {
     }
   }
 
+  // Opt-in live AI probe (?ai=1): exercises a minimal real completion so a
+  // provider/model misconfiguration is diagnosable. Never returns the key.
+  let aiProbe: { ok: boolean; model: string; error: string | null } | undefined;
+  if (request.nextUrl.searchParams.get('ai') === '1') {
+    aiProbe = { ok: false, model: env.aiModel, error: 'provider not configured' };
+    const provider = getAiProvider();
+    if (provider) {
+      try {
+        const res = await provider.chat({ messages: [{ role: 'user', content: 'ping' }], maxTokens: 5 });
+        aiProbe = { ok: true, model: res.model, error: null };
+      } catch (e) {
+        const cause = e instanceof Error && 'cause' in e ? (e as { cause?: unknown }).cause : undefined;
+        const causeMsg = cause instanceof Error ? cause.message : typeof cause === 'string' ? cause : '';
+        aiProbe = {
+          ok: false,
+          model: env.aiModel,
+          error: `${e instanceof Error ? e.message : 'ai probe failed'}${causeMsg ? ` — ${causeMsg}` : ''}`,
+        };
+      }
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     commit,
@@ -36,7 +59,7 @@ export async function GET() {
       adminConfigured: isSupabaseAdminConfigured(),
       db,
     },
-    ai: { configured: isAiConfigured() },
+    ai: { configured: isAiConfigured(), ...(aiProbe ? { probe: aiProbe } : {}) },
     time: new Date().toISOString(),
   });
 }
