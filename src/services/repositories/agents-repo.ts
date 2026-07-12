@@ -91,8 +91,8 @@ function rowToAgent(row: Row): AiAgent {
   };
 }
 
-/** Full insert row from an agent definition (used by the seed). */
-function definitionToRow(d: AiAgentDefinition): Row {
+/** Full insert row from an agent definition (used by the seed). owner must be a real auth user id. */
+function definitionToRow(d: AiAgentDefinition, ownerId: string): Row {
   return {
     organisation_id: d.organisationId,
     slug: d.slug,
@@ -117,8 +117,33 @@ function definitionToRow(d: AiAgentDefinition): Row {
     subscription_available: d.subscriptionAvailable,
     visibility: d.visibility,
     status: d.status,
-    owner_id: toUuid(d.ownerId),
+    owner_id: ownerId,
   };
+}
+
+// ai_agents.owner_id is a FK to auth.users — every agent needs a real owner.
+let cachedOwner: string | null = null;
+
+/** A valid auth-user id to own seeded/system agents (prefers an administrator). */
+async function systemOwnerId(sb: SupabaseClient): Promise<string> {
+  if (cachedOwner) return cachedOwner;
+  const admin = await sb.from('profiles').select('id').eq('role', 'administrator').limit(1).maybeSingle();
+  let id = admin.data?.id as string | undefined;
+  if (!id) {
+    const any = await sb.from('profiles').select('id').order('created_at', { ascending: true }).limit(1).maybeSingle();
+    id = any.data?.id as string | undefined;
+  }
+  if (id) cachedOwner = id;
+  return id ?? NIL_UUID;
+}
+
+/** A valid owner id: the preferred one if it is a real user, else the system owner. */
+async function resolveOwnerId(sb: SupabaseClient, preferred: string): Promise<string> {
+  if (UUID_RE.test(preferred)) {
+    const { data } = await sb.from('profiles').select('id').eq('id', preferred).maybeSingle();
+    if (data) return preferred;
+  }
+  return systemOwnerId(sb);
 }
 
 function patchToRow(patch: AgentPatch): Row {
@@ -158,7 +183,8 @@ async function ensureSeeded(sb: SupabaseClient): Promise<void> {
     seeded = true;
     return;
   }
-  const rows = DEFAULT_AI_AGENTS.map(definitionToRow);
+  const owner = await systemOwnerId(sb);
+  const rows = DEFAULT_AI_AGENTS.map((d) => definitionToRow(d, owner));
   const { error: seedError } = await sb.from('ai_agents').upsert(rows, { onConflict: 'organisation_id,slug' });
   if (!seedError) seeded = true;
 }
@@ -210,6 +236,7 @@ export const agentsRepo = {
       .maybeSingle();
     if (existing.data) return err({ code: 'invalid', message: 'An agent with that slug already exists.' });
 
+    const owner = await resolveOwnerId(sb, input.ownerId);
     const row: Row = {
       organisation_id: input.organisationId,
       slug: input.slug,
@@ -234,7 +261,7 @@ export const agentsRepo = {
       subscription_available: false,
       visibility: 'private',
       status: 'draft',
-      owner_id: toUuid(input.ownerId),
+      owner_id: owner,
     };
     const { data, error } = await sb.from('ai_agents').insert(row).select('*').single();
     if (error || !data) return err({ code: 'unavailable', message: error?.message ?? 'Could not create the agent.' });
@@ -283,14 +310,18 @@ export const agentsRepo = {
     const current = await sb.from('ai_agents').select('*').eq('id', id).maybeSingle();
     if (!current.data) return err({ code: 'not_found', message: 'Agent not found.' });
     const agent = rowToAgent(current.data);
-    const row = definitionToRow({
-      ...agent,
-      slug: `${agent.slug}-copy`,
-      name: `${agent.name} (copy)`,
-      status: 'draft',
-      tools: [],
-      knowledgeCategories: [],
-    } as AiAgentDefinition);
+    const owner = await resolveOwnerId(sb, agent.ownerId);
+    const row = definitionToRow(
+      {
+        ...agent,
+        slug: `${agent.slug}-copy`,
+        name: `${agent.name} (copy)`,
+        status: 'draft',
+        tools: [],
+        knowledgeCategories: [],
+      } as AiAgentDefinition,
+      owner,
+    );
     const { data, error } = await sb.from('ai_agents').insert(row).select('*').single();
     if (error || !data) return err({ code: 'unavailable', message: error?.message ?? 'Could not duplicate the agent.' });
     return ok(rowToAgent(data));
