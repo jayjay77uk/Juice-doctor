@@ -16,11 +16,14 @@ export function AppShell({
   roleLabel,
   userName,
   navVariant,
+  adminHref,
   children,
 }: {
   roleLabel: string;
   userName: string;
   navVariant: NavVariant;
+  /** When set, show a cross-link to the admin dashboard (for admins in the member area). */
+  adminHref?: string | undefined;
   children: React.ReactNode;
 }) {
   return (
@@ -33,7 +36,12 @@ export function AppShell({
         <div className="flex-1 overflow-y-auto">
           <SidebarNav variant={navVariant} ariaLabel={roleLabel} />
         </div>
-        <div className="border-t border-border p-4">
+        <div className="flex flex-col gap-2 border-t border-border p-4">
+          {adminHref ? (
+            <Link href={adminHref} className="text-sm font-medium text-primary hover:underline">
+              Admin dashboard →
+            </Link>
+          ) : null}
           <Link href="/" className="text-sm text-muted-foreground hover:text-primary">
             ← Back to site
           </Link>

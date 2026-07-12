@@ -21,7 +21,12 @@ const emptyProgress: PillarProgress = {
   overall: 0,
 };
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ denied?: string }>;
+}) {
+  const { denied } = await searchParams;
   const [progressR, upcomingR, recommendationsR, goalsR] = await Promise.all([
     member.progress(),
     member.upcoming(),
@@ -44,6 +49,12 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8">
+      {denied === '1' ? (
+        <div role="alert" className="rounded-xl border border-border bg-surface-muted px-4 py-3 text-sm text-foreground">
+          <span className="font-medium text-danger">Access denied.</span> You don&apos;t have permission to
+          view that area, so we&apos;ve brought you back to your dashboard.
+        </div>
+      ) : null}
       <AdminHeader
         title="Welcome back"
         description="Week 3 of your account — here's where things stand."

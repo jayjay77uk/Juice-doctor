@@ -20,7 +20,15 @@ function SubmitButton({ label }: { label: string }) {
   );
 }
 
-export function AuthForm({ mode, authReal = false }: { mode: 'login' | 'register'; authReal?: boolean }) {
+export function AuthForm({
+  mode,
+  authReal = false,
+  next,
+}: {
+  mode: 'login' | 'register';
+  authReal?: boolean;
+  next?: string | undefined;
+}) {
   const action = mode === 'login' ? signIn : register;
   const [state, formAction] = useActionState(action, idleAction);
   const fieldErrors = state.status === 'error' ? state.fieldErrors : undefined;
@@ -41,6 +49,7 @@ export function AuthForm({ mode, authReal = false }: { mode: 'login' | 'register
 
   return (
     <form action={formAction} className="flex flex-col gap-4" noValidate>
+      {next ? <input type="hidden" name="next" value={next} /> : null}
       {mode === 'register' && (
         <Field label="Full name" name="name" required error={fieldErrors?.name?.[0]}>
           <Input id="name" name="name" autoComplete="name" />

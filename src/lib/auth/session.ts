@@ -96,24 +96,39 @@ async function loadSession(roleHint: AppRole): Promise<Session | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // Load the role/profile via the service-role client (trusted server lookup).
   let role: AppRole = 'member';
   let organisationId: string | null = null;
   let name = user.email ?? 'User';
   let email = user.email ?? '';
-  const admin = createAdminClient();
-  if (admin) {
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('role, organisation_id, email, full_name, display_name')
-      .eq('id', user.id)
-      .maybeSingle();
-    if (profile) {
-      role = (profile.role as AppRole | null) ?? 'member';
-      organisationId = (profile.organisation_id as string | null) ?? null;
-      name = (profile.display_name as string | null) ?? (profile.full_name as string | null) ?? name;
-      email = (profile.email as string | null) ?? email;
+
+  // Resolve the caller's OWN profile. Prefer the RLS-scoped user client — the
+  // `profile_self_read` policy (id = auth.uid()) lets a user read their own row —
+  // so a user's role does NOT depend on the service-role key being present. Fall
+  // back to the admin client only if the self-read fails. This prevents a missing
+  // SUPABASE_SERVICE_ROLE_KEY from silently demoting an administrator to 'member'
+  // (which would then be denied at the /admin gate).
+  const cols = 'role, organisation_id, email, full_name, display_name';
+  let profile: Record<string, unknown> | null = null;
+  const selfRead = await supabase.from('profiles').select(cols).eq('id', user.id).maybeSingle();
+  if (!selfRead.error && selfRead.data) {
+    profile = selfRead.data as Record<string, unknown>;
+  } else {
+    const admin = createAdminClient();
+    if (admin) {
+      const adminRead = await admin.from('profiles').select(cols).eq('id', user.id).maybeSingle();
+      if (adminRead.data) profile = adminRead.data as Record<string, unknown>;
     }
+  }
+
+  if (profile) {
+    role = (profile.role as AppRole | null) ?? 'member';
+    organisationId = (profile.organisation_id as string | null) ?? null;
+    name = (profile.display_name as string | null) ?? (profile.full_name as string | null) ?? name;
+    email = (profile.email as string | null) ?? email;
+  } else {
+    // No profile row for an authenticated user is an anomaly — surface it in the
+    // server logs rather than silently treating a possible admin as a member.
+    console.warn(`[auth] no profiles row for user ${user.id}; defaulting role to 'member'`);
   }
 
   return { user: { id: user.id, name, email, role, organisationId } };

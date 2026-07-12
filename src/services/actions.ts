@@ -12,6 +12,8 @@ import {
 import { isSupabaseConfigured } from '@/lib/env';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveLanding } from '@/lib/auth/landing';
+import type { AppRole } from '@/lib/auth/roles';
 import type { ActionResult } from './result';
 
 /**
@@ -86,15 +88,25 @@ export async function signIn(_prev: ActionResult, formData: FormData): Promise<A
       fieldErrors: fieldErrorsFrom(parsed.error),
     };
   }
+  const next = formData.get('next');
   if (!isSupabaseConfigured()) {
     await simulateLatency();
     return { status: 'success', message: 'Signed in. (Prototype: no real account — the dashboard is a demo.)' };
   }
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { status: 'error', message: 'Sign-in is currently unavailable. Please try again later.' };
-  const { error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
-  if (error) return { status: 'error', message: 'Incorrect email or password.' };
-  return { status: 'success', message: 'Signed in.' };
+  const { data, error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
+  if (error || !data.user) return { status: 'error', message: 'Incorrect email or password.' };
+
+  // Route to the area the user can actually enter (administrators → /admin),
+  // honouring a safe ?next=. Read the role via the just-authenticated user client
+  // (RLS self-read) so the landing decision does not depend on the service-role key
+  // and always agrees with the /admin layout gate.
+  let role: AppRole = 'member';
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).maybeSingle();
+  const resolved = profile?.role as AppRole | null | undefined;
+  if (resolved) role = resolved;
+  redirect(resolveLanding(role, next));
 }
 
 export async function register(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
@@ -106,6 +118,7 @@ export async function register(_prev: ActionResult, formData: FormData): Promise
       fieldErrors: fieldErrorsFrom(parsed.error),
     };
   }
+  const next = formData.get('next');
   if (!isSupabaseConfigured()) {
     await simulateLatency();
     return { status: 'success', message: 'Account created. (Prototype: no real account is stored.)' };
@@ -120,9 +133,10 @@ export async function register(_prev: ActionResult, formData: FormData): Promise
   if (createErr || !created.user) {
     return { status: 'error', message: createErr?.message?.includes('already') ? 'An account with that email already exists.' : 'Could not create the account. Please try again.' };
   }
-  // Sign the new user in to establish a session (role comes from their profile).
+  // Sign the new user in to establish a session, then route them to their area.
+  // New accounts are members, so this lands on /dashboard unless a safe next says otherwise.
   await supabase.auth.signInWithPassword({ email, password });
-  return { status: 'success', message: 'Account created and signed in.' };
+  redirect(resolveLanding('member', next));
 }
 
 /** Sign the current user out (clears the Supabase session) and return home. */
