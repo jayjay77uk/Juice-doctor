@@ -1,5 +1,6 @@
 'use server';
 
+import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import {
   bookingSchema,
@@ -122,6 +123,15 @@ export async function register(_prev: ActionResult, formData: FormData): Promise
   // Sign the new user in to establish a session (role comes from their profile).
   await supabase.auth.signInWithPassword({ email, password });
   return { status: 'success', message: 'Account created and signed in.' };
+}
+
+/** Sign the current user out (clears the Supabase session) and return home. */
+export async function signOut(): Promise<void> {
+  if (isSupabaseConfigured()) {
+    const supabase = await createSupabaseServerClient();
+    await supabase?.auth.signOut();
+  }
+  redirect('/');
 }
 
 export async function submitBooking(

@@ -20,7 +20,7 @@ function SubmitButton({ label }: { label: string }) {
   );
 }
 
-export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
+export function AuthForm({ mode, authReal = false }: { mode: 'login' | 'register'; authReal?: boolean }) {
   const action = mode === 'login' ? signIn : register;
   const [state, formAction] = useActionState(action, idleAction);
   const fieldErrors = state.status === 'error' ? state.fieldErrors : undefined;
@@ -70,9 +70,11 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
       <div className="mt-2">
         <SubmitButton label={mode === 'login' ? 'Log in' : 'Create account'} />
       </div>
-      <p className="rounded-lg bg-surface-muted px-4 py-3 text-center text-xs text-muted-foreground">
-        Prototype — no real account is created. The dashboard is a demonstration shell.
-      </p>
+      {!authReal && (
+        <p className="rounded-lg bg-surface-muted px-4 py-3 text-center text-xs text-muted-foreground">
+          Prototype — no real account is created. The dashboard is a demonstration shell.
+        </p>
+      )}
     </form>
   );
 }

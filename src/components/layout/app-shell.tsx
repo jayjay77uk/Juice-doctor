@@ -1,6 +1,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { site } from '@/content/site';
+import { signOut } from '@/services/actions';
 import { Logo } from './logo';
 import { SidebarNav, type NavVariant } from './sidebar-nav';
 
@@ -51,7 +52,11 @@ export function AppShell({
           <div className="flex items-center gap-3">
             <div className="text-right">
               <p className="text-sm font-medium text-foreground">{userName}</p>
-              <p className="text-xs text-muted-foreground">Prototype session</p>
+              <form action={signOut}>
+                <button type="submit" className="text-xs text-muted-foreground hover:text-primary">
+                  Sign out
+                </button>
+              </form>
             </div>
             <span className="grid size-10 place-items-center rounded-full bg-teal-100 font-serif text-primary">
               {userName.charAt(0)}
