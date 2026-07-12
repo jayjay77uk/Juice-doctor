@@ -46,6 +46,16 @@ export const runLogRepo = {
     }
   },
 
+  /** Recent run logs (optionally playground-only), newest first. */
+  async recent(limit = 25, opts?: { playgroundOnly?: boolean }): Promise<Record<string, unknown>[]> {
+    const sb = createAdminClient();
+    if (!sb) return [];
+    let query = sb.from('ai_run_logs').select('*').order('created_at', { ascending: false }).limit(limit);
+    if (opts?.playgroundOnly) query = query.eq('is_playground', true);
+    const { data } = await query;
+    return (data ?? []) as Record<string, unknown>[];
+  },
+
   /** Aggregate stats for analytics (last N days). */
   async stats(sinceDays = 30): Promise<{ total: number; errors: number; avgLatencyMs: number; tokensIn: number; tokensOut: number }> {
     const sb = createAdminClient();
