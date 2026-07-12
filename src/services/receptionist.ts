@@ -3,30 +3,25 @@ import 'server-only';
 import type { AiAgent } from '@/types/ai';
 import type { ReceptionistRecommendation, ConversationTurn, ConsultAnswer } from '@/types/crm';
 import { DEFAULT_RECEPTIONIST_SETTINGS, type ReceptionistSettings } from '@/config/receptionist';
+import { getAiProvider } from '@/lib/ai';
+import { parseReceptionistResult, type ReceptionistResult } from '@/lib/ai/receptionist-schema';
 import { receptionistSettings } from './receptionist-settings';
 import { agents } from './agents';
 import { specialists } from './specialists';
 import { ok, err, type Result } from './result';
 
 /**
- * The Receptionist AI — the free front door. Its FUNCTION (receive → qualify →
- * summarise → recommend a specialist → create/update the CRM lead → escalate to
- * a human) is fixed; its behaviour is admin configuration (see
- * `receptionist-settings.ts`).
+ * The Receptionist AI — the free front door and the entry point of the routing
+ * engine. Its FUNCTION (receive → qualify → recommend the single best specialist
+ * → escalate to a human when unsure) is fixed; its behaviour is admin
+ * configuration (see `receptionist-settings.ts`).
  *
- * `assess()` / `consult()` are REPLACEABLE MOCKS: deterministic stand-ins with no
- * approved business rules (no domain matching, no scoring). Production swaps the
- * bodies for live AI inference reading the same settings, with no change to the
- * CRM or the frontend.
+ * `assess()` performs REAL reasoning through the provider-neutral AI adapter and
+ * returns validated structured output. It can only recommend from the ACTIVE
+ * specialist records — the model cannot invent one. When the AI provider is not
+ * configured or the call fails, it NEVER fabricates a match: it escalates to the
+ * configured human target with an honest reason.
  */
-
-/** Deterministic pseudo-index from text (no Math.random — keeps output stable). */
-function hashPick(text: string, mod: number): number {
-  if (mod <= 0) return 0;
-  let h = 0;
-  for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) % 100003;
-  return h % mod;
-}
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -35,6 +30,132 @@ function clamp(n: number, lo: number, hi: number): number {
 async function settingsOrDefault(): Promise<ReceptionistSettings> {
   const result = await receptionistSettings.get();
   return result.ok ? result.data : DEFAULT_RECEPTIONIST_SETTINGS;
+}
+
+/** The specialists the receptionist may route to — active records only. */
+async function activeSpecialists(): Promise<AiAgent[]> {
+  const all = await specialists.all();
+  return (all.ok ? all.data : []).filter((s) => s.status === 'active');
+}
+
+function answerLines(answers: ConsultAnswer[]): string {
+  return answers
+    .filter((a) => a.answer.trim())
+    .map((a) => `• ${a.prompt} ${a.answer.trim()}`)
+    .join('\n');
+}
+
+/** System prompt: the receptionist's role + the exact roster it may recommend. */
+function buildSystemPrompt(settings: ReceptionistSettings, roster: AiAgent[]): string {
+  const specialistLines = roster.length
+    ? roster
+        .map(
+          (s) =>
+            `- slug: ${s.slug}\n  name: ${s.name}\n  purpose: ${s.purpose || s.description}\n  handles: ${
+              s.responseBoundaries || 'questions within its area of expertise'
+            }`,
+        )
+        .join('\n')
+    : '(no specialists are currently available)';
+
+  return [
+    'You are the AI Receptionist — the free front door for this business.',
+    'Your job: understand what the visitor needs from the conversation, then recommend the SINGLE best specialist AI for them, or escalate to a human when you are not confident.',
+    `Tone: ${settings.tone}.`,
+    '',
+    'The ONLY specialists you may recommend (use their exact slug):',
+    specialistLines,
+    '',
+    'Rules:',
+    '- Recommend ONLY from the slugs listed above. Never invent a specialist, a slug, or a capability.',
+    '- Base your assessment strictly on what the visitor actually said. Do not assume facts they did not provide.',
+    '- If no specialist is a good fit, or you are not confident, set escalationRequired to true and primaryRecommendation to null.',
+    '- "confidence" is your genuine confidence (0..1) that the primary recommendation is correct.',
+    '- You route; you do not advise. Do not give medical, legal or financial advice.',
+    '- Be concise, warm and professional.',
+    '',
+    'Return a JSON object with exactly these fields:',
+    "- summary: a short plain-English summary of the visitor's need (2-3 sentences).",
+    '- identifiedNeeds: array of the needs you identified.',
+    '- relevantFacts: array of concrete facts the visitor stated.',
+    '- unansweredQuestions: array of questions you would still want answered.',
+    '- recommendedSpecialistIds: array of specialist slugs you recommend (may be empty).',
+    '- primaryRecommendation: the single best specialist slug, or null.',
+    '- alternativeRecommendations: array of other candidate slugs.',
+    '- confidence: number between 0 and 1.',
+    '- escalationRequired: boolean.',
+    '- escalationReason: string or null.',
+    '- suggestedNextAction: one short sentence telling the visitor what happens next.',
+  ].join('\n');
+}
+
+/** The consultation transcript given to the model as the user turn. */
+function buildTranscript(conversation: ConversationTurn[], answers: ConsultAnswer[]): string {
+  const convo = conversation.length
+    ? `Conversation so far:\n${conversation
+        .map((t) => `${t.role === 'visitor' ? 'Visitor' : 'Receptionist'}: ${t.text}`)
+        .join('\n')}`
+    : '';
+  const qa = answers.filter((a) => a.answer.trim()).length
+    ? `Structured answers:\n${answers
+        .filter((a) => a.answer.trim())
+        .map((a) => `Q: ${a.prompt}\nA: ${a.answer.trim()}`)
+        .join('\n\n')}`
+    : '';
+  return [convo, qa, 'Assess this visitor and return the JSON object.'].filter(Boolean).join('\n\n');
+}
+
+/** Map validated model output onto the CRM recommendation, honouring the roster. */
+function toRecommendation(
+  result: ReceptionistResult,
+  roster: AiAgent[],
+  settings: ReceptionistSettings,
+): ReceptionistRecommendation {
+  const bySlug = new Map(roster.map((s) => [s.slug, s]));
+  const primarySlug =
+    result.primaryRecommendation && bySlug.has(result.primaryRecommendation)
+      ? result.primaryRecommendation
+      : null;
+  const primary = primarySlug ? bySlug.get(primarySlug) : undefined;
+
+  const alternatives = result.alternativeRecommendations
+    .filter((slug) => slug !== primarySlug)
+    .map((slug) => bySlug.get(slug))
+    .filter((s): s is AiAgent => Boolean(s))
+    .slice(0, 2)
+    .map((s) => ({ slug: s.slug, name: s.name }));
+
+  const confidence = clamp(result.confidence, 0, 1);
+  const escalate = result.escalationRequired || !primary || confidence < settings.confidenceThreshold;
+
+  const reasoning = escalate
+    ? result.escalationReason?.trim() ||
+      `I could not confidently decide on the best match, so I have passed this to ${settings.escalationTarget.name} to review.`
+    : result.suggestedNextAction?.trim() ||
+      `Based on what you told me, ${primary?.name ?? 'the recommended specialist'} looks like the best fit.`;
+
+  return {
+    specialistSlug: primary?.slug ?? '',
+    specialistName: primary?.name ?? 'a specialist',
+    confidence,
+    reasoning,
+    escalate,
+    alternativeSlug: alternatives[0]?.slug ?? null,
+    alternatives,
+  };
+}
+
+/** Honest fallback when the AI is unavailable or errors — escalate, never fabricate. */
+function unavailableRecommendation(settings: ReceptionistSettings): ReceptionistRecommendation {
+  return {
+    specialistSlug: '',
+    specialistName: 'a specialist',
+    confidence: 0,
+    reasoning: `The AI receptionist is temporarily unavailable, so I have passed you to ${settings.escalationTarget.name} to help you directly.`,
+    escalate: true,
+    alternativeSlug: null,
+    alternatives: [],
+  };
 }
 
 export const receptionist = {
@@ -51,74 +172,63 @@ export const receptionist = {
   },
 
   /**
-   * Produce a recommendation from the consultation answers. MOCK: deterministic
-   * routing to one of the configured specialists with a placeholder confidence;
-   * escalates below the configurable threshold. No approved rules are encoded.
-   */
-  async consult(answers: ConsultAnswer[]): Promise<Result<ReceptionistRecommendation>> {
-    const settings = await settingsOrDefault();
-    const all = await specialists.all();
-    const list = all.ok ? all.data : [];
-
-    const combined = answers.map((a) => a.answer).join(' ').trim();
-    const answered = answers.filter((a) => a.answer.trim().length > 0).length;
-
-    const chosen = list.length > 0 ? list[hashPick(combined || 'x', list.length)] : undefined;
-
-    // Placeholder confidence — a stand-in only, not an approved rule.
-    let confidence = answered >= settings.questions.length ? 0.72 : 0.5;
-    if (combined.length < 8) confidence = 0.4;
-    confidence = clamp(confidence, 0.2, 0.9);
-
-    const escalate = !chosen || confidence < settings.confidenceThreshold;
-    const alternatives = list
-      .filter((s) => s.slug !== chosen?.slug)
-      .slice(0, 2)
-      .map((s) => ({ slug: s.slug, name: s.name }));
-
-    return ok({
-      specialistSlug: chosen?.slug ?? '',
-      specialistName: chosen?.name ?? 'a specialist',
-      confidence,
-      reasoning: escalate
-        ? `I could not confidently decide on the best match, so I have passed this to ${settings.escalationTarget.name} for review. (Prototype: replaceable mock.)`
-        : `Based on what you told me, ${chosen?.name} looks like the best fit. (Prototype: replaceable mock — routing is admin-configurable.)`,
-      escalate,
-      alternativeSlug: alternatives[0]?.slug ?? null,
-      alternatives,
-    });
-  },
-
-  /**
-   * Turn the conversation + answers into a structured summary + recommendation.
-   * The summary is plain-English; the assessment keys use the question prompts so
-   * the CRM reads naturally. MOCK — production replaces this with live inference.
+   * Turn the conversation + answers into a structured summary + recommendation
+   * via real AI reasoning. Recommends only from the active specialist roster;
+   * escalates (honestly) when the AI is unavailable, errors, or is not confident.
    */
   async assess(input: {
     conversation: ConversationTurn[];
     answers: ConsultAnswer[];
   }): Promise<Result<{ summary: string; assessment: Record<string, string>; recommendation: ReceptionistRecommendation }>> {
-    const recResult = await this.consult(input.answers);
-    if (!recResult.ok) return recResult;
-    const rec = recResult.data;
+    const settings = await settingsOrDefault();
+    const roster = await activeSpecialists();
 
     const assessment: Record<string, string> = {};
     for (const a of input.answers) {
       if (a.answer.trim()) assessment[a.prompt] = a.answer.trim();
     }
 
-    const lines = input.answers
-      .filter((a) => a.answer.trim())
-      .map((a) => `• ${a.prompt} ${a.answer.trim()}`);
-    const outcome = rec.escalate
-      ? `The receptionist was not confident enough to recommend an AI, so this has been marked for human review.`
-      : `The receptionist suggested ${rec.specialistName} (confidence ${Math.round(rec.confidence * 100)}%).`;
-    const summary = `${lines.join('\n')}\n\n${outcome}`.trim();
+    const provider = getAiProvider();
+    if (!provider) {
+      // No AI configured — escalate honestly rather than fabricate a match.
+      const rec = unavailableRecommendation(settings);
+      const summary = `${answerLines(input.answers)}\n\nOutcome: the AI receptionist is not available, so this was passed to ${settings.escalationTarget.name}.`.trim();
+      return ok({ summary, assessment, recommendation: rec });
+    }
 
-    return ok({ summary, assessment, recommendation: rec });
+    try {
+      const result = await provider.structured(
+        {
+          system: buildSystemPrompt(settings, roster),
+          messages: [{ role: 'user', content: buildTranscript(input.conversation, input.answers) }],
+          temperature: 0.2,
+          maxTokens: 1024,
+        },
+        parseReceptionistResult,
+      );
+
+      const rec = toRecommendation(result, roster, settings);
+      const outcome = rec.escalate
+        ? `Outcome: passed to ${settings.escalationTarget.name} for review (confidence ${Math.round(rec.confidence * 100)}%).`
+        : `Outcome: recommended ${rec.specialistName} (confidence ${Math.round(rec.confidence * 100)}%).`;
+      const summary = `${result.summary.trim()}\n\n${outcome}`.trim();
+      return ok({ summary, assessment, recommendation: rec });
+    } catch {
+      // Provider error — escalate honestly, never fabricate an answer.
+      const rec = unavailableRecommendation(settings);
+      const summary = `${answerLines(input.answers)}\n\nOutcome: the AI receptionist could not complete the assessment, so this was passed to ${settings.escalationTarget.name}.`.trim();
+      return ok({ summary, assessment, recommendation: rec });
+    }
   },
 
-  /** Business stats about the receptionist's performance (mock). */
+  /** Produce a recommendation from the consultation answers (delegates to assess). */
+  async consult(answers: ConsultAnswer[]): Promise<Result<ReceptionistRecommendation>> {
+    const result = await this.assess({ conversation: [], answers });
+    if (!result.ok) return result;
+    return ok(result.data.recommendation);
+  },
+
+  /** Business stats about the receptionist's performance. */
   async stats(): Promise<Result<{ consultations30d: number; recommendationRate: number; escalationRate: number; avgConfidence: number }>> {
     return ok({ consultations30d: 0, recommendationRate: 0, escalationRate: 0, avgConfidence: 0 });
   },
