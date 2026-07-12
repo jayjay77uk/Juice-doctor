@@ -114,18 +114,33 @@ export function KnowledgeUploadForm({
           <textarea
             id="description"
             name="description"
-            rows={3}
+            rows={2}
             className={inputClass}
             placeholder="What does this document cover?"
           />
+        </div>
+
+        <div className="flex flex-col gap-1.5 sm:col-span-2">
+          <label htmlFor="content" className="text-sm font-medium text-foreground">
+            Content to index
+          </label>
+          <textarea
+            id="content"
+            name="content"
+            rows={6}
+            className={inputClass}
+            placeholder="Paste the text the AI should learn from. It is chunked and indexed for retrieval so the assigned specialist can ground its answers in it."
+          />
+          <span className="text-xs text-muted-foreground">
+            Paste text now to index it immediately. File parsing (PDF/DOCX) is added later.
+          </span>
         </div>
       </div>
 
       <div className="flex items-center gap-4">
         <Submit />
         <p className="text-xs text-muted-foreground">
-          Prototype — no file is stored; the document enters the indexing pipeline as
-          “uploaded”.
+          Text you paste is chunked and indexed for retrieval and assigned to the selected AI.
         </p>
       </div>
     </form>

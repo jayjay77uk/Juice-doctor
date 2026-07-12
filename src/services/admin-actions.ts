@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { agents, type AgentPatch } from './agents';
 import { promptService } from './prompts';
 import { knowledge } from './knowledge';
+import { knowledgeRepo } from './repositories/knowledge-repo';
 import { featureFlags } from './feature-flags';
 import { playground } from './playground';
 import { assertRole } from '@/lib/auth/authorize';
@@ -228,6 +229,7 @@ const uploadSchema = z.object({
   assignedSpecialistSlug: z.string().min(1, 'Assign this to a specialist.'),
   categoryId: z.string().optional().or(z.literal('')),
   description: z.string().optional().or(z.literal('')),
+  content: z.string().optional().or(z.literal('')),
 });
 
 export async function uploadDocumentAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
@@ -236,6 +238,26 @@ export async function uploadDocumentAction(_prev: ActionResult, formData: FormDa
   if (!parsed.success) {
     return { status: 'error', message: 'Please check the fields.', fieldErrors: parsed.error.flatten().fieldErrors };
   }
+
+  // If text content is provided, index it for real (chunk + FTS) against the
+  // assigned specialist so it can immediately ground the specialist's answers.
+  const content = parsed.data.content?.trim();
+  if (content) {
+    const agent = await agents.bySlug(parsed.data.assignedSpecialistSlug);
+    if (agent.ok) {
+      const ingested = await knowledgeRepo.ingestText({
+        agentId: agent.data.id,
+        title: parsed.data.title,
+        text: content,
+        sourceType: parsed.data.sourceType === 'url' ? 'url' : 'manual',
+      });
+      if (!ingested.ok) return { status: 'error', message: ingested.error.message };
+      revalidatePath('/admin/knowledge');
+      revalidatePath(`/admin/specialists/${parsed.data.assignedSpecialistSlug}`);
+      return { status: 'success', message: `Indexed “${parsed.data.title}” into ${ingested.data.chunks} searchable chunk(s), assigned to ${agent.data.name}.` };
+    }
+  }
+
   const result = await knowledge.documents.create({
     title: parsed.data.title,
     sourceType: parsed.data.sourceType,
