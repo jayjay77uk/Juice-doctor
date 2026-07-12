@@ -4,6 +4,9 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getAiProvider } from '@/lib/ai';
 import { parseReceptionistResult } from '@/lib/ai/receptionist-schema';
 import { receptionist } from '@/services/receptionist';
+import { agents } from '@/services/agents';
+import { knowledgeRepo } from '@/services/repositories/knowledge-repo';
+import { specialistReply } from '@/services/specialist-reply';
 
 /**
  * Public health / readiness endpoint — the deployment-verification instrument.
@@ -90,11 +93,40 @@ export async function GET(request: NextRequest) {
       : { error: r.error.message };
   }
 
+  // Opt-in grounded-chat probe (?specialist=1): ensures the Nutrition Coach has
+  // knowledge (ingesting a sample if empty), then runs a real grounded reply.
+  let specialistProbe: Record<string, unknown> | undefined;
+  if (request.nextUrl.searchParams.get('specialist') === '1') {
+    const a = await agents.bySlug('specialist-ai-1');
+    if (!a.ok) {
+      specialistProbe = { error: 'specialist not found' };
+    } else {
+      const agent = a.data;
+      const docs = await knowledgeRepo.documentsForAgent(agent.id);
+      if (!docs.length) {
+        await knowledgeRepo.ingestText({
+          agentId: agent.id,
+          title: 'Nutrition basics',
+          text: 'A balanced weekly meal plan for healthy weight loss includes lean protein, plenty of vegetables, whole grains, and around 1.5 to 2 litres of water per day. Aim for a modest calorie deficit of about 500 kcal per day to lose roughly 0.5 kg per week. Batch-cooking at the weekend makes it easier to stay consistent. Limit ultra-processed snacks and sugary drinks.',
+        });
+      }
+      const reply = await specialistReply(agent, [], 'How much water should I drink each day and how fast can I safely lose weight?');
+      specialistProbe = {
+        specialist: agent.name,
+        grounded: reply.grounded,
+        citations: reply.citations,
+        available: reply.available,
+        reply: reply.text.slice(0, 320),
+      };
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     commit,
     vercelEnv,
     ...(receptionistProbe ? { receptionist: receptionistProbe } : {}),
+    ...(specialistProbe ? { specialist: specialistProbe } : {}),
     supabase: {
       configured: isSupabaseConfigured(),
       adminConfigured: isSupabaseAdminConfigured(),

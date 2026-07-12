@@ -1,8 +1,10 @@
 import 'server-only';
 
 import type { Conversation, Message, MessageFeedback, FeedbackRating } from '@/types/conversation';
+import type { AiAgent } from '@/types/ai';
+import type { ChatMessage } from '@/lib/ai';
 import { agents } from './agents';
-import { knowledge } from './knowledge';
+import { specialistReply } from './specialist-reply';
 import { ok, err, type Result } from './result';
 
 /**
@@ -46,18 +48,13 @@ function findConversation(id: string): Conversation | undefined {
   return conversations.find((c) => c.id === id);
 }
 
-async function mockReply(agentId: string | null, userText: string): Promise<string> {
-  if (!agentId) return 'Thanks for your message. (Prototype: no specialist is assigned to this conversation.)';
-  const agentResult = await agents.byId(agentId);
-  if (!agentResult.ok) return 'Thanks for your message. (Prototype: no live AI is connected.)';
-  const agent = agentResult.data;
-  const docsResult = await knowledge.documents.availableForSpecialist(agent.slug);
-  const docs = docsResult.ok ? docsResult.data : [];
-  const cite = docs[0]?.title;
-  const grounding = cite
-    ? ` I would draw on “${cite}” from my knowledge base to answer.`
-    : ' No documents are indexed in my knowledge base yet, so I would ask a member of the team to help.';
-  return `Thanks — here is a placeholder response from ${agent.name}.${grounding} (Prototype: no live AI is connected.)`;
+/** Resolve a conversation's agent by real DB id, or by slug for legacy `agent_<slug>` ids. */
+async function resolveAgent(agentId: string | null): Promise<AiAgent | null> {
+  if (!agentId) return null;
+  const byId = await agents.byId(agentId);
+  if (byId.ok) return byId.data;
+  const bySlug = await agents.bySlug(agentId.replace(/^agent_/, ''));
+  return bySlug.ok ? bySlug.data : null;
 }
 
 export const conversations_service = {
@@ -128,8 +125,23 @@ export const conversations_service = {
       if (!list.includes(note)) list.push(note);
     }
 
-    const replyText = await mockReply(conversation.agentId, content);
-    messages.push({ id: `msg_new_${++mCounter}`, conversationId, role: 'assistant', content: replyText, tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: nowIso() });
+    // Real specialist reply: retrieve assigned knowledge + reason over it.
+    const agent = await resolveAgent(conversation.agentId);
+    let replyText: string;
+    let modelKey: string | null = null;
+    if (!agent) {
+      replyText = 'Thanks for your message. A member of the team will follow up with you.';
+    } else {
+      const history: ChatMessage[] = messages
+        .filter((m) => m.conversationId === conversationId && (m.role === 'user' || m.role === 'assistant'))
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        .slice(0, -1) // exclude the user message just pushed (passed separately)
+        .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+      const reply = await specialistReply(agent, history, content.trim());
+      replyText = reply.citations.length ? `${reply.text}\n\nSources: ${reply.citations.join(', ')}` : reply.text;
+      modelKey = agent.defaultModelId;
+    }
+    messages.push({ id: `msg_new_${++mCounter}`, conversationId, role: 'assistant', content: replyText, tokenCount: null, toolCalls: null, toolCallId: null, modelKey, createdAt: nowIso() });
 
     conversation.lastMessageAt = nowIso();
     return conversations_service.messages(conversationId);
