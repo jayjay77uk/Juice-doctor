@@ -2,6 +2,8 @@ import 'server-only';
 
 import type { AiAgent, AiAgentDefinition, AiAgentVersion, AgentStatus } from '@/types/ai';
 import { DEFAULT_AI_AGENTS } from '@/config/ai-agents';
+import { isSupabaseAdminConfigured } from '@/lib/env';
+import { agentsRepo } from './repositories/agents-repo';
 import { ok, err, type Result } from './result';
 
 /**
@@ -77,7 +79,7 @@ export type AgentPatch = Partial<
   >
 >;
 
-export const agents = {
+const mockAgents = {
   async list(): Promise<Result<AiAgent[]>> {
     return ok([...store].sort((a, b) => a.name.localeCompare(b.name)));
   },
@@ -151,7 +153,7 @@ export const agents = {
   },
 
   async setStatus(id: string, status: AgentStatus): Promise<Result<AiAgent>> {
-    return agents.update(id, { status });
+    return mockAgents.update(id, { status });
   },
 
   async publish(id: string): Promise<Result<AiAgent>> {
@@ -183,7 +185,7 @@ export const agents = {
   },
 
   async archive(id: string): Promise<Result<AiAgent>> {
-    return agents.setStatus(id, 'archived');
+    return mockAgents.setStatus(id, 'archived');
   },
 
   async versions(id: string): Promise<Result<AiAgentVersion[]>> {
@@ -192,5 +194,55 @@ export const agents = {
 
   async definitions(): Promise<Result<AiAgentDefinition[]>> {
     return ok(DEFAULT_AI_AGENTS);
+  },
+};
+
+const dbEnabled = (): boolean => isSupabaseAdminConfigured();
+
+/**
+ * Public agent API. Delegates to the real `ai_agents` repository on the deployed
+ * platform (Supabase configured) and to the in-process mock store for local dev.
+ * The admin UI and every caller depend only on this shape — unchanged either way.
+ */
+export const agents = {
+  list(): Promise<Result<AiAgent[]>> {
+    return dbEnabled() ? agentsRepo.list() : mockAgents.list();
+  },
+  byId(id: string): Promise<Result<AiAgent>> {
+    return dbEnabled() ? agentsRepo.byId(id) : mockAgents.byId(id);
+  },
+  bySlug(slug: string): Promise<Result<AiAgent>> {
+    return dbEnabled() ? agentsRepo.bySlug(slug) : mockAgents.bySlug(slug);
+  },
+  create(input: {
+    name: string;
+    slug: string;
+    description: string;
+    role: string;
+    ownerId: string;
+    organisationId: string;
+  }): Promise<Result<AiAgent>> {
+    return dbEnabled() ? agentsRepo.create(input) : mockAgents.create(input);
+  },
+  update(id: string, patch: AgentPatch): Promise<Result<AiAgent>> {
+    return dbEnabled() ? agentsRepo.update(id, patch) : mockAgents.update(id, patch);
+  },
+  setStatus(id: string, status: AgentStatus): Promise<Result<AiAgent>> {
+    return dbEnabled() ? agentsRepo.setStatus(id, status) : mockAgents.setStatus(id, status);
+  },
+  publish(id: string): Promise<Result<AiAgent>> {
+    return dbEnabled() ? agentsRepo.publish(id) : mockAgents.publish(id);
+  },
+  duplicate(id: string): Promise<Result<AiAgent>> {
+    return dbEnabled() ? agentsRepo.duplicate(id) : mockAgents.duplicate(id);
+  },
+  archive(id: string): Promise<Result<AiAgent>> {
+    return dbEnabled() ? agentsRepo.archive(id) : mockAgents.archive(id);
+  },
+  versions(id: string): Promise<Result<AiAgentVersion[]>> {
+    return dbEnabled() ? agentsRepo.versions(id) : mockAgents.versions(id);
+  },
+  definitions(): Promise<Result<AiAgentDefinition[]>> {
+    return mockAgents.definitions();
   },
 };
