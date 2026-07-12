@@ -6,6 +6,7 @@ import { parseReceptionistResult } from '@/lib/ai/receptionist-schema';
 import { receptionist } from '@/services/receptionist';
 import { agents } from '@/services/agents';
 import { knowledgeRepo } from '@/services/repositories/knowledge-repo';
+import { memoryRepo } from '@/services/repositories/memory-repo';
 import { specialistReply } from '@/services/specialist-reply';
 
 /**
@@ -121,12 +122,40 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Opt-in memory probe (?memory=1): remember a fact, recall it, and confirm a
+  // reply respects it.
+  let memoryProbe: Record<string, unknown> | undefined;
+  if (request.nextUrl.searchParams.get('memory') === '1') {
+    const sb = createAdminClient();
+    const prof = sb ? await sb.from('profiles').select('id').limit(1).maybeSingle() : null;
+    const userId = prof?.data?.id as string | undefined;
+    const a = await agents.bySlug('specialist-ai-1');
+    if (!userId || !a.ok) {
+      memoryProbe = { error: 'setup failed' };
+    } else {
+      await memoryRepo.remember({
+        scope: 'user',
+        kind: 'fact',
+        key: 'diet',
+        content: 'The customer is vegetarian and allergic to nuts.',
+        userId,
+        agentId: a.data.id,
+        importance: 5,
+        source: 'probe',
+      });
+      const recalled = await memoryRepo.recall({ userId, limit: 5 });
+      const reply = await specialistReply(a.data, [], 'What could I have for a quick lunch today?', { userId });
+      memoryProbe = { recalled: recalled.map((m) => m.content), reply: reply.text.slice(0, 320) };
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     commit,
     vercelEnv,
     ...(receptionistProbe ? { receptionist: receptionistProbe } : {}),
     ...(specialistProbe ? { specialist: specialistProbe } : {}),
+    ...(memoryProbe ? { memory: memoryProbe } : {}),
     supabase: {
       configured: isSupabaseConfigured(),
       adminConfigured: isSupabaseAdminConfigured(),

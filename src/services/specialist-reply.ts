@@ -5,6 +5,7 @@ import type { ChatMessage } from '@/lib/ai';
 import { getAiProvider } from '@/lib/ai';
 import { knowledgeRepo } from './repositories/knowledge-repo';
 import { runLogRepo } from './repositories/run-log-repo';
+import { memoryRepo, extractMemory, type MemoryItem } from './repositories/memory-repo';
 
 /**
  * The real specialist-AI turn: retrieve the specialist's assigned knowledge
@@ -21,11 +22,15 @@ export interface SpecialistReply {
   available: boolean;
 }
 
-function buildSystemPrompt(agent: AiAgent, knowledgeBlock: string): string {
+function buildSystemPrompt(agent: AiAgent, knowledgeBlock: string, memory: MemoryItem[]): string {
+  const memoryBlock = memory.length
+    ? `What you remember about this customer (respect it):\n${memory.map((m) => `- (${m.kind}) ${m.content}`).join('\n')}`
+    : '';
   return [
     agent.systemPrompt?.trim() || `You are ${agent.name}, a specialist assistant.`,
     agent.personality?.trim() ? `Personality: ${agent.personality.trim()}` : '',
     agent.responseBoundaries?.trim() ? `Boundaries: ${agent.responseBoundaries.trim()}` : '',
+    memoryBlock,
     'Answer the customer helpfully, warmly and concisely.',
     knowledgeBlock
       ? `Use the following knowledge to answer factual questions. If the answer is not contained in it, say you do not have that information and offer to connect them with the team. Cite sources inline as [n].\n\nKNOWLEDGE:\n${knowledgeBlock}`
@@ -40,6 +45,7 @@ export async function specialistReply(
   agent: AiAgent,
   history: ChatMessage[],
   userText: string,
+  ctx?: { userId?: string | null; conversationId?: string | null },
 ): Promise<SpecialistReply> {
   const provider = getAiProvider();
   if (!provider) {
@@ -52,7 +58,10 @@ export async function specialistReply(
   }
 
   const started = Date.now();
-  const chunks = await knowledgeRepo.retrieve(agent.id, userText, 4);
+  const [chunks, memory] = await Promise.all([
+    knowledgeRepo.retrieve(agent.id, userText, 4),
+    ctx ? memoryRepo.recall({ userId: ctx.userId ?? null, conversationId: ctx.conversationId ?? null, limit: 6 }) : Promise.resolve([] as MemoryItem[]),
+  ]);
   const knowledgeBlock = chunks.length
     ? chunks.map((c, i) => `[${i + 1}] From "${c.documentTitle}":\n${c.content}`).join('\n\n')
     : '';
@@ -60,7 +69,7 @@ export async function specialistReply(
   try {
     const messages: ChatMessage[] = [...history.slice(-8), { role: 'user', content: userText }];
     const res = await provider.chat({
-      system: buildSystemPrompt(agent, knowledgeBlock),
+      system: buildSystemPrompt(agent, knowledgeBlock, memory),
       messages,
       maxTokens: 700,
     });
@@ -75,6 +84,22 @@ export async function specialistReply(
       latencyMs: Date.now() - started,
       status: 'ok',
     });
+    // Extract + persist a durable preference/fact the customer stated.
+    if (ctx?.userId) {
+      const mem = extractMemory(userText);
+      if (mem) {
+        await memoryRepo.remember({
+          scope: 'user',
+          kind: mem.kind,
+          key: `user:${mem.content.slice(0, 40)}`,
+          content: mem.content,
+          userId: ctx.userId,
+          agentId: agent.id,
+          importance: 3,
+          source: 'chat',
+        });
+      }
+    }
     return { text: res.text.trim(), citations, grounded: chunks.length > 0, available: true };
   } catch {
     await runLogRepo.log({

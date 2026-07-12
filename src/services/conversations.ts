@@ -137,7 +137,7 @@ export const conversations_service = {
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
         .slice(0, -1) // exclude the user message just pushed (passed separately)
         .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
-      const reply = await specialistReply(agent, history, content.trim());
+      const reply = await specialistReply(agent, history, content.trim(), { userId: conversation.userId, conversationId });
       replyText = reply.citations.length ? `${reply.text}\n\nSources: ${reply.citations.join(', ')}` : reply.text;
       modelKey = agent.defaultModelId;
     }
