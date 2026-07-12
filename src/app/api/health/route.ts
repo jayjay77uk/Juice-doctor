@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { isSupabaseConfigured, isSupabaseAdminConfigured, isAiConfigured, env } from '@/lib/env';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAiProvider } from '@/lib/ai';
+import { parseReceptionistResult } from '@/lib/ai/receptionist-schema';
 
 /**
  * Public health / readiness endpoint — the deployment-verification instrument.
@@ -28,16 +29,31 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Opt-in live AI probe (?ai=1): exercises a minimal real completion so a
-  // provider/model misconfiguration is diagnosable. Never returns the key.
-  let aiProbe: { ok: boolean; model: string; error: string | null } | undefined;
-  if (request.nextUrl.searchParams.get('ai') === '1') {
+  // Opt-in live AI probe (?ai=1 chat, ?ai=structured structured-output).
+  // Diagnoses provider/model/schema issues. Never returns the key.
+  let aiProbe: { ok: boolean; model: string; error: string | null; raw?: string } | undefined;
+  const aiMode = request.nextUrl.searchParams.get('ai');
+  if (aiMode === '1' || aiMode === 'structured') {
     aiProbe = { ok: false, model: env.aiModel, error: 'provider not configured' };
     const provider = getAiProvider();
     if (provider) {
       try {
-        const res = await provider.chat({ messages: [{ role: 'user', content: 'ping' }], maxTokens: 5 });
-        aiProbe = { ok: true, model: res.model, error: null };
+        if (aiMode === 'structured') {
+          const sys = [
+            'Return a JSON object with exactly these fields:',
+            'summary (string), identifiedNeeds (string[]), relevantFacts (string[]), unansweredQuestions (string[]),',
+            'recommendedSpecialistIds (string[]), primaryRecommendation (string or null), alternativeRecommendations (string[]),',
+            'confidence (number 0..1), escalationRequired (boolean), escalationReason (string or null), suggestedNextAction (string).',
+          ].join(' ');
+          const value = await provider.structured(
+            { system: sys, messages: [{ role: 'user', content: 'The visitor wants nutrition help to lose weight.' }], maxTokens: 700, temperature: 0.2 },
+            parseReceptionistResult,
+          );
+          aiProbe = { ok: true, model: env.aiModel, error: null, raw: JSON.stringify(value).slice(0, 400) };
+        } else {
+          const res = await provider.chat({ messages: [{ role: 'user', content: 'ping' }], maxTokens: 5 });
+          aiProbe = { ok: true, model: res.model, error: null };
+        }
       } catch (e) {
         const cause = e instanceof Error && 'cause' in e ? (e as { cause?: unknown }).cause : undefined;
         const causeMsg = cause instanceof Error ? cause.message : typeof cause === 'string' ? cause : '';
