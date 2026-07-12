@@ -3,6 +3,7 @@ import { isSupabaseConfigured, isSupabaseAdminConfigured, isAiConfigured, env } 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAiProvider } from '@/lib/ai';
 import { parseReceptionistResult } from '@/lib/ai/receptionist-schema';
+import { receptionist } from '@/services/receptionist';
 
 /**
  * Public health / readiness endpoint — the deployment-verification instrument.
@@ -66,10 +67,34 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Opt-in end-to-end routing probe (?receptionist=1): runs the real assess()
+  // path (reads DB specialists + AI reasoning) with a canned nutrition query.
+  let receptionistProbe: Record<string, unknown> | undefined;
+  if (request.nextUrl.searchParams.get('receptionist') === '1') {
+    const r = await receptionist.assess({
+      conversation: [],
+      answers: [
+        { id: 'q1', prompt: 'What would you like help with today?', answer: 'I want help with my nutrition and a weekly meal plan to lose weight.' },
+        { id: 'q2', prompt: 'What outcome are you hoping for?', answer: 'I would like to lose about 8kg and eat more healthily.' },
+        { id: 'q3', prompt: 'How soon do you need help?', answer: 'As soon as possible.' },
+      ],
+    });
+    receptionistProbe = r.ok
+      ? {
+          escalate: r.data.recommendation.escalate,
+          specialist: r.data.recommendation.specialistName,
+          slug: r.data.recommendation.specialistSlug,
+          confidence: r.data.recommendation.confidence,
+          summary: r.data.summary.slice(0, 220),
+        }
+      : { error: r.error.message };
+  }
+
   return NextResponse.json({
     ok: true,
     commit,
     vercelEnv,
+    ...(receptionistProbe ? { receptionist: receptionistProbe } : {}),
     supabase: {
       configured: isSupabaseConfigured(),
       adminConfigured: isSupabaseAdminConfigured(),
