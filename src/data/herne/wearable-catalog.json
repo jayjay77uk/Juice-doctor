@@ -1,0 +1,107 @@
+[
+  {
+    "metric": "resting_heart_rate",
+    "unit_or_format": "bpm",
+    "specialist_access": "Optimus; Atlas; Serena; Makela",
+    "permitted_use": "Trend versus personal baseline, not diagnosis",
+    "limitations": "Device algorithm and measurement context vary"
+  },
+  {
+    "metric": "heart_rate_variability",
+    "unit_or_format": "ms",
+    "specialist_access": "Optimus; Atlas",
+    "permitted_use": "Recovery and autonomic trend context",
+    "limitations": "Highly sensitive to device, timing, illness, alcohol and sleep"
+  },
+  {
+    "metric": "sleep_duration",
+    "unit_or_format": "minutes",
+    "specialist_access": "All except Felix",
+    "permitted_use": "Rest quantity and trend",
+    "limitations": "Wearables estimate rather than directly measure sleep stages"
+  },
+  {
+    "metric": "sleep_regularity",
+    "unit_or_format": "minutes variance",
+    "specialist_access": "Optimus; Sage; Serena; Makela",
+    "permitted_use": "Consistency of sleep and wake timing",
+    "limitations": "Requires sufficient longitudinal data"
+  },
+  {
+    "metric": "steps",
+    "unit_or_format": "count",
+    "specialist_access": "Optimus; Sage; Atlas; Makela",
+    "permitted_use": "General movement trend",
+    "limitations": "Does not capture all activity or intensity"
+  },
+  {
+    "metric": "active_minutes",
+    "unit_or_format": "minutes",
+    "specialist_access": "Optimus; Atlas; Sage",
+    "permitted_use": "Activity dose context",
+    "limitations": "Definitions vary by device"
+  },
+  {
+    "metric": "training_load",
+    "unit_or_format": "device-specific normalised value",
+    "specialist_access": "Optimus; Atlas",
+    "permitted_use": "Workload trend and recovery context",
+    "limitations": "Not directly comparable across vendors"
+  },
+  {
+    "metric": "skin_temperature_deviation",
+    "unit_or_format": "degrees from baseline",
+    "specialist_access": "Optimus; Serena",
+    "permitted_use": "Trend context only",
+    "limitations": "Not core body temperature and not diagnostic"
+  },
+  {
+    "metric": "respiratory_rate",
+    "unit_or_format": "breaths/min",
+    "specialist_access": "Optimus",
+    "permitted_use": "Trend context",
+    "limitations": "Requires careful baseline comparison"
+  },
+  {
+    "metric": "oxygen_saturation",
+    "unit_or_format": "percent",
+    "specialist_access": "Optimus",
+    "permitted_use": "Limited trend context",
+    "limitations": "Consumer accuracy varies; concerning values require clinical confirmation"
+  },
+  {
+    "metric": "body_mass",
+    "unit_or_format": "kg",
+    "specialist_access": "Aqua; Atlas; Luca; Optimus",
+    "permitted_use": "Longitudinal context only",
+    "limitations": "Short-term change may reflect fluid, food or measurement variability"
+  },
+  {
+    "metric": "hydration_log",
+    "unit_or_format": "volume and timing",
+    "specialist_access": "Aqua; Sage; Makela",
+    "permitted_use": "Self-reported drinking pattern",
+    "limitations": "Self-report error and incomplete capture"
+  },
+  {
+    "metric": "menstrual_cycle_log",
+    "unit_or_format": "dates and symptoms",
+    "specialist_access": "Serena; Makela",
+    "permitted_use": "Cycle context and pattern recognition",
+    "limitations": "Not diagnostic; access requires explicit permission"
+  },
+  {
+    "metric": "nutrition_log",
+    "unit_or_format": "foods, timing, portions",
+    "specialist_access": "Luca; Sage; Felix",
+    "permitted_use": "Diet pattern and implementation",
+    "limitations": "Often incomplete and burdensome"
+  },
+  {
+    "metric": "bowel_log",
+    "unit_or_format": "frequency, form, symptoms",
+    "specialist_access": "Sage; Aqua; Makela",
+    "permitted_use": "Elimination pattern",
+    "limitations": "Sensitive data; use only with explicit permission"
+  }
+]

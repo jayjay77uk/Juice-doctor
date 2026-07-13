@@ -1,0 +1,107 @@
+[
+  {
+    "from_specialist": "Any",
+    "to_specialist": "Human clinical review",
+    "trigger": "Severe pain, chest pain, fainting, acute confusion, blood in stool, persistent vomiting, unexplained weight loss, suspected emergency",
+    "urgency": "Urgent or prompt depending on severity",
+    "handoff_instruction": "Stop routine coaching and clearly recommend appropriate professional assessment"
+  },
+  {
+    "from_specialist": "Makela",
+    "to_specialist": "Any specialist",
+    "trigger": "User need clearly falls within a specialist domain",
+    "urgency": "Routine",
+    "handoff_instruction": "Transfer context, goals and relevant history so the user does not repeat themselves"
+  },
+  {
+    "from_specialist": "Aqua",
+    "to_specialist": "Sage",
+    "trigger": "Persistent bloating, bowel-pattern complexity, or multi-pillar digestive symptoms",
+    "urgency": "Routine",
+    "handoff_instruction": "Share hydration pattern and relevant symptom timeline"
+  },
+  {
+    "from_specialist": "Aqua",
+    "to_specialist": "Human clinical review",
+    "trigger": "Marked persistent thirst, very low urine output, oedema, suspected fluid restriction, or concerning kidney/cardiac symptoms",
+    "urgency": "Prompt",
+    "handoff_instruction": "Do not offer aggressive fluid advice"
+  },
+  {
+    "from_specialist": "Sage",
+    "to_specialist": "Luca",
+    "trigger": "User needs recipes, meal sequencing or a practical shopping plan",
+    "urgency": "Routine",
+    "handoff_instruction": "Share dietary aims, tolerances and HERNE context"
+  },
+  {
+    "from_specialist": "Sage",
+    "to_specialist": "Felix",
+    "trigger": "Supplement question or nutrient-product decision",
+    "urgency": "Routine",
+    "handoff_instruction": "Share symptoms only as context, not as diagnosis"
+  },
+  {
+    "from_specialist": "Serena",
+    "to_specialist": "Felix",
+    "trigger": "Supplement use in menstrual, fertility, perimenopause or menopause context",
+    "urgency": "Routine or prompt",
+    "handoff_instruction": "Flag pregnancy, medicines and hormone-sensitive history"
+  },
+  {
+    "from_specialist": "Serena",
+    "to_specialist": "Human clinical review",
+    "trigger": "Abnormal bleeding, severe pelvic pain, pregnancy concerns, fertility red flags or suspected endocrine disorder",
+    "urgency": "Prompt",
+    "handoff_instruction": "Avoid diagnostic language"
+  },
+  {
+    "from_specialist": "Atlas",
+    "to_specialist": "Optimus",
+    "trigger": "Wearable-led performance, HRV, recovery or workload analysis",
+    "urgency": "Routine",
+    "handoff_instruction": "Share training goals and current programme"
+  },
+  {
+    "from_specialist": "Atlas",
+    "to_specialist": "Human clinical review",
+    "trigger": "Chest pain, syncope, unexplained marked performance decline or suspected hormonal/prostate condition",
+    "urgency": "Prompt",
+    "handoff_instruction": "Pause optimisation advice where appropriate"
+  },
+  {
+    "from_specialist": "Luca",
+    "to_specialist": "Sage",
+    "trigger": "Food change appears to worsen gut symptoms or requires symptom interpretation",
+    "urgency": "Routine",
+    "handoff_instruction": "Share meal plan and timing details"
+  },
+  {
+    "from_specialist": "Luca",
+    "to_specialist": "Felix",
+    "trigger": "User asks about supplementing a nutrient rather than food sources",
+    "urgency": "Routine",
+    "handoff_instruction": "Share dietary pattern and known restrictions"
+  },
+  {
+    "from_specialist": "Felix",
+    "to_specialist": "Human clinical review",
+    "trigger": "Medication interaction, pregnancy, kidney/liver disease, high-dose plan, or suspected deficiency needing testing",
+    "urgency": "Prompt",
+    "handoff_instruction": "Do not recommend until reviewed"
+  },
+  {
+    "from_specialist": "Optimus",
+    "to_specialist": "Relevant specialist",
+    "trigger": "Trend suggests a domain issue requiring contextual interpretation",
+    "urgency": "Routine",
+    "handoff_instruction": "Share trend summary, confidence and device limitations"
+  },
+  {
+    "from_specialist": "Optimus",
+    "to_specialist": "Human clinical review",
+    "trigger": "Persistent major deviation from baseline with concerning symptoms",
+    "urgency": "Prompt",
+    "handoff_instruction": "Explain that wearable data is not diagnostic"
+  }
+]
