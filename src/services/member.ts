@@ -84,8 +84,8 @@ export const member = {
   },
   async savedConversations(): Promise<Result<SavedConversation[]>> {
     return ok([
-      { id: 'conv_1', title: 'Getting started', agent: 'Assistant AI', updatedAt: '9 Jul', preview: 'We talked about getting set up on the platform…' },
-      { id: 'conv_2', title: 'General enquiry', agent: 'Assistant AI', updatedAt: '7 Jul', preview: 'A quick question about how the platform works…' },
+      { id: 'conv_1', title: 'Getting started', agent: 'Makela', updatedAt: '9 Jul', preview: 'We talked about getting set up on the platform…' },
+      { id: 'conv_2', title: 'General enquiry', agent: 'Serena', updatedAt: '7 Jul', preview: 'A quick question about how the platform works…' },
     ]);
   },
   async upcoming(): Promise<Result<UpcomingItem[]>> {
@@ -116,7 +116,7 @@ export const member = {
   /** Follow-up items for the member. */
   async myFollowUps(): Promise<Result<{ title: string; detail: string; when: string }[]>> {
     return ok([
-      { title: 'Continue with Specialist AI 1', detail: 'Pick up your last conversation.', when: 'Anytime' },
+      { title: 'Continue with Makela', detail: 'Pick up your last conversation.', when: 'Anytime' },
       { title: 'Complete your profile', detail: 'Add a few details so your specialists can help more.', when: 'This week' },
     ]);
   },

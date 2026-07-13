@@ -21,7 +21,7 @@
 
 The single most important decision in this framework is that **an AI agent is a row, not a class**. Everything an agent needs to run — which model it talks to, its system prompt and personality, the tools it may call, the knowledge it may read, its memory strategy, and the safety rules that fence it in — is stored as configuration, not compiled into the application.
 
-**Why this matters for the platform.** The platform is not a single chatbot; it is a system whose staff (non-engineers) will want to spin up a "Specialist AI 1", a "Specialist AI 2", an "Assistant AI", or a seasonal campaign agent on their own schedule. If each agent were code, every new agent — and every prompt tweak — would be an engineering ticket, a pull request, a deploy, and a release-approval cycle. In a governed product that is both slow and risky.
+**Why this matters for the platform.** The platform is not a single chatbot; it hosts the eight client-approved HERNE specialists, and its staff (non-engineers) may want to spin up a further specialist or a seasonal campaign agent on their own schedule. If each agent were code, every new agent — and every prompt tweak — would be an engineering ticket, a pull request, a deploy, and a release-approval cycle. In a governed product that is both slow and risky.
 
 By modelling agents as data we get three properties that a code-per-agent design cannot:
 
@@ -324,4 +324,4 @@ Reading the differences top-down tells the story of the framework:
 - **Intake & Triage Assistant** trades warmth for rigour (low temperature, methodical personality), collects what a practitioner needs, and routes red flags to human review — it gathers and routes, it does **not** conclude. Its narrower memory scope keeps intake focused and reduces cross-context leakage.
 - **Specialist Copilot** is a staff-only productivity tool (`private` visibility). It is precise, cites sources, and drafts consultation summaries — with no member memory and minimal guardrails, because its user is a specialist, not a member.
 
-Every one of these differences is a value in a row. Adding a fourth agent — a "Specialist AI 4", say — is the same operation the client will perform in the admin UI: pick a model, write a prompt and personality, choose tools and knowledge, set memory and safety, choose visibility, save. **No code. No deploy.** That is the framework.
+Every one of these differences is a value in a row. Adding a further specialist beyond the eight HERNE specialists is the same operation the client performs in the admin UI: pick a model, write a prompt and personality, choose tools and knowledge, set memory and safety, choose visibility, save. **No code. No deploy.** That is the framework.

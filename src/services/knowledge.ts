@@ -78,12 +78,12 @@ function doc(
 }
 
 const documents: KnowledgeDocument[] = [
-  doc({ id: 'doc_1', title: 'Overview', slug: 'document-one', sourceType: 'pdf', publishStatus: 'published', categoryId: 'cat_1', assignedSpecialistSlug: 'specialist-ai-1', description: 'A placeholder overview document for this specialist.', tags: ['overview'], visibility: 'organisation' }),
-  doc({ id: 'doc_2', title: 'Getting Started Guide', slug: 'document-two', sourceType: 'docx', publishStatus: 'published', categoryId: 'cat_3', assignedSpecialistSlug: 'specialist-ai-1', description: 'A concise introduction to the basics.', tags: ['guide', 'basics'] }),
-  doc({ id: 'doc_3', title: 'Reference Notes', slug: 'document-three', sourceType: 'manual', publishStatus: 'in_review', categoryId: 'cat_2', assignedSpecialistSlug: 'specialist-ai-2', description: 'Structured reference notes.', tags: ['reference'], indexState: 'indexed' }),
-  doc({ id: 'doc_4', title: 'Intro Recording', slug: 'document-four', sourceType: 'audio', publishStatus: 'approved', categoryId: 'cat_1', assignedSpecialistSlug: 'specialist-ai-3', tags: ['audio'], indexState: 'processing' }),
-  doc({ id: 'doc_5', title: 'Intake Questionnaire Reference', slug: 'document-five', sourceType: 'txt', publishStatus: 'draft', categoryId: 'cat_4', assignedSpecialistSlug: 'specialist-ai-4', description: 'Reference answers for the intake flow.', visibility: 'private', indexState: 'uploaded' }),
-  doc({ id: 'doc_6', title: 'Old FAQ', slug: 'document-six', sourceType: 'txt', publishStatus: 'archived', categoryId: 'cat_2', assignedSpecialistSlug: 'specialist-ai-2', tags: ['faq'], indexState: 'archived', active: false }),
+  doc({ id: 'doc_1', title: 'Overview', slug: 'document-one', sourceType: 'pdf', publishStatus: 'published', categoryId: 'cat_1', assignedSpecialistSlug: 'makela', description: 'A placeholder overview document for this specialist.', tags: ['overview'], visibility: 'organisation' }),
+  doc({ id: 'doc_2', title: 'Getting Started Guide', slug: 'document-two', sourceType: 'docx', publishStatus: 'published', categoryId: 'cat_3', assignedSpecialistSlug: 'makela', description: 'A concise introduction to the basics.', tags: ['guide', 'basics'] }),
+  doc({ id: 'doc_3', title: 'Reference Notes', slug: 'document-three', sourceType: 'manual', publishStatus: 'in_review', categoryId: 'cat_2', assignedSpecialistSlug: 'serena', description: 'Structured reference notes.', tags: ['reference'], indexState: 'indexed' }),
+  doc({ id: 'doc_4', title: 'Intro Recording', slug: 'document-four', sourceType: 'audio', publishStatus: 'approved', categoryId: 'cat_1', assignedSpecialistSlug: 'aqua', tags: ['audio'], indexState: 'processing' }),
+  doc({ id: 'doc_5', title: 'Intake Questionnaire Reference', slug: 'document-five', sourceType: 'txt', publishStatus: 'draft', categoryId: 'cat_4', assignedSpecialistSlug: 'sage', description: 'Reference answers for the intake flow.', visibility: 'private', indexState: 'uploaded' }),
+  doc({ id: 'doc_6', title: 'Old FAQ', slug: 'document-six', sourceType: 'txt', publishStatus: 'archived', categoryId: 'cat_2', assignedSpecialistSlug: 'serena', tags: ['faq'], indexState: 'archived', active: false }),
 ];
 
 const collections: KnowledgeCollection[] = [

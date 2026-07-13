@@ -23,7 +23,7 @@ const CASE = {
 const TIMELINE = [
   { stage: 'intake', title: 'Intake completed', at: '6 Jul, 09:12', actor: 'Customer A' },
   { stage: 'assessment', title: 'Assessment scored', at: '6 Jul, 09:40', actor: 'System' },
-  { stage: 'ai_review', title: 'AI review drafted', at: '6 Jul, 09:41', actor: 'Assistant AI' },
+  { stage: 'ai_review', title: 'AI review drafted', at: '6 Jul, 09:41', actor: 'Makela' },
   {
     stage: 'practitioner_review',
     title: 'Awaiting practitioner sign-off',

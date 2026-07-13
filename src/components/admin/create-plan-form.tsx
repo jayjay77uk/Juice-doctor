@@ -76,7 +76,7 @@ export function CreatePlanForm({
           name="specialistSlugs"
           rows={2}
           disabled={scope === 'all'}
-          placeholder="specialist-ai-1, specialist-ai-2"
+          placeholder="makela, serena"
           className={`${inputClass} disabled:opacity-55`}
         />
         <span className="text-xs text-muted-foreground">

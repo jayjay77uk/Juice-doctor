@@ -11,13 +11,15 @@ import type {
  *
  * This models an AI agent system that represents the client, NOT a generic
  * marketplace and NOT an AI builder:
- *  • ONE free Receptionist AI is the front door for every visitor.
- *  • FOUR Specialist AIs are subscription products. Their final names, codes,
- *    purposes, behaviour, pricing and knowledge are NOT YET SUPPLIED, so they
- *    are configurable PLACEHOLDERS here ("Specialist AI 1–4") in clear English.
- *    The admin edits every field; the multi-agent architecture is unchanged.
+ *  • ONE free Receptionist AI is the front door for every visitor (routing +
+ *    escalation infrastructure; it is not a user-facing specialist).
  *
- * No final product names, descriptions, prices, roles or rules are invented.
+ * The eight user-facing specialists are the client-approved HERNE team (Makela,
+ * Serena, Atlas, Aqua, Sage, Luca, Felix, Optimus). They are seeded from the
+ * client HERNE developer pack by `services/herne/seed.ts` (with their evidence,
+ * prompts and config) — NOT from this file. The generic multi-agent architecture
+ * is preserved: staff can add further agents from the admin backend via the same
+ * `makeAgent` shape, with no code change.
  */
 
 const PROTOTYPE_ORG = '00000000-0000-0000-0000-000000000001';
@@ -79,39 +81,14 @@ function makeAgent(input: DefInput): AiAgentDefinition {
   };
 }
 
-const ACCENTS = ['teal', 'green', 'amber', 'sage'] as const;
-
-/** Four configurable specialist placeholders — every field is admin-editable. */
-const SPECIALIST_PLACEHOLDERS: AiAgentDefinition[] = [1, 2, 3, 4].map((n) =>
-  makeAgent({
-    kind: 'specialist',
-    slug: `specialist-ai-${n}`,
-    code: `SP-${n}`,
-    name: `Specialist AI ${n}`,
-    role: 'Specialist AI (configure in admin)',
-    description:
-      'This is a configurable specialist AI. Its name, description, behaviour and knowledge are set in the admin backend.',
-    purpose: 'Set the purpose of this specialist in the admin backend.',
-    systemPrompt: `You are Specialist AI ${n}. Follow the behaviour, boundaries and knowledge configured in the admin backend. Do not make claims beyond the client’s approved offering.`,
-    welcomeMessage: `Hello — I am Specialist AI ${n}. How can I help you today?`,
-    responseBoundaries:
-      'Answer using the assigned knowledge base. Stay within this specialist’s remit. Hand over to a person when the customer needs human help.',
-    status: 'active',
-    visibility: 'public',
-    subscriptionAvailable: true,
-    product: {
-      tagline: 'A configurable specialist AI product.',
-      expertise: ['Configure this specialist’s expertise in the admin backend.'],
-      priceLabel: 'Price on request',
-      priceAmount: 0,
-      interval: 'month',
-      accent: ACCENTS[(n - 1) % ACCENTS.length] ?? 'teal',
-    },
-  }),
-);
-
+/**
+ * The seed roster for a fresh install: ONLY the Receptionist AI (routing +
+ * escalation infrastructure). The eight HERNE specialists are seeded separately
+ * by `services/herne/seed.ts`, so a fresh installation creates exactly eight
+ * specialists (all HERNE) plus this one receptionist. Additional specialists are
+ * added by staff through the admin backend — no code change required.
+ */
 export const DEFAULT_AI_AGENTS: AiAgentDefinition[] = [
-  // The free front door. Function per the approved receptionist brief; wording configurable.
   makeAgent({
     kind: 'receptionist',
     slug: 'receptionist',
@@ -131,5 +108,4 @@ export const DEFAULT_AI_AGENTS: AiAgentDefinition[] = [
     tools: ['search_knowledge', 'recommend_specialist', 'create_lead', 'escalate_to_client', 'whatsapp_handoff'],
     knowledgeCategories: [],
   }),
-  ...SPECIALIST_PLACEHOLDERS,
 ];

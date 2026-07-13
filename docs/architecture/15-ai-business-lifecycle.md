@@ -1,7 +1,7 @@
 # 15 · The AI Business Lifecycle
 
-> **⚠️ Correction (2026‑07‑11) — read first.** An earlier draft of this document introduced **unauthorised assumptions** that have since been corrected in code. The authoritative model is:
-> - **Four** specialist AIs, not five — currently **configurable placeholders** (`Specialist AI 1–4`). Their names, codes, purposes, behaviour, pricing and knowledge are client‑supplied, admin‑configurable data. Any specific specialist names/descriptions/prices below were invented and are **void**.
+> **⚠️ Update (2026‑07‑13) — read first.** The specialist roster is now the **eight client‑approved HERNE specialists** — Makela, Serena, Atlas, Aqua, Sage, Luca, Felix, Optimus — seeded from the HERNE developer pack by `services/herne/seed.ts`. The earlier generic placeholders (`Specialist AI 1–4`) have been **retired and removed** from the platform, seed data and database. Any specific placeholder names/descriptions/prices below are **void**. The authoritative model is:
+> - **Eight** user‑facing specialists (all HERNE) plus **one** Receptionist AI (routing/escalation infrastructure — not a user‑facing specialist).
 > - Escalation goes to a **configurable escalation target** (the client or an authorised team member), **not** a generic "human expert".
 > - The confidence threshold, consultation questions and routing are a **replaceable mock in configuration** (`config/receptionist.ts`), **not** approved rules.
 > - No public receptionist/specialist pages exist — the accepted frontend is unchanged; the receptionist operates via **backend hooks** pending an approved integration point.
@@ -78,7 +78,7 @@ Each specialist has its own:
 - Public: `/specialists` (catalogue) + `/specialists/[slug]` (product page, subscribe CTA).
 - Admin: `/admin/specialists` (products) + `/admin/specialists/[id]` (Overview · Subscribers · Analytics · Conversations, linking to the shared capability modules).
 
-The seed roster (`config/ai-agents.ts`): one Receptionist + five specialists (Specialist AI 1, Specialist AI 2, Specialist AI 3, Specialist AI 4, Assistant AI) + one internal copilot. The client adds more from the admin dashboard — **no code change**.
+The seed roster: `config/ai-agents.ts` seeds **only the Receptionist AI**; the eight HERNE specialists (Makela, Serena, Atlas, Aqua, Sage, Luca, Felix, Optimus) are seeded from the client HERNE developer pack by `services/herne/seed.ts`. A fresh install therefore creates exactly **eight specialists (all HERNE) + one receptionist**. The client adds further specialists from the admin dashboard — **no code change**.
 
 ---
 

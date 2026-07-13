@@ -7,8 +7,9 @@ import { HERNE_SPECIALIST_PROFILES, type HerneSpecialistProfile } from '@/data/h
 import { HERNE_SHARED_DNA } from '@/data/herne/specialist-content';
 
 /**
- * Seed the eight HERNE specialists into ai_agents (with herne_config), archive
- * the generic placeholders, store the organisation-level shared DNA, and import
+ * Seed the eight HERNE specialists into ai_agents (with herne_config), REMOVE any
+ * retired generic placeholders (so exactly eight specialists remain), store the
+ * organisation-level shared DNA, and import
  * each specialist's starter system prompt as a versioned draft. Idempotent.
  */
 
@@ -121,6 +122,7 @@ export async function seedHerneSpecialists(): Promise<HerneSeedReport> {
   const owner = await systemOwnerId(sb);
   let specialists = 0;
   let promptsImported = 0;
+  const idBySlug: Record<string, string> = {};
 
   for (let i = 0; i < HERNE_SPECIALIST_PROFILES.length; i++) {
     const profile = HERNE_SPECIALIST_PROFILES[i];
@@ -132,18 +134,30 @@ export async function seedHerneSpecialists(): Promise<HerneSeedReport> {
       .single();
     if (data) {
       specialists += 1;
+      idBySlug[profile.specialistId] = String(data.id);
       if (await importPrompt(sb, String(data.id), profile, owner)) promptsImported += 1;
     }
   }
 
-  // Archive the generic placeholders (do not delete — keep history).
-  const { data: archived } = await sb
+  // Remove the retired generic placeholders entirely so exactly eight HERNE
+  // specialists remain. Reassign any conversations that pointed at them to the
+  // concierge (Makela) first, then delete the agents (prompts + knowledge sources
+  // cascade). This makes a fresh OR existing install converge to the eight.
+  const makelaId = String(idBySlug.makela ?? '');
+  if (makelaId) {
+    const { data: legacy } = await sb.from('ai_agents').select('id').eq('organisation_id', HERNE_ORG).in('slug', PLACEHOLDER_SLUGS);
+    const legacyIds = (legacy ?? []).map((r) => String(r.id));
+    if (legacyIds.length) {
+      await sb.from('conversations').update({ agent_id: makelaId }).in('agent_id', legacyIds);
+    }
+  }
+  const { data: removed } = await sb
     .from('ai_agents')
-    .update({ status: 'archived', updated_at: new Date().toISOString() })
+    .delete()
     .eq('organisation_id', HERNE_ORG)
     .in('slug', PLACEHOLDER_SLUGS)
     .select('id');
-  const archivedPlaceholders = archived?.length ?? 0;
+  const archivedPlaceholders = removed?.length ?? 0;
 
   // Store the shared DNA as organisation-level behavioural configuration.
   const dnaValue = { dna: HERNE_SHARED_DNA, updatedAt: new Date().toISOString() };

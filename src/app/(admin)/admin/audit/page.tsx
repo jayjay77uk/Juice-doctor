@@ -18,7 +18,7 @@ interface AuditRow {
 
 // prototype mock — the append-only audit trail is empty in the prototype.
 const ENTRIES: AuditRow[] = [
-  { id: 'a1', actor: 'Admin User', action: 'agent.published', entity: 'Assistant AI', at: '10 Jul, 14:22' },
+  { id: 'a1', actor: 'Admin User', action: 'agent.published', entity: 'Makela', at: '10 Jul, 14:22' },
   { id: 'a2', actor: 'Staff One', action: 'knowledge.document.approved', entity: 'Getting Started Guide', at: '10 Jul, 11:05' },
   { id: 'a3', actor: 'Admin User', action: 'feature_flag.toggled', entity: 'ai.chat', at: '9 Jul, 16:40' },
   { id: 'a4', actor: 'System', action: 'prompt.version.published', entity: 'System prompt · Intake & Triage', at: '9 Jul, 09:15' },

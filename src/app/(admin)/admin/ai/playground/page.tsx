@@ -5,12 +5,19 @@ import { playground } from '@/services/playground';
 import { AdminHeader } from '@/components/admin/admin-header';
 import { Panel } from '@/components/admin/panel';
 import { PlaygroundConsole } from '@/components/admin/playground-console';
+import { HERNE_ORDER } from '@/data/herne/specialist-profiles';
 
 export const metadata: Metadata = createMetadata({ title: 'AI Playground' });
+export const dynamic = 'force-dynamic';
 
 export default async function PlaygroundPage() {
   const [agentsResult, logsResult] = await Promise.all([agents.list(), playground.logs(10)]);
-  const agentOptions = (agentsResult.ok ? agentsResult.data : []).map((a) => ({ id: a.id, name: a.name }));
+  // Only the eight HERNE specialists are testable here, concierge (Makela) first.
+  const order = HERNE_ORDER as readonly string[];
+  const agentOptions = (agentsResult.ok ? agentsResult.data : [])
+    .filter((a) => order.includes(a.slug))
+    .sort((a, b) => order.indexOf(a.slug) - order.indexOf(b.slug))
+    .map((a) => ({ id: a.id, name: a.name }));
   const logs = logsResult.ok ? logsResult.data : [];
 
   return (

@@ -7,13 +7,13 @@ describe('receptionist structured-output validation', () => {
     identifiedNeeds: ['guidance'],
     relevantFacts: [],
     unansweredQuestions: [],
-    recommendedSpecialistIds: ['specialist-ai-1'],
-    primaryRecommendation: 'specialist-ai-1',
-    alternativeRecommendations: ['specialist-ai-2'],
+    recommendedSpecialistIds: ['aqua'],
+    primaryRecommendation: 'aqua',
+    alternativeRecommendations: ['serena'],
     confidence: 0.72,
     escalationRequired: false,
     escalationReason: null,
-    suggestedNextAction: 'Recommend Specialist AI 1.',
+    suggestedNextAction: 'Recommend Aqua.',
   };
 
   it('accepts a well-formed result', () => {

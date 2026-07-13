@@ -30,17 +30,17 @@ function nowIso(): string {
 }
 
 const plans: SpecialistPlan[] = [
-  { id: 'plan_single', name: 'Single specialist', description: 'Access to one specialist AI.', scope: 'single', specialistSlugs: ['specialist-ai-1'], priceLabel: 'Price on request', status: 'active' },
-  { id: 'plan_multiple', name: 'Selected specialists', description: 'Access to a chosen set of specialist AIs.', scope: 'multiple', specialistSlugs: ['specialist-ai-1', 'specialist-ai-2'], priceLabel: 'Price on request', status: 'active' },
+  { id: 'plan_single', name: 'Single specialist', description: 'Access to one specialist AI.', scope: 'single', specialistSlugs: ['makela'], priceLabel: 'Price on request', status: 'active' },
+  { id: 'plan_multiple', name: 'Selected specialists', description: 'Access to a chosen set of specialist AIs.', scope: 'multiple', specialistSlugs: ['makela', 'serena'], priceLabel: 'Price on request', status: 'active' },
   { id: 'plan_all', name: 'All-access', description: 'Access to every available specialist AI.', scope: 'all', specialistSlugs: [], priceLabel: 'Price on request', status: 'active' },
 ];
 
 const subscriptions: CustomerSubscription[] = [
-  { id: 'sub_member', memberId: MEMBER, customerName: 'Prototype User', customerEmail: 'hello@example.com', planId: 'plan_multiple', planName: 'Selected specialists', scope: 'multiple', specialistSlugs: ['specialist-ai-1', 'specialist-ai-2'], state: 'active', startedAt: '2026-06-20', lastPaymentAt: '2026-07-01', createdAt: '2026-06-20T00:00:00.000Z', updatedAt: TS },
-  { id: 'sub_a', memberId: 'usr_a', customerName: 'Customer A', customerEmail: 'customer.a@example.com', planId: 'plan_single', planName: 'Single specialist', scope: 'single', specialistSlugs: ['specialist-ai-1'], state: 'active', startedAt: '2026-06-15', lastPaymentAt: '2026-07-01', createdAt: '2026-06-15T00:00:00.000Z', updatedAt: TS },
+  { id: 'sub_member', memberId: MEMBER, customerName: 'Prototype User', customerEmail: 'hello@example.com', planId: 'plan_multiple', planName: 'Selected specialists', scope: 'multiple', specialistSlugs: ['makela', 'serena'], state: 'active', startedAt: '2026-06-20', lastPaymentAt: '2026-07-01', createdAt: '2026-06-20T00:00:00.000Z', updatedAt: TS },
+  { id: 'sub_a', memberId: 'usr_a', customerName: 'Customer A', customerEmail: 'customer.a@example.com', planId: 'plan_single', planName: 'Single specialist', scope: 'single', specialistSlugs: ['makela'], state: 'active', startedAt: '2026-06-15', lastPaymentAt: '2026-07-01', createdAt: '2026-06-15T00:00:00.000Z', updatedAt: TS },
   { id: 'sub_b', memberId: 'usr_b', customerName: 'Customer B', customerEmail: 'customer.b@example.com', planId: 'plan_all', planName: 'All-access', scope: 'all', specialistSlugs: [], state: 'past_due', startedAt: '2026-05-30', lastPaymentAt: '2026-06-01', createdAt: '2026-05-30T00:00:00.000Z', updatedAt: TS },
-  { id: 'sub_c', memberId: 'usr_c', customerName: 'Customer C', customerEmail: 'customer.c@example.com', planId: 'plan_multiple', planName: 'Selected specialists', scope: 'multiple', specialistSlugs: ['specialist-ai-3', 'specialist-ai-4'], state: 'trialing', startedAt: '2026-07-05', lastPaymentAt: null, createdAt: '2026-07-05T00:00:00.000Z', updatedAt: TS },
-  { id: 'sub_d', memberId: 'usr_d', customerName: 'Customer D', customerEmail: 'customer.d@example.com', planId: 'plan_single', planName: 'Single specialist', scope: 'single', specialistSlugs: ['specialist-ai-2'], state: 'canceled', startedAt: '2026-04-10', lastPaymentAt: '2026-05-10', createdAt: '2026-04-10T00:00:00.000Z', updatedAt: TS },
+  { id: 'sub_c', memberId: 'usr_c', customerName: 'Customer C', customerEmail: 'customer.c@example.com', planId: 'plan_multiple', planName: 'Selected specialists', scope: 'multiple', specialistSlugs: ['aqua', 'sage'], state: 'trialing', startedAt: '2026-07-05', lastPaymentAt: null, createdAt: '2026-07-05T00:00:00.000Z', updatedAt: TS },
+  { id: 'sub_d', memberId: 'usr_d', customerName: 'Customer D', customerEmail: 'customer.d@example.com', planId: 'plan_single', planName: 'Single specialist', scope: 'single', specialistSlugs: ['serena'], state: 'canceled', startedAt: '2026-04-10', lastPaymentAt: '2026-05-10', createdAt: '2026-04-10T00:00:00.000Z', updatedAt: TS },
 ];
 
 const payments: ManualPayment[] = [

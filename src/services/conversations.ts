@@ -31,15 +31,15 @@ function nowIso(): string {
 }
 
 const conversations: Conversation[] = [
-  { id: 'conv_1', organisationId: ORG, userId: MEMBER, agentId: 'agent_specialist-ai-1', title: 'Getting started', status: 'active', context: {}, lastMessageAt: '2026-07-09T10:00:00.000Z', createdAt: '2026-07-08T09:00:00.000Z' },
-  { id: 'conv_2', organisationId: ORG, userId: MEMBER, agentId: 'agent_specialist-ai-2', title: 'A few questions', status: 'active', context: {}, lastMessageAt: '2026-07-07T14:00:00.000Z', createdAt: '2026-07-07T13:30:00.000Z' },
+  { id: 'conv_1', organisationId: ORG, userId: MEMBER, agentId: 'agent_makela', title: 'Getting started', status: 'active', context: {}, lastMessageAt: '2026-07-09T10:00:00.000Z', createdAt: '2026-07-08T09:00:00.000Z' },
+  { id: 'conv_2', organisationId: ORG, userId: MEMBER, agentId: 'agent_serena', title: 'A few questions', status: 'active', context: {}, lastMessageAt: '2026-07-07T14:00:00.000Z', createdAt: '2026-07-07T13:30:00.000Z' },
 ];
 
 const messages: Message[] = [
-  { id: 'msg_1', conversationId: 'conv_1', role: 'assistant', content: 'Hello — I am Specialist AI 1. How can I help you today?', tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: '2026-07-08T09:00:00.000Z' },
+  { id: 'msg_1', conversationId: 'conv_1', role: 'assistant', content: 'Hello — I am Makela, your wellbeing concierge. How can I help you today?', tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: '2026-07-08T09:00:00.000Z' },
   { id: 'msg_2', conversationId: 'conv_1', role: 'user', content: 'I would like to understand how to get started.', tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: '2026-07-08T09:01:00.000Z' },
   { id: 'msg_3', conversationId: 'conv_1', role: 'assistant', content: 'Here is a placeholder answer. In the full platform I would draw on my knowledge base to help you get started. (Prototype: no live AI is connected.)', tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: '2026-07-09T10:00:00.000Z' },
-  { id: 'msg_4', conversationId: 'conv_2', role: 'assistant', content: 'Hello — I am Specialist AI 2. How can I help you today?', tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: '2026-07-07T13:30:00.000Z' },
+  { id: 'msg_4', conversationId: 'conv_2', role: 'assistant', content: 'Hello — I am Serena, your women’s health and hormonal wellbeing specialist. How can I help you today?', tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: '2026-07-07T13:30:00.000Z' },
 ];
 
 const feedback: MessageFeedback[] = [];
