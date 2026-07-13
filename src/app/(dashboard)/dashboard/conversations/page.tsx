@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { member } from '@/services/member';
 import { agents } from '@/services/agents';
 import { getSession } from '@/services/auth';
+import { NewConversationButton } from '@/components/dashboard/new-conversation-button';
+import { HERNE_ORDER } from '@/data/herne/specialist-profiles';
 
 export const metadata = createMetadata({
   title: 'Your conversations',
@@ -31,15 +33,26 @@ export default async function ConversationsPage() {
   const agentList = agentsResult.ok ? agentsResult.data : [];
   const agentName = (id: string | null) => agentList.find((a) => a.id === id)?.name ?? 'Specialist AI';
 
+  // HERNE specialists, concierge (Makela) first, for the new-conversation picker.
+  const order = HERNE_ORDER as readonly string[];
+  const specialists = agentList
+    .filter((a) => order.includes(a.slug))
+    .sort((a, b) => order.indexOf(a.slug) - order.indexOf(b.slug))
+    .map((a) => ({ id: a.id, name: a.name, concierge: a.slug === 'makela' }));
+
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-8">
       <AdminHeader
         title="Your conversations"
         description="Chats with your specialist AIs, saved so you can pick up where you left off."
         actions={
-          <Button asChild size="sm">
-            <Link href="/dashboard/specialists">Open a specialist</Link>
-          </Button>
+          specialists.length > 0 ? (
+            <NewConversationButton specialists={specialists} />
+          ) : (
+            <Button asChild size="sm">
+              <Link href="/dashboard/specialists">Open a specialist</Link>
+            </Button>
+          )
         }
       />
 
@@ -79,7 +92,7 @@ export default async function ConversationsPage() {
       )}
 
       <p className="text-sm text-muted-foreground">
-        Prototype — sample data. No live AI is connected.
+        Prototype — replies are AI-generated and not clinically reviewed. Not for emergencies. No real patient records are used.
       </p>
     </div>
   );

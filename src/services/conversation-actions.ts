@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { conversations_service } from './conversations';
 import { assertSession } from '@/lib/auth/authorize';
 import type { Message, FeedbackRating } from '@/types/conversation';
@@ -79,4 +80,38 @@ export async function startConversationAction(
   const result = await conversations_service.create({ agentId, userId });
   if (!result.ok) return { ok: false, error: result.error.message };
   return { ok: true, conversationId: result.data.id };
+}
+
+export async function renameConversationAction(
+  conversationId: string,
+  title: string,
+): Promise<{ ok: true; title: string } | { ok: false; error: string }> {
+  let userId: string;
+  try {
+    userId = (await assertSession()).user.id;
+  } catch {
+    return { ok: false, error: MSG_RES };
+  }
+  if (!(await assertOwnedConversation(conversationId, userId))) return { ok: false, error: MSG_OWN };
+  const result = await conversations_service.rename(conversationId, title);
+  if (!result.ok) return { ok: false, error: result.error.message };
+  revalidatePath(`/dashboard/conversations/${conversationId}`);
+  revalidatePath('/dashboard/conversations');
+  return { ok: true, title: result.data.title };
+}
+
+export async function archiveConversationAction(
+  conversationId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  let userId: string;
+  try {
+    userId = (await assertSession()).user.id;
+  } catch {
+    return { ok: false, error: MSG_RES };
+  }
+  if (!(await assertOwnedConversation(conversationId, userId))) return { ok: false, error: MSG_OWN };
+  const result = await conversations_service.archive(conversationId);
+  if (!result.ok) return { ok: false, error: result.error.message };
+  revalidatePath('/dashboard/conversations');
+  return { ok: true };
 }

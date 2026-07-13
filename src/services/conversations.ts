@@ -181,6 +181,14 @@ const mockConversations = {
     conversation.status = status;
     return ok(conversation);
   },
+
+  async rename(id: string, title: string): Promise<Result<Conversation>> {
+    const conversation = findConversation(id);
+    if (!conversation) return err({ code: 'not_found', message: 'Conversation not found.' });
+    if (!title.trim()) return err({ code: 'invalid', message: 'Please enter a title.' });
+    conversation.title = title.trim().slice(0, 120);
+    return ok(conversation);
+  },
 };
 
 const dbConv = (): boolean => isSupabaseAdminConfigured();
@@ -214,6 +222,9 @@ export const conversations_service = {
   },
   setStatus(id: string, status: ConversationStatus): Promise<Result<Conversation>> {
     return dbConv() ? conversationsRepo.setStatus(id, status) : mockConversations.setStatus(id, status);
+  },
+  rename(id: string, title: string): Promise<Result<Conversation>> {
+    return dbConv() ? conversationsRepo.rename(id, title) : mockConversations.rename(id, title);
   },
   archive(id: string): Promise<Result<Conversation>> {
     return conversations_service.setStatus(id, 'archived');

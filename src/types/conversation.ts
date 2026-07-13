@@ -18,6 +18,12 @@ export interface Conversation {
   createdAt: string;
 }
 
+export interface MessageCitation {
+  recordId: string;
+  sourceTitle: string;
+  sourceUrl: string;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -28,6 +34,13 @@ export interface Message {
   toolCallId: string | null;
   modelKey: string | null;
   createdAt: string;
+  // ── Increment K: rich per-turn metadata (nullable / defaulted) ─────────────
+  specialist?: string | null;
+  language?: string | null;
+  citations?: MessageCitation[];
+  escalated?: boolean;
+  referral?: { toRole: string; reason: string; urgency: string } | null;
+  safetyState?: string | null;
 }
 
 export interface MessageFeedback {

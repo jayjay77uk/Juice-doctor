@@ -18,6 +18,22 @@ import { ok, err, type Result } from '../result';
 const ORG = '00000000-0000-0000-0000-000000000001';
 type Row = Record<string, unknown>;
 
+export interface AssistantTurn {
+  content: string;
+  specialist?: string | null;
+  language?: string | null;
+  citations?: { recordId: string; sourceTitle: string; sourceUrl: string }[];
+  escalated?: boolean;
+  referral?: { toRole: string; reason: string; urgency: string } | null;
+  safetyState?: string | null;
+  model?: string | null;
+  tokensOutput?: number | null;
+  latencyMs?: number | null;
+  costUsd?: number | null;
+  traceId?: string | null;
+  promptVersionId?: string | null;
+}
+
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -47,6 +63,12 @@ function rowToMessage(r: Row): Message {
     toolCallId: (r.tool_call_id as string | null) ?? null,
     modelKey: (r.model_key as string | null) ?? null,
     createdAt: String(r.created_at),
+    specialist: (r.specialist as string | null) ?? null,
+    language: (r.language as string | null) ?? null,
+    citations: Array.isArray(r.citations) ? (r.citations as Message['citations']) : [],
+    escalated: Boolean(r.escalated),
+    referral: (r.referral as Message['referral']) ?? null,
+    safetyState: (r.safety_state as string | null) ?? null,
   } as Message;
 }
 
@@ -138,6 +160,69 @@ export const conversationsRepo = {
     await sb.from('messages').insert({ conversation_id: conversationId, role: 'assistant', content: replyText, model_key: modelKey });
     await sb.from('conversations').update({ last_message_at: nowIso(), updated_at: nowIso() }).eq('id', conversationId);
     return conversationsRepo.messages(conversationId);
+  },
+
+  /** Update a conversation's title (rename). */
+  async rename(id: string, title: string): Promise<Result<Conversation>> {
+    const sb = createAdminClient();
+    if (!sb) return err({ code: 'unavailable', message: 'Conversation store unavailable.' });
+    const clean = title.trim().slice(0, 120);
+    if (!clean) return err({ code: 'invalid', message: 'Please enter a title.' });
+    const { data, error } = await sb.from('conversations').update({ title: clean, updated_at: nowIso() }).eq('id', id).select('*').maybeSingle();
+    if (error) return err({ code: 'unavailable', message: error.message });
+    return data ? ok(rowToConversation(data)) : err({ code: 'not_found', message: 'Conversation not found.' });
+  },
+
+  /** Chat history (user/assistant only) for building the model context. */
+  async historyFor(conversationId: string): Promise<ChatMessage[]> {
+    const prior = await conversationsRepo.messages(conversationId);
+    return (prior.ok ? prior.data : [])
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+  },
+
+  /** Insert a user turn. */
+  async insertUserMessage(conversationId: string, content: string): Promise<void> {
+    const sb = createAdminClient();
+    if (!sb) return;
+    await sb.from('messages').insert({ conversation_id: conversationId, role: 'user', content: content.trim() });
+  },
+
+  /** Insert an assistant turn with its rich HERNE metadata; returns the persisted message. */
+  async insertAssistantMessage(conversationId: string, m: AssistantTurn): Promise<Message | null> {
+    const sb = createAdminClient();
+    if (!sb) return null;
+    const { data } = await sb
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        role: 'assistant',
+        content: m.content,
+        model_key: m.model ?? null,
+        token_count: m.tokensOutput ?? null,
+        specialist: m.specialist ?? null,
+        language: m.language ?? null,
+        citations: m.citations ?? [],
+        escalated: m.escalated ?? false,
+        referral: m.referral ?? null,
+        safety_state: m.safetyState ?? null,
+        latency_ms: m.latencyMs ?? null,
+        cost_micros: m.costUsd != null ? Math.round(m.costUsd * 1_000_000) : null,
+        trace_id: m.traceId ?? null,
+        ...(m.promptVersionId ? { prompt_version_id: m.promptVersionId } : {}),
+      })
+      .select('*')
+      .maybeSingle();
+    await sb.from('conversations').update({ last_message_at: nowIso(), updated_at: nowIso() }).eq('id', conversationId);
+    return data ? rowToMessage(data) : null;
+  },
+
+  /** Insert a plain system notice (e.g. a specialist handoff). */
+  async insertSystemMessage(conversationId: string, content: string): Promise<void> {
+    const sb = createAdminClient();
+    if (!sb) return;
+    await sb.from('messages').insert({ conversation_id: conversationId, role: 'system', content });
+    await sb.from('conversations').update({ last_message_at: nowIso(), updated_at: nowIso() }).eq('id', conversationId);
   },
 
   async setStatus(id: string, status: ConversationStatus): Promise<Result<Conversation>> {

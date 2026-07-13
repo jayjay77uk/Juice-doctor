@@ -179,33 +179,54 @@ async function tryEscalate(input: {
   }
 }
 
-export async function herneSpecialistReply(
-  agent: AiAgent,
-  history: ChatMessage[],
-  query: string,
-  ctx?: { userId?: string | null; conversationId?: string | null; goal?: string; language?: LanguagePreference },
-): Promise<HerneReply> {
+export type HerneStreamChunk = { type: 'delta'; text: string } | { type: 'final'; reply: HerneReply };
+
+interface HerneCtx { userId?: string | null; conversationId?: string | null; goal?: string; language?: LanguagePreference; signal?: AbortSignal }
+
+interface PreparedTurn {
+  kind: 'ready';
+  provider: NonNullable<ReturnType<typeof getAiProvider>>;
+  system: string;
+  messages: ChatMessage[];
+  retrieved: HerneRetrieved[];
+  activeVer: ActivePrompt | null;
+  pre: ReturnType<typeof precheckInput>;
+  pref: LanguagePreference;
+  profile: HerneSpecialistProfile;
+  specialistName: string;
+  started: number;
+}
+
+/**
+ * Assemble everything up to (but not including) the provider call — safety
+ * pre-check, retrieval, care plan, wearable, prompt version, referral boundaries,
+ * memory, language. Returns a blocked HerneReply (emergency/self-harm) OR a ready
+ * turn shared by the non-streaming and streaming paths.
+ */
+async function prepareTurn(agent: AiAgent, history: ChatMessage[], query: string, ctx?: HerneCtx): Promise<{ kind: 'blocked'; reply: HerneReply } | PreparedTurn> {
   const profile = herneProfile(agent.slug);
   const provider = getAiProvider();
   const specialistName = profile?.name ?? agent.name;
   const pref = await resolvePreference(ctx);
 
-  if (!profile || !provider) return unavailable(specialistName, pref.language, Boolean(provider));
+  if (!profile || !provider) return { kind: 'blocked', reply: unavailable(specialistName, pref.language, Boolean(provider)) };
 
-  // ── Safety PRE-check (before any inference) ────────────────────────────────
   const pre = precheckInput(query);
   if (pre.blocked) {
     await tryEscalate({ userId: ctx?.userId, conversationId: ctx?.conversationId, trigger: pre.trigger ?? 'emergency', reason: pre.reason ?? 'Safety pre-check', specialist: agent.slug, urgency: pre.urgency });
     await runLogRepo.log({ agentId: agent.id, actorId: ctx?.userId ?? null, input: query, output: pre.userMessage ?? '', status: 'blocked' });
     return {
-      text: pre.userMessage ?? 'For your safety, please seek urgent professional help.',
-      specialist: specialistName,
-      citations: [], retrieved: [], grounded: false, available: true,
-      escalationRecommended: true, escalationReason: pre.reason, language: pref.language,
-      usage: null, costUsd: 0, latencyMs: 0, traceId: null, model: null,
-      promptVersion: null,
-      safety: { category: pre.category, blocked: true, issues: [] },
-      referralSuggestion: { toRole: 'human clinical review', reason: pre.reason ?? 'Urgent safety concern', urgency: pre.urgency ?? 'immediate' },
+      kind: 'blocked',
+      reply: {
+        text: pre.userMessage ?? 'For your safety, please seek urgent professional help.',
+        specialist: specialistName,
+        citations: [], retrieved: [], grounded: false, available: true,
+        escalationRecommended: true, escalationReason: pre.reason, language: pref.language,
+        usage: null, costUsd: 0, latencyMs: 0, traceId: null, model: null,
+        promptVersion: null,
+        safety: { category: pre.category, blocked: true, issues: [] },
+        referralSuggestion: { toRole: 'human clinical review', reason: pre.reason ?? 'Urgent safety concern', urgency: pre.urgency ?? 'immediate' },
+      },
     };
   }
 
@@ -225,90 +246,129 @@ export async function herneSpecialistReply(
   const planActions = plan ? await carePlan.actions(plan.id) : [];
   const objective = ctx?.goal ?? (plan?.goals.length ? plan.goals.join('; ') : null);
   const referralBoundaries = rules.filter((r) => r.fromSpecialist === agent.slug);
-  const activeVer: ActivePrompt | null = active;
 
   const system =
     assembleSystemPrompt({
       profile, dna, retrieved,
       langDirective: languageDirective(pref),
-      starter: activeVer?.content ?? profile.starterPrompt,
-      objective,
-      plan,
-      planActions,
-      wearable,
-      referralBoundaries,
+      starter: active?.content ?? profile.starterPrompt,
+      objective, plan, planActions, wearable, referralBoundaries,
     }) +
     (memory.length ? `\n\nWHAT YOU REMEMBER ABOUT THIS PERSON (respect it):\n${memory.map((m) => `- ${m.content}`).join('\n')}` : '');
 
-  try {
-    const messages: ChatMessage[] = [...history.slice(-8), { role: 'user', content: query }];
-    const res = await provider.chat({ system, messages, maxTokens: 900, op: 'herne:reply' });
+  const messages: ChatMessage[] = [...history.slice(-8), { role: 'user', content: query }];
+  return { kind: 'ready', provider, system, messages, retrieved, activeVer: active, pre, pref, profile, specialistName, started };
+}
 
-    // ── Safety POST-check (fabricated citations, unsupported claims) ──────────
-    const allowedIds = retrieved.map((r) => r.recordId);
-    const post = postcheckOutput(res.text.trim(), allowedIds);
+interface RawResult { text: string; usage: AiUsage | null; model: string | null; costUsd: number; latencyMs: number; traceId: string | null }
 
-    const citations = retrieved.map((r) => ({ recordId: r.recordId, sourceTitle: r.sourceTitle, sourceUrl: r.sourceUrl }));
-    await runLogRepo.log({
-      agentId: agent.id,
-      actorId: ctx?.userId ?? null,
-      input: query,
-      output: post.text,
-      retrieved: retrieved.map((r) => ({ recordId: r.recordId, final: r.score.final, role: r.role })),
-      tokensInput: res.usage?.inputTokens ?? null,
-      tokensOutput: res.usage?.outputTokens ?? null,
-      latencyMs: Date.now() - started,
-      status: post.ok ? 'ok' : 'flagged',
-      model: res.model,
-      costUsd: res.costUsd,
-      traceId: res.traceId,
-      promptVersionId: activeVer?.versionId ?? null,
-    });
+/** Shared post-inference finalisation: post-check, logging, escalation, memory, reply. */
+async function finalizeTurn(t: PreparedTurn, agent: AiAgent, query: string, ctx: HerneCtx | undefined, raw: RawResult): Promise<HerneReply> {
+  const { retrieved, activeVer, pre, pref, specialistName } = t;
+  const post = postcheckOutput(raw.text.trim(), retrieved.map((r) => r.recordId));
+  const citations = retrieved.map((r) => ({ recordId: r.recordId, sourceTitle: r.sourceTitle, sourceUrl: r.sourceUrl }));
 
-    // Escalate for medication/diagnosis boundary or a post-check clinical flag.
-    let referralSuggestion: HerneReply['referralSuggestion'] = null;
-    if (pre.escalate || post.mustEscalate) {
-      const reason = pre.reason ?? 'Response required unsupported-claim review.';
-      await tryEscalate({ userId: ctx?.userId, conversationId: ctx?.conversationId, trigger: pre.trigger ?? 'clinical_review', reason, specialist: agent.slug, urgency: pre.urgency });
-      referralSuggestion = { toRole: 'human clinical review', reason, urgency: pre.urgency ?? 'routine' };
+  await runLogRepo.log({
+    agentId: agent.id,
+    actorId: ctx?.userId ?? null,
+    input: query,
+    output: post.text,
+    retrieved: retrieved.map((r) => ({ recordId: r.recordId, final: r.score.final, role: r.role })),
+    tokensInput: raw.usage?.inputTokens ?? null,
+    tokensOutput: raw.usage?.outputTokens ?? null,
+    latencyMs: Date.now() - t.started,
+    status: post.ok ? 'ok' : 'flagged',
+    model: raw.model,
+    costUsd: raw.costUsd,
+    traceId: raw.traceId,
+    promptVersionId: activeVer?.versionId ?? null,
+  });
+
+  let referralSuggestion: HerneReply['referralSuggestion'] = null;
+  if (pre.escalate || post.mustEscalate) {
+    const reason = pre.reason ?? 'Response required unsupported-claim review.';
+    await tryEscalate({ userId: ctx?.userId, conversationId: ctx?.conversationId, trigger: pre.trigger ?? 'clinical_review', reason, specialist: agent.slug, urgency: pre.urgency });
+    referralSuggestion = { toRole: 'human clinical review', reason, urgency: pre.urgency ?? 'routine' };
+  }
+
+  if (ctx?.userId) {
+    const mem = extractMemory(query);
+    if (mem) {
+      await memoryRepo.remember({ scope: 'user', kind: mem.kind, key: `user:${mem.content.slice(0, 40)}`, content: mem.content, userId: ctx.userId, agentId: agent.id, importance: 3, source: 'chat' });
     }
+  }
 
-    if (ctx?.userId) {
-      const mem = extractMemory(query);
-      if (mem) {
-        await memoryRepo.remember({ scope: 'user', kind: mem.kind, key: `user:${mem.content.slice(0, 40)}`, content: mem.content, userId: ctx.userId, agentId: agent.id, importance: 3, source: 'chat' });
+  const escalate = pre.escalate || post.mustEscalate;
+  return {
+    text: post.text,
+    specialist: specialistName,
+    citations,
+    retrieved,
+    grounded: retrieved.length > 0,
+    available: true,
+    escalationRecommended: escalate,
+    escalationReason: escalate ? (pre.reason ?? 'Human clinical review recommended.') : null,
+    language: pref.language,
+    usage: raw.usage,
+    costUsd: raw.costUsd,
+    latencyMs: raw.latencyMs,
+    traceId: raw.traceId,
+    model: raw.model,
+    promptVersion: activeVer ? { id: activeVer.versionId, version: activeVer.version, status: activeVer.status } : null,
+    safety: { category: pre.category, blocked: false, issues: post.issues },
+    referralSuggestion,
+  };
+}
+
+export async function herneSpecialistReply(agent: AiAgent, history: ChatMessage[], query: string, ctx?: HerneCtx): Promise<HerneReply> {
+  const prep = await prepareTurn(agent, history, query, ctx);
+  if (prep.kind === 'blocked') return prep.reply;
+  try {
+    const res = await prep.provider.chat({ system: prep.system, messages: prep.messages, maxTokens: 900, op: 'herne:reply' });
+    return finalizeTurn(prep, agent, query, ctx, { text: res.text, usage: res.usage, model: res.model, costUsd: res.costUsd, latencyMs: res.latencyMs, traceId: res.traceId });
+  } catch {
+    await runLogRepo.log({ agentId: agent.id, actorId: ctx?.userId ?? null, input: query, output: '', latencyMs: Date.now() - prep.started, status: 'error' });
+    return {
+      ...unavailable(prep.specialistName, prep.pref.language, true),
+      text: `I'm sorry — I couldn't complete that just now. Please try again, or I can pass you to a member of the team.`,
+      retrieved: prep.retrieved,
+      escalationRecommended: prep.pre.escalate,
+      escalationReason: prep.pre.escalate ? prep.pre.reason : null,
+      safety: { category: prep.pre.category, blocked: false, issues: [] },
+    };
+  }
+}
+
+/** Streamed HERNE turn — yields text deltas then one terminal `final` with the full reply. */
+export async function* streamHerneReply(agent: AiAgent, history: ChatMessage[], query: string, ctx?: HerneCtx): AsyncGenerator<HerneStreamChunk> {
+  const prep = await prepareTurn(agent, history, query, ctx);
+  if (prep.kind === 'blocked') {
+    yield { type: 'final', reply: prep.reply };
+    return;
+  }
+  let text = '';
+  let raw: RawResult = { text: '', usage: null, model: null, costUsd: 0, latencyMs: 0, traceId: null };
+  try {
+    for await (const chunk of prep.provider.stream({ system: prep.system, messages: prep.messages, maxTokens: 900, op: 'herne:stream', ...(ctx?.signal ? { signal: ctx.signal } : {}) })) {
+      if (chunk.type === 'delta') {
+        text += chunk.text;
+        yield { type: 'delta', text: chunk.text };
+      } else {
+        raw = { text, usage: chunk.result.usage, model: chunk.result.model, costUsd: chunk.result.costUsd, latencyMs: chunk.result.latencyMs, traceId: chunk.result.traceId };
       }
     }
-
-    const escalate = pre.escalate || post.mustEscalate;
-    return {
-      text: post.text,
-      specialist: specialistName,
-      citations,
-      retrieved,
-      grounded: retrieved.length > 0,
-      available: true,
-      escalationRecommended: escalate,
-      escalationReason: escalate ? (pre.reason ?? 'Human clinical review recommended.') : null,
-      language: pref.language,
-      usage: res.usage,
-      costUsd: res.costUsd,
-      latencyMs: res.latencyMs,
-      traceId: res.traceId,
-      model: res.model,
-      promptVersion: activeVer ? { id: activeVer.versionId, version: activeVer.version, status: activeVer.status } : null,
-      safety: { category: pre.category, blocked: false, issues: post.issues },
-      referralSuggestion,
-    };
+    const reply = await finalizeTurn(prep, agent, query, ctx, raw);
+    yield { type: 'final', reply };
   } catch {
-    await runLogRepo.log({ agentId: agent.id, actorId: ctx?.userId ?? null, input: query, output: '', latencyMs: Date.now() - started, status: 'error' });
-    return {
-      ...unavailable(specialistName, pref.language, true),
-      text: `I'm sorry — I couldn't complete that just now. Please try again, or I can pass you to a member of the team.`,
-      retrieved,
-      escalationRecommended: pre.escalate,
-      escalationReason: pre.escalate ? pre.reason : null,
-      safety: { category: pre.category, blocked: false, issues: [] },
+    await runLogRepo.log({ agentId: agent.id, actorId: ctx?.userId ?? null, input: query, output: '', latencyMs: Date.now() - prep.started, status: 'error' });
+    yield {
+      type: 'final',
+      reply: {
+        ...unavailable(prep.specialistName, prep.pref.language, true),
+        text: `I'm sorry — I couldn't complete that just now. Please try again, or I can pass you to a member of the team.`,
+        retrieved: prep.retrieved,
+        safety: { category: prep.pre.category, blocked: false, issues: [] },
+      },
     };
   }
 }
