@@ -60,7 +60,8 @@ export async function herneAdminOverview(): Promise<HerneAdminOverview> {
     // Specialists carry a herne_config; count agents that have one.
     sb.from('ai_agents').select('id', { count: 'exact', head: true }).eq('organisation_id', HERNE_ORG).not('herne_config', 'is', null).then((r) => r.count ?? 0),
     sb.from('herne_evidence_records').select('id', { count: 'exact', head: true }).eq('organisation_id', HERNE_ORG).then((r) => r.count ?? 0),
-    sb.from('herne_ingestion_audit').select('id', { count: 'exact', head: true }).eq('organisation_id', HERNE_ORG).then((r) => r.count ?? 0),
+    // herne_ingestion_audit is not org-scoped (no organisation_id column).
+    sb.from('herne_ingestion_audit').select('id', { count: 'exact', head: true }).then((r) => r.count ?? 0),
     countRows('herne_referral_rules'),
     countRows('herne_referral_rules', [['is_human_escalation', true]]),
     countRows('herne_care_plans', [['status', 'active']]),
