@@ -85,10 +85,12 @@ export async function specialistReply(
       system: buildSystemPrompt(agent, knowledgeBlock, memory, languageDirective(pref)),
       messages,
       maxTokens: 700,
+      op: 'specialist:reply',
     });
     const citations = [...new Set(chunks.map((c) => c.documentTitle))];
     await runLogRepo.log({
       agentId: agent.id,
+      actorId: ctx?.userId ?? null,
       input: userText,
       output: res.text,
       retrieved: chunks.map((c) => ({ title: c.documentTitle, chunkIndex: c.chunkIndex })),
@@ -96,6 +98,9 @@ export async function specialistReply(
       tokensOutput: res.usage?.outputTokens ?? null,
       latencyMs: Date.now() - started,
       status: 'ok',
+      model: res.model,
+      costUsd: res.costUsd,
+      traceId: res.traceId,
     });
     // Extract + persist a durable preference/fact the customer stated.
     if (ctx?.userId) {
@@ -117,6 +122,7 @@ export async function specialistReply(
   } catch {
     await runLogRepo.log({
       agentId: agent.id,
+      actorId: ctx?.userId ?? null,
       input: userText,
       output: '',
       latencyMs: Date.now() - started,

@@ -117,10 +117,11 @@ export async function herneSpecialistReply(
 
   try {
     const messages: ChatMessage[] = [...history.slice(-8), { role: 'user', content: query }];
-    const res = await provider.chat({ system, messages, maxTokens: 900 });
+    const res = await provider.chat({ system, messages, maxTokens: 900, op: 'herne:reply' });
     const citations = retrieved.map((r) => ({ recordId: r.recordId, sourceTitle: r.sourceTitle, sourceUrl: r.sourceUrl }));
     await runLogRepo.log({
       agentId: agent.id,
+      actorId: ctx?.userId ?? null,
       input: query,
       output: res.text,
       retrieved: retrieved.map((r) => ({ recordId: r.recordId, final: r.score.final, role: r.role })),
@@ -128,6 +129,9 @@ export async function herneSpecialistReply(
       tokensOutput: res.usage?.outputTokens ?? null,
       latencyMs: Date.now() - started,
       status: 'ok',
+      model: res.model,
+      costUsd: res.costUsd,
+      traceId: res.traceId,
     });
     if (ctx?.userId) {
       const mem = extractMemory(query);
@@ -147,7 +151,7 @@ export async function herneSpecialistReply(
       language: pref.language,
     };
   } catch {
-    await runLogRepo.log({ agentId: agent.id, input: query, output: '', latencyMs: Date.now() - started, status: 'error' });
+    await runLogRepo.log({ agentId: agent.id, actorId: ctx?.userId ?? null, input: query, output: '', latencyMs: Date.now() - started, status: 'error' });
     return {
       text: `I'm sorry — I couldn't complete that just now. Please try again, or I can pass you to a member of the team.`,
       specialist: specialistName,
