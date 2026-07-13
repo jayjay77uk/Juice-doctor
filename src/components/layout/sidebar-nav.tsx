@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Sparkles,
+  Activity,
   Bot,
   MessageSquareText,
   FlaskConical,
@@ -86,6 +87,7 @@ const NAV: Record<NavVariant, ShellNavSection[]> = {
       title: 'My AI',
       items: [
         { label: 'My care plan', href: '/dashboard/care-plan', icon: ClipboardList },
+        { label: 'Connected health', href: '/dashboard/connected-health', icon: Activity },
         { label: 'My specialists', href: '/dashboard/specialists', icon: Bot },
         { label: 'Conversations', href: '/dashboard/conversations', icon: MessageCircle },
         { label: 'My subscriptions', href: '/dashboard/subscriptions', icon: CreditCard },

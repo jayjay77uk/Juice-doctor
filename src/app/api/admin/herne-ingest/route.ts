@@ -4,6 +4,7 @@ import { hasMinRole } from '@/lib/auth/roles';
 import { ingest, EXPECTED_RECORD_COUNT } from '@/services/herne/ingestion';
 import { seedHerneSpecialists } from '@/services/herne/seed';
 import { seedReferralRules } from '@/services/herne/referrals';
+import { ingestWearableCatalog } from '@/services/herne/wearable/store';
 
 /**
  * Admin-gated trigger for the HERNE foundation setup: ingest the shared evidence
@@ -21,11 +22,13 @@ export async function GET() {
   const evidence = await ingest();
   const specialists = await seedHerneSpecialists();
   const referrals = await seedReferralRules();
+  const wearableCatalog = await ingestWearableCatalog();
   return NextResponse.json({
-    ok: evidence.expectedMet && evidence.persisted && specialists.specialists === 8 && referrals.count >= 15,
+    ok: evidence.expectedMet && evidence.persisted && specialists.specialists === 8 && referrals.count >= 15 && wearableCatalog.expectedMet,
     expectedRecords: EXPECTED_RECORD_COUNT,
     evidence,
     specialists,
     referrals,
+    wearableCatalog,
   });
 }
