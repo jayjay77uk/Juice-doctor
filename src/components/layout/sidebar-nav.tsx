@@ -30,6 +30,8 @@ import {
   Settings,
   CreditCard,
   LifeBuoy,
+  GitBranch,
+  Watch,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -61,6 +63,16 @@ const NAV: Record<NavVariant, ShellNavSection[]> = {
       items: [
         { label: 'Specialists', href: '/admin/specialists', icon: Bot },
         { label: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
+      ],
+    },
+    {
+      title: 'HERNE Intelligence',
+      items: [
+        { label: 'Overview', href: '/admin/herne', icon: HeartPulse },
+        { label: 'Referrals', href: '/admin/herne/referrals', icon: GitBranch },
+        { label: 'Care plans', href: '/admin/herne/care-plans', icon: ClipboardList },
+        { label: 'Wearable data', href: '/admin/herne/wearable', icon: Watch },
+        { label: 'Shared DNA', href: '/admin/herne/dna', icon: ShieldCheck },
       ],
     },
     { title: 'CRM', items: [{ label: 'Leads', href: '/admin/crm', icon: ContactRound }] },
