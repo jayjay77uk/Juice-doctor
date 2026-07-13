@@ -1,7 +1,7 @@
 import 'server-only';
 
 import type { AiAgent } from '@/types/ai';
-import type { ChatMessage } from '@/lib/ai';
+import type { ChatMessage, AiUsage } from '@/lib/ai';
 import { getAiProvider } from '@/lib/ai';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { HERNE_ORG } from './records';
@@ -12,16 +12,23 @@ import { runLogRepo } from '../repositories/run-log-repo';
 import { memoryRepo, extractMemory, type MemoryItem } from '../repositories/memory-repo';
 import { languageDirective, HERNE_DEFAULT_PREFERENCE, type LanguagePreference } from './language';
 import { getLanguagePreferenceFor } from './language-store';
+import { carePlan, type CarePlan, type CarePlanAction } from './care-plan';
+import { buildWearableContext, type WearableContext } from './wearable/store';
+import { referralRules, escalationEngine, type ReferralRule } from './referrals';
+import { activePrompt, type ActivePrompt } from './prompt-version';
+import { precheckInput, postcheckOutput, type SafetyCategory } from './safety-eval';
 
 /**
- * The differentiated HERNE specialist turn. The runtime prompt assembler inherits
- * the organisation shared DNA and combines it with the selected specialist's
- * config, the ranked shared evidence and the specialist's output format. The
- * model answers grounded ONLY in the retrieved approved evidence, cites record
- * ids, and escalates to human clinical review on alarm signals. Never fabricates.
+ * The differentiated HERNE specialist turn — the platform is the intelligence
+ * layer; Claude is the language/reasoning provider. Every live request assembles
+ * the shared DNA, the specialist profile + consultation style, the active published
+ * prompt version, the specialist output format, the user objective, the shared care
+ * plan, permitted memory, ranked shared evidence with citations, permitted wearable
+ * trends, the language preference, referral boundaries, safety rules and prototype
+ * restrictions. Safety runs BEFORE (emergency/medication/diagnosis) and AFTER
+ * (fabricated-citation stripping, unsupported-claim flagging) inference. Never
+ * fabricates: honest unavailable states, evidence-only answers, real escalations.
  */
-
-const ALARM_TERMS = ['pain', 'chest', 'blood', 'faint', 'pregnan', 'medication', 'kidney', 'vomit', 'weight loss', 'confusion', 'suicid'];
 
 export interface HerneReply {
   text: string;
@@ -34,6 +41,15 @@ export interface HerneReply {
   escalationReason: string | null;
   /** The resolved language the specialist was asked to answer in (BCP-47 code). */
   language: string;
+  // ── Increment K telemetry + governance ─────────────────────────────────────
+  usage: AiUsage | null;
+  costUsd: number;
+  latencyMs: number;
+  traceId: string | null;
+  model: string | null;
+  promptVersion: { id: string; version: number; status: string } | null;
+  safety: { category: SafetyCategory; blocked: boolean; issues: string[] };
+  referralSuggestion: { toRole: string; reason: string; urgency: string } | null;
 }
 
 /** Resolve the language preference: explicit ctx wins, else the person's saved one. */
@@ -52,7 +68,24 @@ async function sharedDna(): Promise<string[]> {
   return Array.isArray(value?.dna) ? (value?.dna as string[]) : HERNE_SHARED_DNA;
 }
 
-function assembleSystemPrompt(profile: HerneSpecialistProfile, dna: string[], retrieved: HerneRetrieved[], langDirective: string | null): string {
+const PROTOTYPE_RESTRICTIONS =
+  'PROTOTYPE RESTRICTIONS — This is a demonstration prototype. You provide general wellbeing support, not medical diagnosis or treatment. Your answers are AI-generated and not yet reviewed by a healthcare professional. No real patient records are used; any wearable data is simulated. For anything clinical, uncertain, or urgent, recommend a qualified healthcare professional.';
+
+interface AssemblyInput {
+  profile: HerneSpecialistProfile;
+  dna: string[];
+  retrieved: HerneRetrieved[];
+  langDirective: string | null;
+  starter: string;
+  objective: string | null;
+  plan: CarePlan | null;
+  planActions: CarePlanAction[];
+  wearable: WearableContext | null;
+  referralBoundaries: ReferralRule[];
+}
+
+function assembleSystemPrompt(a: AssemblyInput): string {
+  const { profile, dna, retrieved } = a;
   const evidenceBlock = retrieved.length
     ? retrieved
         .map(
@@ -62,18 +95,88 @@ function assembleSystemPrompt(profile: HerneSpecialistProfile, dna: string[], re
         .join('\n\n')
     : '(no approved evidence records matched this question)';
 
+  const carePlanBlock = a.plan
+    ? [
+        'SHARED CARE PLAN — the ONE plan this person shares across the whole team. Build on it; never restart it.',
+        a.plan.goals.length ? `Goals: ${a.plan.goals.join('; ')}` : null,
+        a.plan.concerns.length ? `Concerns: ${a.plan.concerns.join('; ')}` : null,
+        a.plan.hernePriorities.length ? `HERNE priorities: ${a.plan.hernePriorities.join(', ')}` : null,
+        a.plan.assignedSpecialists.length ? `Contributing specialists: ${a.plan.assignedSpecialists.join(', ')}` : null,
+        a.planActions.length ? `Existing recommendations (do not duplicate):\n${a.planActions.slice(0, 8).map((x) => `- (${x.specialist}, ${x.status}) ${x.title}`).join('\n')}` : null,
+      ]
+        .filter(Boolean)
+        .join('\n')
+    : null;
+
+  const wearableBlock =
+    a.wearable && a.wearable.consent && a.wearable.metrics.length
+      ? [
+          'WEARABLE TRENDS — consented, permitted, minimised trends only (never raw history, never a diagnosis).',
+          ...a.wearable.metrics.map((m) => `- ${m.name}: ${m.direction} vs baseline (avg ${m.average}, deviation ${m.deviation}, confidence ${m.confidence}). ${m.limitations}`),
+          a.wearable.limitations,
+        ].join('\n')
+      : null;
+
+  const referralBlock = a.referralBoundaries.length
+    ? [
+        'REFERRAL BOUNDARIES — when a concern is better served elsewhere, hand off (do not overstep your scope):',
+        ...a.referralBoundaries.map((r) => `- ${r.trigger} → ${r.isHumanEscalation ? `${r.toSpecialist} (human)` : r.toSpecialist}${r.urgency ? ` [${r.urgency}]` : ''}`),
+      ].join('\n')
+    : null;
+
   return [
     'You are part of the HERNE wellbeing concierge — a coordinated team of specialists that interpret ONE shared approved evidence base.',
     `SHARED DNA (every specialist upholds these):\n${dna.map((d) => `- ${d}`).join('\n')}`,
     `YOUR ROLE\nYou are ${profile.name}, ${profile.title}.\nConsultation principle: ${profile.principle}\n${profile.philosophy ? `Philosophy: ${profile.philosophy}` : 'Philosophy: (no approved philosophy yet — do not invent one)'}\nCommunication style: ${profile.tone}.\nYou MAY: ${profile.allowedActions}.\nYou MUST NOT: ${profile.mustNotDo}.\nReferral style: ${profile.referralStyle}.`,
-    `STARTER INSTRUCTIONS\n${profile.starterPrompt}`,
-    `SHARED EVIDENCE — answer using ONLY these approved records and cite each you use as [${'RECORD-ID'}]. Include evidence strength, limitations and source where relevant. Never contradict this evidence or invent facts, figures or clinical claims.\n\n${evidenceBlock}`,
+    `STARTER INSTRUCTIONS\n${a.starter}`,
+    a.objective ? `USER OBJECTIVE — what this person wants from this conversation:\n${a.objective}` : null,
+    carePlanBlock,
+    `SHARED EVIDENCE — answer using ONLY these approved records and cite each you use as [RECORD-ID]. Include evidence strength, limitations and source where relevant. Never contradict this evidence or invent facts, figures, clinical claims, or citations.\n\n${evidenceBlock}`,
+    wearableBlock,
     `OUTPUT FORMAT — structure your answer with these sections, as ${profile.name}:\n${profile.outputFormat.map((s) => `- ${s}`).join('\n')}`,
-    langDirective,
-    'SAFETY — do not diagnose, prescribe, or advise stopping medication. If the person reports alarm symptoms (e.g. severe or chest pain, fainting, blood in stool, pregnancy concerns, medication interactions), recommend appropriate professional assessment and stop routine coaching.',
+    a.langDirective,
+    referralBlock,
+    'SAFETY — do not diagnose, prescribe, or advise stopping or changing medication. If the person reports alarm symptoms (e.g. severe or chest pain, fainting, blood in stool, pregnancy concerns, medication interactions, self-harm), recommend appropriate professional assessment and stop routine coaching.',
+    PROTOTYPE_RESTRICTIONS,
   ]
     .filter(Boolean)
     .join('\n\n');
+}
+
+function unavailable(specialistName: string, language: string, providerPresent: boolean): HerneReply {
+  return {
+    text: `I'm sorry — ${specialistName} is temporarily unavailable. Please try again shortly, or I can connect you with a member of the team.`,
+    specialist: specialistName,
+    citations: [], retrieved: [], grounded: false, available: providerPresent,
+    escalationRecommended: false, escalationReason: null, language,
+    usage: null, costUsd: 0, latencyMs: 0, traceId: null, model: null,
+    promptVersion: null, safety: { category: 'none', blocked: false, issues: [] }, referralSuggestion: null,
+  };
+}
+
+/** Best-effort escalation write — never blocks the user response. */
+async function tryEscalate(input: {
+  userId?: string | null | undefined;
+  conversationId?: string | null | undefined;
+  trigger: 'emergency' | 'clinical_review' | 'human_review' | 'outside_scope';
+  reason: string;
+  specialist: string;
+  urgency?: string | null | undefined;
+}): Promise<void> {
+  if (!input.userId && !input.conversationId) return;
+  try {
+    await escalationEngine.escalate({
+      userId: input.userId ?? null,
+      conversationId: input.conversationId ?? null,
+      trigger: input.trigger,
+      reason: input.reason,
+      specialist: input.specialist,
+      destination: 'human clinical review',
+      ...(input.urgency ? { urgency: input.urgency } : {}),
+    });
+  } catch {
+    // best-effort
+  }
 }
 
 export async function herneSpecialistReply(
@@ -87,81 +190,125 @@ export async function herneSpecialistReply(
   const specialistName = profile?.name ?? agent.name;
   const pref = await resolvePreference(ctx);
 
-  if (!profile || !provider) {
+  if (!profile || !provider) return unavailable(specialistName, pref.language, Boolean(provider));
+
+  // ── Safety PRE-check (before any inference) ────────────────────────────────
+  const pre = precheckInput(query);
+  if (pre.blocked) {
+    await tryEscalate({ userId: ctx?.userId, conversationId: ctx?.conversationId, trigger: pre.trigger ?? 'emergency', reason: pre.reason ?? 'Safety pre-check', specialist: agent.slug, urgency: pre.urgency });
+    await runLogRepo.log({ agentId: agent.id, actorId: ctx?.userId ?? null, input: query, output: pre.userMessage ?? '', status: 'blocked' });
     return {
-      text: `I'm sorry — ${specialistName} is temporarily unavailable. Please try again shortly, or I can connect you with a member of the team.`,
+      text: pre.userMessage ?? 'For your safety, please seek urgent professional help.',
       specialist: specialistName,
-      citations: [],
-      retrieved: [],
-      grounded: false,
-      available: Boolean(provider),
-      escalationRecommended: false,
-      escalationReason: null,
-      language: pref.language,
+      citations: [], retrieved: [], grounded: false, available: true,
+      escalationRecommended: true, escalationReason: pre.reason, language: pref.language,
+      usage: null, costUsd: 0, latencyMs: 0, traceId: null, model: null,
+      promptVersion: null,
+      safety: { category: pre.category, blocked: true, issues: [] },
+      referralSuggestion: { toRole: 'human clinical review', reason: pre.reason ?? 'Urgent safety concern', urgency: pre.urgency ?? 'immediate' },
     };
   }
 
   const started = Date.now();
-  const [retrieved, memory, dna] = await Promise.all([
+  const [retrieved, memory, dna, plan, wearable, active, rules] = await Promise.all([
     retrieveForSpecialist(agent.slug, query, ctx?.goal ? { goal: ctx.goal } : {}),
     ctx?.userId || ctx?.conversationId
       ? memoryRepo.recall({ userId: ctx?.userId ?? null, conversationId: ctx?.conversationId ?? null, limit: 6 })
       : Promise.resolve([] as MemoryItem[]),
     sharedDna(),
+    ctx?.userId ? carePlan.get(ctx.userId) : Promise.resolve<CarePlan | null>(null),
+    ctx?.userId ? buildWearableContext(agent.slug, ctx.userId) : Promise.resolve<WearableContext | null>(null),
+    activePrompt(agent.id),
+    referralRules.list(),
   ]);
 
-  const alarm = ALARM_TERMS.some((t) => query.toLowerCase().includes(t));
+  const planActions = plan ? await carePlan.actions(plan.id) : [];
+  const objective = ctx?.goal ?? (plan?.goals.length ? plan.goals.join('; ') : null);
+  const referralBoundaries = rules.filter((r) => r.fromSpecialist === agent.slug);
+  const activeVer: ActivePrompt | null = active;
+
   const system =
-    assembleSystemPrompt(profile, dna, retrieved, languageDirective(pref)) +
+    assembleSystemPrompt({
+      profile, dna, retrieved,
+      langDirective: languageDirective(pref),
+      starter: activeVer?.content ?? profile.starterPrompt,
+      objective,
+      plan,
+      planActions,
+      wearable,
+      referralBoundaries,
+    }) +
     (memory.length ? `\n\nWHAT YOU REMEMBER ABOUT THIS PERSON (respect it):\n${memory.map((m) => `- ${m.content}`).join('\n')}` : '');
 
   try {
     const messages: ChatMessage[] = [...history.slice(-8), { role: 'user', content: query }];
     const res = await provider.chat({ system, messages, maxTokens: 900, op: 'herne:reply' });
+
+    // ── Safety POST-check (fabricated citations, unsupported claims) ──────────
+    const allowedIds = retrieved.map((r) => r.recordId);
+    const post = postcheckOutput(res.text.trim(), allowedIds);
+
     const citations = retrieved.map((r) => ({ recordId: r.recordId, sourceTitle: r.sourceTitle, sourceUrl: r.sourceUrl }));
     await runLogRepo.log({
       agentId: agent.id,
       actorId: ctx?.userId ?? null,
       input: query,
-      output: res.text,
+      output: post.text,
       retrieved: retrieved.map((r) => ({ recordId: r.recordId, final: r.score.final, role: r.role })),
       tokensInput: res.usage?.inputTokens ?? null,
       tokensOutput: res.usage?.outputTokens ?? null,
       latencyMs: Date.now() - started,
-      status: 'ok',
+      status: post.ok ? 'ok' : 'flagged',
       model: res.model,
       costUsd: res.costUsd,
       traceId: res.traceId,
+      promptVersionId: activeVer?.versionId ?? null,
     });
+
+    // Escalate for medication/diagnosis boundary or a post-check clinical flag.
+    let referralSuggestion: HerneReply['referralSuggestion'] = null;
+    if (pre.escalate || post.mustEscalate) {
+      const reason = pre.reason ?? 'Response required unsupported-claim review.';
+      await tryEscalate({ userId: ctx?.userId, conversationId: ctx?.conversationId, trigger: pre.trigger ?? 'clinical_review', reason, specialist: agent.slug, urgency: pre.urgency });
+      referralSuggestion = { toRole: 'human clinical review', reason, urgency: pre.urgency ?? 'routine' };
+    }
+
     if (ctx?.userId) {
       const mem = extractMemory(query);
       if (mem) {
         await memoryRepo.remember({ scope: 'user', kind: mem.kind, key: `user:${mem.content.slice(0, 40)}`, content: mem.content, userId: ctx.userId, agentId: agent.id, importance: 3, source: 'chat' });
       }
     }
+
+    const escalate = pre.escalate || post.mustEscalate;
     return {
-      text: res.text.trim(),
+      text: post.text,
       specialist: specialistName,
       citations,
       retrieved,
       grounded: retrieved.length > 0,
       available: true,
-      escalationRecommended: alarm,
-      escalationReason: alarm ? 'Alarm symptoms detected — HERNE referral matrix requires human clinical review.' : null,
+      escalationRecommended: escalate,
+      escalationReason: escalate ? (pre.reason ?? 'Human clinical review recommended.') : null,
       language: pref.language,
+      usage: res.usage,
+      costUsd: res.costUsd,
+      latencyMs: res.latencyMs,
+      traceId: res.traceId,
+      model: res.model,
+      promptVersion: activeVer ? { id: activeVer.versionId, version: activeVer.version, status: activeVer.status } : null,
+      safety: { category: pre.category, blocked: false, issues: post.issues },
+      referralSuggestion,
     };
   } catch {
     await runLogRepo.log({ agentId: agent.id, actorId: ctx?.userId ?? null, input: query, output: '', latencyMs: Date.now() - started, status: 'error' });
     return {
+      ...unavailable(specialistName, pref.language, true),
       text: `I'm sorry — I couldn't complete that just now. Please try again, or I can pass you to a member of the team.`,
-      specialist: specialistName,
-      citations: [],
       retrieved,
-      grounded: false,
-      available: true,
-      escalationRecommended: alarm,
-      escalationReason: alarm ? 'Alarm symptoms detected — human clinical review recommended.' : null,
-      language: pref.language,
+      escalationRecommended: pre.escalate,
+      escalationReason: pre.escalate ? pre.reason : null,
+      safety: { category: pre.category, blocked: false, issues: [] },
     };
   }
 }
