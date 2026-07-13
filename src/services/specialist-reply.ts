@@ -6,6 +6,7 @@ import { getAiProvider } from '@/lib/ai';
 import { knowledgeRepo } from './repositories/knowledge-repo';
 import { runLogRepo } from './repositories/run-log-repo';
 import { memoryRepo, extractMemory, type MemoryItem } from './repositories/memory-repo';
+import { herneSpecialistReply, isHerneSpecialist } from './herne/reply';
 
 /**
  * The real specialist-AI turn: retrieve the specialist's assigned knowledge
@@ -47,6 +48,14 @@ export async function specialistReply(
   userText: string,
   ctx?: { userId?: string | null; conversationId?: string | null },
 ): Promise<SpecialistReply> {
+  // HERNE specialists answer through the shared-evidence, DNA-assembled reply.
+  if (isHerneSpecialist(agent.slug)) {
+    const h = await herneSpecialistReply(agent, history, userText, ctx);
+    const text = h.escalationRecommended && h.escalationReason ? `${h.text}\n\n⚠ ${h.escalationReason}` : h.text;
+    const citations = [...new Set(h.citations.map((c) => (c.sourceTitle ? `${c.recordId} — ${c.sourceTitle}` : c.recordId)))];
+    return { text, citations, grounded: h.grounded, available: h.available };
+  }
+
   const provider = getAiProvider();
   if (!provider) {
     return {
