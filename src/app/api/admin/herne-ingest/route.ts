@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/services/auth';
 import { hasMinRole } from '@/lib/auth/roles';
 import { ingest, EXPECTED_RECORD_COUNT } from '@/services/herne/ingestion';
+import { seedHerneSpecialists } from '@/services/herne/seed';
 
 /**
- * Admin-gated trigger for the HERNE evidence ingestion command. Idempotent —
- * re-running upserts by record id + version and re-reports. Administrator only.
+ * Admin-gated trigger for the HERNE foundation setup: ingest the shared evidence
+ * base + seed the eight specialists (config, DNA, starter prompts). Idempotent.
+ * Administrator only.
  */
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,10 +17,12 @@ export async function GET() {
   if (!session || !hasMinRole(session.user.role, 'administrator')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
-  const report = await ingest();
+  const evidence = await ingest();
+  const specialists = await seedHerneSpecialists();
   return NextResponse.json({
-    ok: report.expectedMet && report.persisted,
-    expected: EXPECTED_RECORD_COUNT,
-    report,
+    ok: evidence.expectedMet && evidence.persisted && specialists.specialists === 8,
+    expectedRecords: EXPECTED_RECORD_COUNT,
+    evidence,
+    specialists,
   });
 }
