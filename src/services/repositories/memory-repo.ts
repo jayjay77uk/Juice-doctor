@@ -104,6 +104,39 @@ export const memoryRepo = {
     const seen = new Set<string>();
     return items.filter((i) => (seen.has(i.content) ? false : (seen.add(i.content), true))).slice(0, input.limit ?? 8);
   },
+
+  /** List a person's own stored memories (for the memory-management UI). */
+  async listForUser(userId: string): Promise<{ id: string; kind: string; content: string; source: string; createdAt: string }[]> {
+    const sb = createAdminClient();
+    const uid = uuidOrNull(userId);
+    if (!sb || !uid) return [];
+    const { data } = await sb
+      .from('ai_memory')
+      .select('id, kind, content, source, created_at')
+      .eq('user_id', uid)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    return (data ?? []).map((r) => ({ id: String(r.id), kind: String(r.kind), content: String(r.content), source: String(r.source ?? 'system'), createdAt: String(r.created_at) }));
+  },
+
+  /** Delete one of a person's own memories (ownership enforced by the user filter). */
+  async forget(userId: string, id: string): Promise<boolean> {
+    const sb = createAdminClient();
+    const uid = uuidOrNull(userId);
+    const mid = uuidOrNull(id);
+    if (!sb || !uid || !mid) return false;
+    const { error } = await sb.from('ai_memory').delete().eq('id', mid).eq('user_id', uid);
+    return !error;
+  },
+
+  /** Delete ALL of a person's memories (disable/clear memory). */
+  async forgetAll(userId: string): Promise<number> {
+    const sb = createAdminClient();
+    const uid = uuidOrNull(userId);
+    if (!sb || !uid) return 0;
+    const { data } = await sb.from('ai_memory').delete().eq('user_id', uid).select('id');
+    return (data ?? []).length;
+  },
 };
 
 /** Heuristic: does this user message state a durable preference/fact worth remembering? */

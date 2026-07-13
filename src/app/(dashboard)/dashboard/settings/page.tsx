@@ -6,6 +6,10 @@ import { Panel } from '@/components/admin/panel';
 import { Button } from '@/components/ui/button';
 import { LanguageVoiceCard } from '@/components/settings/language-voice-card';
 import { getLanguagePreference } from '@/services/herne/language-store';
+import { MemoryCard } from '@/components/settings/memory-card';
+import { getMemoryEnabled } from '@/services/memory-prefs';
+import { memoryRepo } from '@/services/repositories/memory-repo';
+import { getSession } from '@/services/auth';
 
 export const metadata = createMetadata({ title: 'Settings' });
 export const dynamic = 'force-dynamic';
@@ -34,7 +38,12 @@ const notificationToggles: { id: string; label: string; hint: string }[] = [
 ];
 
 export default async function SettingsPage() {
-  const languagePreference = await getLanguagePreference();
+  const session = await getSession();
+  const [languagePreference, memoryEnabled, memories] = await Promise.all([
+    getLanguagePreference(),
+    getMemoryEnabled(),
+    session?.user.id ? memoryRepo.listForUser(session.user.id) : Promise.resolve([]),
+  ]);
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-8">
       <AdminHeader
@@ -63,6 +72,8 @@ export default async function SettingsPage() {
       </Panel>
 
       <LanguageVoiceCard initial={languagePreference} />
+
+      <MemoryCard enabled={memoryEnabled} memories={memories} />
 
       <Panel
         title="Notifications"

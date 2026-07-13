@@ -6,6 +6,8 @@ import { runPlaygroundAction } from '@/services/admin-actions';
 import type { PlaygroundResult } from '@/types/ai-platform';
 import { Field, Select, Textarea } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { HERNE_LANGUAGES } from '@/data/herne/languages';
 import { Panel } from './panel';
 
 export interface PlaygroundAgentOption {
@@ -14,14 +16,16 @@ export interface PlaygroundAgentOption {
 }
 
 /**
- * The AI Playground — a MOCK test harness. Selecting an agent, knowledge scope
- * and question runs `runPlaygroundAction` (no real inference) and shows the
- * templated response, the retrieved-knowledge citations, and simulated metrics.
- * Nothing here affects production agents or analytics.
+ * The AI Playground — a LIVE, isolated test harness. Selecting a specialist,
+ * language and question runs `runPlaygroundAction`, which for HERNE specialists
+ * calls the real assembly (shared DNA, scored evidence, citations, safety,
+ * language) through the configured provider and shows full inspection. Runs are
+ * logged as playground traffic and never affect published configuration.
  */
 export function PlaygroundConsole({ agents }: { agents: PlaygroundAgentOption[] }) {
   const [agentId, setAgentId] = React.useState(agents[0]?.id ?? '');
   const [knowledgeCount, setKnowledgeCount] = React.useState('2');
+  const [language, setLanguage] = React.useState('en-GB');
   const [query, setQuery] = React.useState('How much water should I actually drink?');
   const [result, setResult] = React.useState<PlaygroundResult | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -34,6 +38,7 @@ export function PlaygroundConsole({ agents }: { agents: PlaygroundAgentOption[] 
       agentId,
       query,
       knowledgeCount: Number(knowledgeCount),
+      language,
     });
     setPending(false);
     if (res.ok) setResult(res.result);
@@ -61,12 +66,19 @@ export function PlaygroundConsole({ agents }: { agents: PlaygroundAgentOption[] 
               <option value="3">3 documents</option>
             </Select>
           </Field>
+          <Field label="Language" name="language" hint="Answer language (HERNE specialists).">
+            <Select id="language" value={language} onChange={(e) => setLanguage(e.target.value)}>
+              {HERNE_LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>{l.englishName}{l.nativeName !== l.englishName ? ` — ${l.nativeName}` : ''}</option>
+              ))}
+            </Select>
+          </Field>
           <Field label="Test question" name="query">
             <Textarea id="query" value={query} onChange={(e) => setQuery(e.target.value)} rows={4} />
           </Field>
           <Button type="button" onClick={run} disabled={pending || !agentId}>
             {pending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
-            {pending ? 'Running…' : 'Run test'}
+            {pending ? 'Running…' : 'Run live test'}
           </Button>
           {error && (
             <p className="rounded-lg bg-[#f6e3e0] px-3 py-2 text-sm text-danger" role="alert">
@@ -74,7 +86,7 @@ export function PlaygroundConsole({ agents }: { agents: PlaygroundAgentOption[] 
             </p>
           )}
           <p className="text-xs text-muted-foreground">
-            Prototype — responses are simulated. No AI model is called and production is unaffected.
+            Live — HERNE specialists run the real assembly through the configured provider. Runs are logged as playground traffic and never change published configuration.
           </p>
         </div>
       </Panel>
@@ -82,7 +94,31 @@ export function PlaygroundConsole({ agents }: { agents: PlaygroundAgentOption[] 
       <div className="flex flex-col gap-6">
         <Panel title="Response">
           {result ? (
-            <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{result.output}</div>
+            <div className="flex flex-col gap-3">
+              <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{result.output}</div>
+              {result.isHerne && (
+                <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                  <Badge tone={result.grounded ? 'secondary' : 'outline'}>{result.grounded ? 'Grounded in evidence' : 'No evidence matched'}</Badge>
+                  {result.escalationRecommended && <Badge tone="accent">Escalation recommended</Badge>}
+                  {result.safetyIssues && result.safetyIssues.length > 0 && <Badge tone="accent">Safety: {result.safetyIssues.join(', ')}</Badge>}
+                  <Badge tone="neutral">Language: {result.resolvedLanguage}</Badge>
+                  {result.promptVersion && <Badge tone="outline">Prompt v{result.promptVersion.version} · {result.promptVersion.status}</Badge>}
+                  {typeof result.costUsd === 'number' && <Badge tone="neutral">~${result.costUsd.toFixed(5)}</Badge>}
+                </div>
+              )}
+              {result.isHerne && result.citations && result.citations.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {result.citations.map((c) => (
+                    <span key={c.recordId} className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] text-muted-foreground" title={c.sourceTitle}>
+                      <FileText className="size-3 text-primary" /> {c.recordId}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {result.escalationRecommended && result.escalationReason && (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{result.escalationReason}</p>
+              )}
+            </div>
           ) : (
             <p className="py-8 text-center text-sm text-muted-foreground">Run a test to see the response.</p>
           )}

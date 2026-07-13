@@ -324,6 +324,7 @@ export async function runPlaygroundAction(input: {
   query: string;
   knowledgeCount?: number;
   modelKey?: string;
+  language?: string;
 }): Promise<{ ok: true; result: PlaygroundResult } | { ok: false; error: string }> {
   try { await assertRole('administrator'); } catch { return { ok: false, error: 'Not authorised.' }; }
   if (!input.query.trim()) return { ok: false, error: 'Enter a question to test.' };

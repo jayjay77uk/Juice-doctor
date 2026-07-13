@@ -4,6 +4,7 @@ import { site } from '@/content/site';
 import { signOut } from '@/services/actions';
 import { Logo } from './logo';
 import { SidebarNav, type NavVariant } from './sidebar-nav';
+import { PrototypeNotices } from './prototype-notices';
 
 export type { NavVariant } from './sidebar-nav';
 
@@ -72,6 +73,9 @@ export function AppShell({
           </div>
         </header>
         <main className="flex-1 overflow-x-hidden px-5 py-8 sm:px-8">{children}</main>
+        <footer className="border-t border-border px-5 pb-8 pt-4 sm:px-8">
+          <PrototypeNotices className="mx-auto max-w-5xl" />
+        </footer>
       </div>
     </div>
   );

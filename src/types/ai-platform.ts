@@ -151,7 +151,7 @@ export interface AiRunLog {
   createdAt: string;
 }
 
-/** The result of a playground run (mocked in the prototype — no inference). */
+/** The result of a playground run — LIVE inference through the configured provider. */
 export interface PlaygroundResult {
   output: string;
   retrievedKnowledge: RetrievedChunk[];
@@ -159,4 +159,14 @@ export interface PlaygroundResult {
   tokensOutput: number;
   latencyMs: number;
   modelKey: string;
+  // ── Increment K: HERNE assembly inspection (present for HERNE specialists) ──
+  isHerne?: boolean;
+  citations?: { recordId: string; sourceTitle: string; sourceUrl: string }[];
+  grounded?: boolean;
+  escalationRecommended?: boolean;
+  escalationReason?: string | null;
+  resolvedLanguage?: string;
+  costUsd?: number;
+  safetyIssues?: string[];
+  promptVersion?: { version: number; status: string } | null;
 }

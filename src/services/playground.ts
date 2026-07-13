@@ -7,6 +7,8 @@ import { agents } from './agents';
 import { knowledgeRepo } from './repositories/knowledge-repo';
 import { runLogRepo } from './repositories/run-log-repo';
 import { ok, type Result } from './result';
+import { herneSpecialistReply, isHerneSpecialist } from './herne/reply';
+import { resolveLanguagePreference } from './herne/language';
 
 /**
  * AI Playground — a real, isolated test harness for an agent + its knowledge.
@@ -28,11 +30,36 @@ export const playground = {
     query: string;
     knowledgeCount?: number;
     modelKey?: string;
+    language?: string;
   }): Promise<Result<PlaygroundResult>> {
     const started = Date.now();
     const agentResult = await agents.byId(input.agentId);
     const agent = agentResult.ok ? agentResult.data : null;
     const provider = getAiProvider();
+
+    // HERNE specialists run through the REAL assembly (shared DNA, evidence scoring,
+    // citations, safety, language) so the playground inspects exactly what runs live.
+    if (agent && provider && isHerneSpecialist(agent.slug)) {
+      const pref = resolveLanguagePreference(input.language ? { language: input.language } : null);
+      const reply = await herneSpecialistReply(agent, [], input.query, { language: pref });
+      return ok({
+        output: reply.text,
+        retrievedKnowledge: reply.retrieved.map((r) => ({ documentTitle: `${r.recordId} — ${r.sourceTitle}`, snippet: r.claim, score: Math.round((r.score.final ?? 0) * 100) / 100 })),
+        tokensInput: reply.usage?.inputTokens ?? 0,
+        tokensOutput: reply.usage?.outputTokens ?? 0,
+        latencyMs: reply.latencyMs || Date.now() - started,
+        modelKey: reply.model ?? env.aiModel,
+        isHerne: true,
+        citations: reply.citations,
+        grounded: reply.grounded,
+        escalationRecommended: reply.escalationRecommended,
+        escalationReason: reply.escalationReason,
+        resolvedLanguage: reply.language,
+        costUsd: reply.costUsd,
+        safetyIssues: reply.safety.issues,
+        promptVersion: reply.promptVersion ? { version: reply.promptVersion.version, status: reply.promptVersion.status } : null,
+      });
+    }
 
     const chunks = agent ? await knowledgeRepo.retrieve(agent.id, input.query, input.knowledgeCount ?? 4) : [];
     const retrieved: RetrievedChunk[] = chunks.map((c, i) => ({

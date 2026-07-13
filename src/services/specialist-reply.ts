@@ -9,6 +9,7 @@ import { memoryRepo, extractMemory, type MemoryItem } from './repositories/memor
 import { herneSpecialistReply, isHerneSpecialist } from './herne/reply';
 import { languageDirective, HERNE_DEFAULT_PREFERENCE, type LanguagePreference } from './herne/language';
 import { getLanguagePreferenceFor } from './herne/language-store';
+import { isMemoryEnabled } from './memory-prefs';
 
 /**
  * The real specialist-AI turn: retrieve the specialist's assigned knowledge
@@ -102,8 +103,8 @@ export async function specialistReply(
       costUsd: res.costUsd,
       traceId: res.traceId,
     });
-    // Extract + persist a durable preference/fact the customer stated.
-    if (ctx?.userId) {
+    // Extract + persist a durable preference/fact the customer stated (consent-gated).
+    if (ctx?.userId && (await isMemoryEnabled(ctx.userId))) {
       const mem = extractMemory(userText);
       if (mem) {
         await memoryRepo.remember({

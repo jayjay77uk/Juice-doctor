@@ -23,3 +23,17 @@ export const config = {
 /** Copy shown in the prototype banner. Approved wording (approval-gate item #6). */
 export const PROTOTYPE_BANNER_TEXT =
   'Prototype Environment — For Demonstration Purposes Only';
+
+/**
+ * The standing prototype notices (Increment K, section 17). Single source of truth
+ * consumed by the banner, the shared disclaimer, the chat and the /disclaimer page,
+ * so the honesty wording can never drift between surfaces.
+ */
+export const PROTOTYPE_NOTICES: readonly string[] = [
+  'Not for emergency use — if this is an emergency, contact your local emergency services.',
+  'Not a replacement for a healthcare professional’s judgement.',
+  'No live patient records are used — all data is fictional or anonymised for demonstration.',
+  'Wearable data is simulated (no live Thryve or device connection).',
+  'Voice capabilities are planned where not yet connected.',
+  'Language output is AI-generated and not yet clinically human-reviewed.',
+];

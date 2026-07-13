@@ -17,6 +17,7 @@ import { buildWearableContext, type WearableContext } from './wearable/store';
 import { referralRules, escalationEngine, type ReferralRule } from './referrals';
 import { activePrompt, type ActivePrompt } from './prompt-version';
 import { precheckInput, postcheckOutput, type SafetyCategory } from './safety-eval';
+import { isMemoryEnabled } from '../memory-prefs';
 
 /**
  * The differentiated HERNE specialist turn — the platform is the intelligence
@@ -293,7 +294,7 @@ async function finalizeTurn(t: PreparedTurn, agent: AiAgent, query: string, ctx:
 
   if (ctx?.userId) {
     const mem = extractMemory(query);
-    if (mem) {
+    if (mem && (await isMemoryEnabled(ctx.userId))) {
       await memoryRepo.remember({ scope: 'user', kind: mem.kind, key: `user:${mem.content.slice(0, 40)}`, content: mem.content, userId: ctx.userId, agentId: agent.id, importance: 3, source: 'chat' });
     }
   }
