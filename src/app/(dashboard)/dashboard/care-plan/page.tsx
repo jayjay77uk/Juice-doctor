@@ -8,6 +8,8 @@ import { getSession } from '@/services/auth';
 import { carePlan, timeline } from '@/services/herne/care-plan';
 import { referralEngine } from '@/services/herne/referrals';
 import { herneProfile } from '@/data/herne/specialist-profiles';
+import { CarePlanActionList } from '@/components/dashboard/care-plan-action-list';
+import { isTerminal, type ActionStatus } from '@/services/herne/care-plan-states';
 
 export const metadata = createMetadata({ title: 'My care plan', path: '/dashboard/care-plan' });
 export const dynamic = 'force-dynamic';
@@ -29,9 +31,17 @@ export default async function CarePlanPage() {
     ? await Promise.all([carePlan.actions(plan.id), timeline.list(userId, 30), referralEngine.listForUser(userId)])
     : [[], [], []];
 
-  const current = actions.filter((a) => a.status !== 'completed');
+  const current = actions.filter((a) => !isTerminal(a.status as ActionStatus));
+  const proposed = actions.filter((a) => a.status === 'proposed');
   const completed = actions.filter((a) => a.status === 'completed');
   const nextAction = current[0] ?? null;
+  const actionViews = actions.map((a) => ({
+    id: a.id,
+    title: a.title,
+    specialistName: specialistName(a.specialist),
+    status: a.status as ActionStatus,
+    evidenceRefs: a.evidenceRefs,
+  }));
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8">
@@ -62,27 +72,17 @@ export default async function CarePlanPage() {
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <Panel title="Recommendations from your team" padded={false}>
+        <Panel
+          title="Recommendations from your team"
+          {...(proposed.length ? { description: `${proposed.length} proposed — accept or decline` } : {})}
+          padded={false}
+        >
           {actions.length === 0 ? (
             <div className="p-5 sm:p-6">
-              <EmptyState icon={ClipboardList} title="No recommendations yet" description="As you speak with your specialists, their agreed actions appear here." />
+              <EmptyState icon={ClipboardList} title="No recommendations yet" description="As you speak with your specialists, their proposed actions appear here for you to accept or decline." />
             </div>
           ) : (
-            <ul className="divide-y divide-border">
-              {actions.map((a) => (
-                <li key={a.id} className="flex items-start gap-3 px-5 py-4 sm:px-6">
-                  <span className={`mt-1 size-2 shrink-0 rounded-full ${a.status === 'completed' ? 'bg-secondary' : 'bg-amber-400'}`} />
-                  <div className="min-w-0 flex-1">
-                    <p className={`font-medium ${a.status === 'completed' ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{a.title}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {specialistName(a.specialist)}
-                      {a.evidenceRefs.length ? ` · evidence ${a.evidenceRefs.join(', ')}` : ''}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-xs capitalize text-muted-foreground">{a.status}</span>
-                </li>
-              ))}
-            </ul>
+            <CarePlanActionList actions={actionViews} />
           )}
         </Panel>
 

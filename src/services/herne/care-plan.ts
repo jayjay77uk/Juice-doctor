@@ -3,6 +3,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { HERNE_ORG } from './records';
+import { canTransition, NON_TERMINAL_STATUSES, type ActionStatus } from './care-plan-states';
 
 /**
  * The ONE shared HERNE care plan per user — every specialist reads and updates
@@ -147,7 +148,12 @@ export const carePlan = {
     }));
   },
 
-  /** Add an action, de-duplicated by (specialist, title) so no two specialists file the same recommendation. */
+  /**
+   * Propose an action, de-duplicated by (specialist, title) across NON-TERMINAL
+   * states only — a previously declined/superseded recommendation can be re-raised,
+   * but two live copies cannot coexist (also backed by a DB partial-unique index).
+   * New actions start in 'proposed'; the person accepts or declines them.
+   */
   async addAction(
     carePlanId: string,
     input: { specialist: string; title: string; detail?: string; kind?: string; status?: string; evidenceRefs?: string[] },
@@ -160,9 +166,10 @@ export const carePlan = {
       .eq('care_plan_id', carePlanId)
       .eq('specialist', input.specialist)
       .ilike('title', input.title)
+      .in('status', NON_TERMINAL_STATUSES)
       .maybeSingle();
     if (dupe.data) return { added: false, action: null };
-    const { data } = await sb
+    const { data, error } = await sb
       .from('herne_care_plan_actions')
       .insert({
         care_plan_id: carePlanId,
@@ -170,12 +177,14 @@ export const carePlan = {
         kind: input.kind ?? 'recommendation',
         title: input.title,
         detail: input.detail ?? null,
-        status: input.status ?? 'pending',
+        status: input.status ?? 'proposed',
+        proposed_by: input.specialist,
         evidence_refs: input.evidenceRefs ?? [],
       })
       .select('*')
       .single();
-    if (!data) return { added: false, action: null };
+    // A concurrent insert may hit the partial-unique index — treat as a dedup, not an error.
+    if (error || !data) return { added: false, action: null };
     return {
       added: true,
       action: {
@@ -192,11 +201,77 @@ export const carePlan = {
     };
   },
 
-  async completeAction(actionId: string): Promise<boolean> {
+  /** Fetch a single action (with its plan's owner) — used for authorising transitions. */
+  async actionWithOwner(actionId: string): Promise<{ action: CarePlanAction; userId: string } | null> {
+    const sb = createAdminClient();
+    if (!sb) return null;
+    const { data } = await sb.from('herne_care_plan_actions').select('*, herne_care_plans!inner(user_id)').eq('id', actionId).maybeSingle();
+    if (!data) return null;
+    const owner = (data as Row).herne_care_plans as { user_id?: string } | null;
+    return {
+      userId: String(owner?.user_id ?? ''),
+      action: {
+        id: String(data.id), carePlanId: String(data.care_plan_id), specialist: String(data.specialist),
+        kind: String(data.kind), title: String(data.title), detail: (data.detail as string | null) ?? null,
+        status: String(data.status), evidenceRefs: (data.evidence_refs as string[]) ?? [], createdAt: String(data.created_at),
+      },
+    };
+  },
+
+  /**
+   * Guarded state transition. Reads the current status, verifies the edge is legal,
+   * writes the new status + metadata, and logs a timeline event. Returns false when
+   * the action is missing or the transition is illegal (never force-transitions).
+   */
+  async transition(actionId: string, to: ActionStatus, opts?: { userId?: string; reason?: string; supersededBy?: string }): Promise<boolean> {
     const sb = createAdminClient();
     if (!sb) return false;
-    const { error } = await sb.from('herne_care_plan_actions').update({ status: 'completed', updated_at: nowIso() }).eq('id', actionId);
-    return !error;
+    const { data: cur } = await sb.from('herne_care_plan_actions').select('status, care_plan_id, specialist, title').eq('id', actionId).maybeSingle();
+    if (!cur) return false;
+    const from = String(cur.status) as ActionStatus;
+    if (!canTransition(from, to)) return false;
+
+    const patch: Record<string, unknown> = { status: to, updated_at: nowIso() };
+    if (to === 'user_accepted') patch.accepted_at = nowIso();
+    if (to === 'declined') { patch.declined_at = nowIso(); if (opts?.reason) patch.declined_reason = opts.reason; }
+    if (to === 'requires_human_review' && opts?.reason) patch.review_reason = opts.reason;
+    if (to === 'superseded' && opts?.supersededBy) patch.superseded_by = opts.supersededBy;
+
+    // Guard on the observed status so a concurrent change can't be clobbered.
+    const { data, error } = await sb.from('herne_care_plan_actions').update(patch).eq('id', actionId).eq('status', from).select('id').maybeSingle();
+    if (error || !data) return false;
+
+    if (opts?.userId) {
+      await timeline.add(opts.userId, {
+        type: 'care_plan',
+        title: `Action ${to.replace(/_/g, ' ')}: ${String(cur.title)}`,
+        ...(opts?.reason ? { detail: opts.reason } : {}),
+        specialist: String(cur.specialist),
+        carePlanId: String(cur.care_plan_id),
+      });
+    }
+    return true;
+  },
+
+  acceptAction(actionId: string, userId?: string): Promise<boolean> {
+    return carePlan.transition(actionId, 'user_accepted', userId ? { userId } : {});
+  },
+  declineAction(actionId: string, reason?: string, userId?: string): Promise<boolean> {
+    return carePlan.transition(actionId, 'declined', { ...(reason ? { reason } : {}), ...(userId ? { userId } : {}) });
+  },
+  activateAction(actionId: string, userId?: string): Promise<boolean> {
+    return carePlan.transition(actionId, 'active', userId ? { userId } : {});
+  },
+  supersedeAction(actionId: string, supersededBy: string, userId?: string): Promise<boolean> {
+    return carePlan.transition(actionId, 'superseded', { supersededBy, ...(userId ? { userId } : {}) });
+  },
+  flagForHumanReview(actionId: string, reason?: string, userId?: string): Promise<boolean> {
+    return carePlan.transition(actionId, 'requires_human_review', { ...(reason ? { reason } : {}), ...(userId ? { userId } : {}) });
+  },
+
+  async completeAction(actionId: string, userId?: string): Promise<boolean> {
+    // Guarded: only active actions may complete (accept → activate → complete).
+    return carePlan.transition(actionId, 'completed', userId ? { userId } : {});
   },
 
   /** Ensure a specialist is recorded as contributing to the plan. */
