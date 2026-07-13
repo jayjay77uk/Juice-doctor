@@ -7,6 +7,8 @@ import { knowledgeRepo } from './repositories/knowledge-repo';
 import { runLogRepo } from './repositories/run-log-repo';
 import { memoryRepo, extractMemory, type MemoryItem } from './repositories/memory-repo';
 import { herneSpecialistReply, isHerneSpecialist } from './herne/reply';
+import { languageDirective, HERNE_DEFAULT_PREFERENCE, type LanguagePreference } from './herne/language';
+import { getLanguagePreferenceFor } from './herne/language-store';
 
 /**
  * The real specialist-AI turn: retrieve the specialist's assigned knowledge
@@ -23,7 +25,7 @@ export interface SpecialistReply {
   available: boolean;
 }
 
-function buildSystemPrompt(agent: AiAgent, knowledgeBlock: string, memory: MemoryItem[]): string {
+function buildSystemPrompt(agent: AiAgent, knowledgeBlock: string, memory: MemoryItem[], langDirective: string | null): string {
   const memoryBlock = memory.length
     ? `What you remember about this customer (respect it):\n${memory.map((m) => `- (${m.kind}) ${m.content}`).join('\n')}`
     : '';
@@ -36,6 +38,7 @@ function buildSystemPrompt(agent: AiAgent, knowledgeBlock: string, memory: Memor
     knowledgeBlock
       ? `Use the following knowledge to answer factual questions. If the answer is not contained in it, say you do not have that information and offer to connect them with the team. Cite sources inline as [n].\n\nKNOWLEDGE:\n${knowledgeBlock}`
       : 'You currently have no knowledge documents for this question. Answer within your general remit, and do NOT invent specific facts, figures, prices, or clinical claims — offer to connect the customer with the team for specifics.',
+    langDirective,
     'Never fabricate facts, prices, or medical/clinical claims. Do not give medical, legal or financial advice.',
   ]
     .filter(Boolean)
@@ -46,7 +49,7 @@ export async function specialistReply(
   agent: AiAgent,
   history: ChatMessage[],
   userText: string,
-  ctx?: { userId?: string | null; conversationId?: string | null },
+  ctx?: { userId?: string | null; conversationId?: string | null; language?: LanguagePreference },
 ): Promise<SpecialistReply> {
   // HERNE specialists answer through the shared-evidence, DNA-assembled reply.
   if (isHerneSpecialist(agent.slug)) {
@@ -67,9 +70,10 @@ export async function specialistReply(
   }
 
   const started = Date.now();
-  const [chunks, memory] = await Promise.all([
+  const [chunks, memory, pref] = await Promise.all([
     knowledgeRepo.retrieve(agent.id, userText, 4),
     ctx ? memoryRepo.recall({ userId: ctx.userId ?? null, conversationId: ctx.conversationId ?? null, limit: 6 }) : Promise.resolve([] as MemoryItem[]),
+    ctx?.language ? Promise.resolve(ctx.language) : ctx?.userId ? getLanguagePreferenceFor(ctx.userId) : Promise.resolve<LanguagePreference>(HERNE_DEFAULT_PREFERENCE),
   ]);
   const knowledgeBlock = chunks.length
     ? chunks.map((c, i) => `[${i + 1}] From "${c.documentTitle}":\n${c.content}`).join('\n\n')
@@ -78,7 +82,7 @@ export async function specialistReply(
   try {
     const messages: ChatMessage[] = [...history.slice(-8), { role: 'user', content: userText }];
     const res = await provider.chat({
-      system: buildSystemPrompt(agent, knowledgeBlock, memory),
+      system: buildSystemPrompt(agent, knowledgeBlock, memory, languageDirective(pref)),
       messages,
       maxTokens: 700,
     });

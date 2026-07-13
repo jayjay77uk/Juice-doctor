@@ -10,6 +10,8 @@ import { herneProfile, type HerneSpecialistProfile } from '@/data/herne/speciali
 import { HERNE_SHARED_DNA } from '@/data/herne/specialist-content';
 import { runLogRepo } from '../repositories/run-log-repo';
 import { memoryRepo, extractMemory, type MemoryItem } from '../repositories/memory-repo';
+import { languageDirective, HERNE_DEFAULT_PREFERENCE, type LanguagePreference } from './language';
+import { getLanguagePreferenceFor } from './language-store';
 
 /**
  * The differentiated HERNE specialist turn. The runtime prompt assembler inherits
@@ -30,6 +32,15 @@ export interface HerneReply {
   available: boolean;
   escalationRecommended: boolean;
   escalationReason: string | null;
+  /** The resolved language the specialist was asked to answer in (BCP-47 code). */
+  language: string;
+}
+
+/** Resolve the language preference: explicit ctx wins, else the person's saved one. */
+async function resolvePreference(ctx?: { userId?: string | null; language?: LanguagePreference }): Promise<LanguagePreference> {
+  if (ctx?.language) return ctx.language;
+  if (ctx?.userId) return getLanguagePreferenceFor(ctx.userId);
+  return HERNE_DEFAULT_PREFERENCE;
 }
 
 /** Read the org shared DNA (admin-editable) with a bundled fallback. */
@@ -41,7 +52,7 @@ async function sharedDna(): Promise<string[]> {
   return Array.isArray(value?.dna) ? (value?.dna as string[]) : HERNE_SHARED_DNA;
 }
 
-function assembleSystemPrompt(profile: HerneSpecialistProfile, dna: string[], retrieved: HerneRetrieved[]): string {
+function assembleSystemPrompt(profile: HerneSpecialistProfile, dna: string[], retrieved: HerneRetrieved[], langDirective: string | null): string {
   const evidenceBlock = retrieved.length
     ? retrieved
         .map(
@@ -58,19 +69,23 @@ function assembleSystemPrompt(profile: HerneSpecialistProfile, dna: string[], re
     `STARTER INSTRUCTIONS\n${profile.starterPrompt}`,
     `SHARED EVIDENCE — answer using ONLY these approved records and cite each you use as [${'RECORD-ID'}]. Include evidence strength, limitations and source where relevant. Never contradict this evidence or invent facts, figures or clinical claims.\n\n${evidenceBlock}`,
     `OUTPUT FORMAT — structure your answer with these sections, as ${profile.name}:\n${profile.outputFormat.map((s) => `- ${s}`).join('\n')}`,
+    langDirective,
     'SAFETY — do not diagnose, prescribe, or advise stopping medication. If the person reports alarm symptoms (e.g. severe or chest pain, fainting, blood in stool, pregnancy concerns, medication interactions), recommend appropriate professional assessment and stop routine coaching.',
-  ].join('\n\n');
+  ]
+    .filter(Boolean)
+    .join('\n\n');
 }
 
 export async function herneSpecialistReply(
   agent: AiAgent,
   history: ChatMessage[],
   query: string,
-  ctx?: { userId?: string | null; conversationId?: string | null; goal?: string },
+  ctx?: { userId?: string | null; conversationId?: string | null; goal?: string; language?: LanguagePreference },
 ): Promise<HerneReply> {
   const profile = herneProfile(agent.slug);
   const provider = getAiProvider();
   const specialistName = profile?.name ?? agent.name;
+  const pref = await resolvePreference(ctx);
 
   if (!profile || !provider) {
     return {
@@ -82,6 +97,7 @@ export async function herneSpecialistReply(
       available: Boolean(provider),
       escalationRecommended: false,
       escalationReason: null,
+      language: pref.language,
     };
   }
 
@@ -96,7 +112,7 @@ export async function herneSpecialistReply(
 
   const alarm = ALARM_TERMS.some((t) => query.toLowerCase().includes(t));
   const system =
-    assembleSystemPrompt(profile, dna, retrieved) +
+    assembleSystemPrompt(profile, dna, retrieved, languageDirective(pref)) +
     (memory.length ? `\n\nWHAT YOU REMEMBER ABOUT THIS PERSON (respect it):\n${memory.map((m) => `- ${m.content}`).join('\n')}` : '');
 
   try {
@@ -128,6 +144,7 @@ export async function herneSpecialistReply(
       available: true,
       escalationRecommended: alarm,
       escalationReason: alarm ? 'Alarm symptoms detected — HERNE referral matrix requires human clinical review.' : null,
+      language: pref.language,
     };
   } catch {
     await runLogRepo.log({ agentId: agent.id, input: query, output: '', latencyMs: Date.now() - started, status: 'error' });
@@ -140,6 +157,7 @@ export async function herneSpecialistReply(
       available: true,
       escalationRecommended: alarm,
       escalationReason: alarm ? 'Alarm symptoms detected — human clinical review recommended.' : null,
+      language: pref.language,
     };
   }
 }

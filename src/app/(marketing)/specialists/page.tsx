@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { SpecialistCard } from '@/components/specialists/specialist-card';
 import { Lotus } from '@/components/specialists/lotus';
 import { websiteProfiles, HERNE_MULTILINGUAL_STATEMENT, HERNE_SHARED_DNA } from '@/data/herne/website-profiles';
+import { HERNE_LANGUAGES } from '@/data/herne/languages';
 
 export const metadata = createMetadata({
   title: 'Your Wellbeing Institute — Meet Your Specialist Team',
@@ -79,6 +80,33 @@ export default function SpecialistsPage() {
               </li>
             ))}
           </ul>
+        </div>
+      </section>
+
+      {/* Languages */}
+      <section className="border-b border-border bg-cream-50">
+        <div className="mx-auto max-w-5xl px-5 py-14 text-center sm:px-8">
+          <p className="text-xs uppercase tracking-[0.2em] text-primary">In your language</p>
+          <h2 className="mt-3 font-serif text-3xl text-foreground">Speak the way you think</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">
+            Choose your language in settings and your specialists reply in it — one shared evidence base, spoken your way.
+          </p>
+          <ul className="mx-auto mt-8 flex max-w-3xl flex-wrap items-center justify-center gap-2.5">
+            {HERNE_LANGUAGES.map((l) => (
+              <li
+                key={l.code}
+                dir={l.rtl ? 'rtl' : 'ltr'}
+                className="rounded-full border border-border bg-surface px-4 py-1.5 text-sm text-foreground"
+                title={l.englishName}
+              >
+                {l.nativeName}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-6 text-xs text-muted-foreground">
+            Language replies are AI-generated and not yet human-reviewed for clinical accuracy — English is the reference
+            version. Voice conversations are planned.
+          </p>
         </div>
       </section>
 

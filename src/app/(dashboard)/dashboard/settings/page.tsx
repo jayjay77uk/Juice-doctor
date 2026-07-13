@@ -4,8 +4,11 @@ import { createMetadata } from '@/config/metadata';
 import { AdminHeader } from '@/components/admin/admin-header';
 import { Panel } from '@/components/admin/panel';
 import { Button } from '@/components/ui/button';
+import { LanguageVoiceCard } from '@/components/settings/language-voice-card';
+import { getLanguagePreference } from '@/services/herne/language-store';
 
 export const metadata = createMetadata({ title: 'Settings' });
+export const dynamic = 'force-dynamic';
 
 const profileRows: { label: string; value: string }[] = [
   { label: 'Name', value: 'Prototype User' },
@@ -31,6 +34,7 @@ const notificationToggles: { id: string; label: string; hint: string }[] = [
 ];
 
 export default async function SettingsPage() {
+  const languagePreference = await getLanguagePreference();
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-8">
       <AdminHeader
@@ -57,6 +61,8 @@ export default async function SettingsPage() {
           ))}
         </dl>
       </Panel>
+
+      <LanguageVoiceCard initial={languagePreference} />
 
       <Panel
         title="Notifications"
