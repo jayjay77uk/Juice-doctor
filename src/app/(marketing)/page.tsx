@@ -14,6 +14,7 @@ import { ProgrammeCard } from '@/components/sections/programme-card';
 import { StatBand } from '@/components/sections/stat-band';
 import { TestimonialsCarousel } from '@/components/sections/testimonials-carousel';
 import { CtaSection } from '@/components/sections/cta-section';
+import { SpecialistsHomeSection } from '@/components/specialists/home-section';
 
 export default async function HomePage() {
   const [programmesResult, testimonialsResult] = await Promise.all([
@@ -27,6 +28,7 @@ export default async function HomePage() {
     <>
       <Hero />
       <PressStrip />
+      <SpecialistsHomeSection />
       <FrameworkOverview />
 
       {/* Programmes */}

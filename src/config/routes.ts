@@ -35,6 +35,7 @@ export const routes = {
   speaking: { href: '/speaking', label: 'Speaking' },
   testimonials: { href: '/testimonials', label: 'Testimonials' },
   contact: { href: '/contact', label: 'Contact' },
+  specialists: { href: '/specialists', label: 'Your Wellbeing Team' },
   login: { href: '/login', label: 'Sign in' },
   register: { href: '/register', label: 'Create account' },
   dashboard: { href: '/dashboard', label: 'Dashboard' },

@@ -58,10 +58,22 @@ export function MobileMenu() {
                 </li>
               ))}
             </ul>
+            <Link
+              href={routes.specialists.href}
+              onClick={() => setOpen(false)}
+              className="mt-2 block rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-muted"
+            >
+              {routes.specialists.label}
+            </Link>
           </nav>
 
           <div className="flex flex-col gap-3 border-t border-border p-5">
             <Button asChild intent="primary" full>
+              <Link href={routes.specialists.href} onClick={() => setOpen(false)}>
+                Meet your team
+              </Link>
+            </Button>
+            <Button asChild intent="ghost" full>
               <Link href={routes.book.href} onClick={() => setOpen(false)}>
                 Book now
               </Link>
