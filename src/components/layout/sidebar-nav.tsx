@@ -85,6 +85,7 @@ const NAV: Record<NavVariant, ShellNavSection[]> = {
     {
       title: 'My AI',
       items: [
+        { label: 'My care plan', href: '/dashboard/care-plan', icon: ClipboardList },
         { label: 'My specialists', href: '/dashboard/specialists', icon: Bot },
         { label: 'Conversations', href: '/dashboard/conversations', icon: MessageCircle },
         { label: 'My subscriptions', href: '/dashboard/subscriptions', icon: CreditCard },
