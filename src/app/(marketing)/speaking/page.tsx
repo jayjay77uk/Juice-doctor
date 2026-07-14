@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { CtaSection } from '@/components/sections/cta-section';
 
 export const metadata: Metadata = createMetadata({
-  title: ph.metaTitle,
+  title: 'Speaking',
   description: ph.metaDescription,
   path: '/speaking',
 });

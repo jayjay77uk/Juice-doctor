@@ -13,7 +13,7 @@ export default function DisclaimerPage() {
   return (
     <LegalPage
       title="Disclaimer"
-      intro="This is a demonstration prototype of the Ask Juice Doctor AI wellbeing platform. Please read the notices below before using it."
+      intro="This is a demonstration prototype of a multi-specialist wellbeing platform. Please read the notices below before using it."
       sections={[
         {
           heading: 'Prototype for demonstration only',

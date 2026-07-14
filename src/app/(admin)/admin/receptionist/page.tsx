@@ -115,7 +115,7 @@ export default async function ReceptionistPage() {
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — mock data through the service layer. No live AI or payments.
+        Prototype — mock data through the service layer. AI replies run on the live model (non-production). No real payments.
       </p>
     </div>
   );

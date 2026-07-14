@@ -88,8 +88,7 @@ export function Footer() {
           </ul>
         </div>
         <p className="mt-6 text-xs text-cream-200/70">
-          Prototype environment for demonstration only. Not medical advice. No live services,
-          payments, or patient data are connected.
+          Prototype environment for demonstration only. Not medical advice. AI responses are live but for demonstration only and are not clinically reviewed. No real payments or patient data are used.
         </p>
       </Container>
     </footer>

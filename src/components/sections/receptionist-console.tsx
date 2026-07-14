@@ -146,10 +146,13 @@ export function ReceptionistConsole({ settings }: { settings: ReceptionistConsol
           <Sparkles className="size-5" aria-hidden />
         </span>
         <div>
-          <p className="text-sm font-medium text-foreground">AI receptionist</p>
-          <p className="text-xs text-muted-foreground">Speak with the AI receptionist</p>
+          <p className="text-sm font-medium text-foreground">Makela</p>
+          <p className="text-xs text-muted-foreground">Your wellbeing concierge</p>
         </div>
       </div>
+      <p className="border-b border-border bg-surface-muted/50 px-5 py-2.5 text-xs text-muted-foreground">
+        Prototype — AI-generated, not clinically reviewed. Not for emergencies — if you need urgent help, call your local emergency services.
+      </p>
 
       {/* Conversation */}
       <div ref={scrollRef} className="flex max-h-[26rem] flex-col gap-3 overflow-y-auto px-5 py-6">

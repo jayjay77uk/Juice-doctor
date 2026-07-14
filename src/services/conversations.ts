@@ -38,7 +38,7 @@ const conversations: Conversation[] = [
 const messages: Message[] = [
   { id: 'msg_1', conversationId: 'conv_1', role: 'assistant', content: 'Hello — I am Makela, your wellbeing concierge. How can I help you today?', tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: '2026-07-08T09:00:00.000Z' },
   { id: 'msg_2', conversationId: 'conv_1', role: 'user', content: 'I would like to understand how to get started.', tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: '2026-07-08T09:01:00.000Z' },
-  { id: 'msg_3', conversationId: 'conv_1', role: 'assistant', content: 'Here is a placeholder answer. In the full platform I would draw on my knowledge base to help you get started. (Prototype: no live AI is connected.)', tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: '2026-07-09T10:00:00.000Z' },
+  { id: 'msg_3', conversationId: 'conv_1', role: 'assistant', content: 'Of course — a good place to start is telling me a little about how you have been feeling lately, and what you would most like to improve. I will listen first, then draw on the shared evidence base to suggest a few gentle next steps.', tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: '2026-07-09T10:00:00.000Z' },
   { id: 'msg_4', conversationId: 'conv_2', role: 'assistant', content: 'Hello — I am Serena, your women’s health and hormonal wellbeing specialist. How can I help you today?', tokenCount: null, toolCalls: null, toolCallId: null, modelKey: null, createdAt: '2026-07-07T13:30:00.000Z' },
 ];
 

@@ -18,8 +18,8 @@ function Citations({ citations }: { citations: MessageCitation[] }) {
     <div className="mt-1.5 flex flex-wrap gap-1.5 pl-1">
       {citations.map((c) => {
         const chip = (
-          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] text-muted-foreground" title={c.sourceTitle || c.recordId}>
-            <FileText className="size-3 text-primary" /> {c.recordId}
+          <span className="inline-flex max-w-[16rem] items-center gap-1 rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] text-muted-foreground" title={`${c.sourceTitle || 'Source'} (${c.recordId})`}>
+            <FileText className="size-3 shrink-0 text-primary" /> <span className="truncate">{c.sourceTitle || c.recordId}</span>
           </span>
         );
         return c.sourceUrl ? (

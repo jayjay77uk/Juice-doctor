@@ -9,7 +9,7 @@ import { ComingSoon } from '@/components/sections/coming-soon';
 import { ph } from '@/content/placeholder';
 
 export const metadata: Metadata = createMetadata({
-  title: ph.metaTitle,
+  title: 'The book',
   description: ph.metaDescription,
   path: '/the-book',
 });

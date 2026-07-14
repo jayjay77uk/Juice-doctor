@@ -11,6 +11,7 @@ export function NewConversationButton({ specialists }: { specialists: { id: stri
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [busy, setBusy] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
   const ref = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -23,9 +24,11 @@ export function NewConversationButton({ specialists }: { specialists: { id: stri
 
   async function start(agentId: string) {
     setBusy(agentId);
+    setError(null);
     const res = await startConversationAction(agentId);
     setBusy(null);
     if (res.ok) router.push(`/dashboard/conversations/${res.conversationId}`);
+    else setError(res.error || 'Could not start the conversation. Please try again.');
   }
 
   return (
@@ -52,6 +55,7 @@ export function NewConversationButton({ specialists }: { specialists: { id: stri
               </li>
             ))}
           </ul>
+          {error && <p className="border-t border-border px-4 py-2 text-xs text-danger" role="alert">{error}</p>}
         </div>
       )}
     </div>

@@ -84,7 +84,7 @@ export default async function AuditLogsPage() {
 
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
         <ScrollText className="size-4 shrink-0" />
-        Prototype — mock data, served through the service layer. No production AI or user data.
+        Prototype — mock data, served through the service layer. AI replies run on the live model (non-production); no real user data.
       </p>
     </div>
   );

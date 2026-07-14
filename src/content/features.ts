@@ -11,8 +11,8 @@ import type { SignatureFeature } from '@/types/content';
 
 export const assessment: SignatureFeature = {
   slug: 'assessment',
-  eyebrow: 'Feature eyebrow',
-  title: 'Assessment feature title',
+  eyebrow: 'Assessment',
+  title: 'The wellbeing assessment',
   lede:
     'This is a short introductory paragraph describing the assessment feature. It explains, in plain placeholder language, what the feature is for and what a visitor can expect from it.',
   what: [

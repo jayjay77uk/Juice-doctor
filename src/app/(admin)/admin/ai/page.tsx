@@ -39,7 +39,7 @@ export default async function AiDashboardPage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <AdminHeader
         title="AI Dashboard"
-        description="The control centre for every AI assistant. Everything here is configuration — build once, configure forever. No AI runs in this prototype."
+        description="The control centre for every AI assistant. Everything here is configuration — build once, configure forever. Live inference runs only in the isolated Playground; production and customer traffic are not connected."
       />
 
       <StatGrid>

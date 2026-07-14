@@ -14,11 +14,6 @@ import { getSession } from '@/services/auth';
 export const metadata = createMetadata({ title: 'Settings' });
 export const dynamic = 'force-dynamic';
 
-const profileRows: { label: string; value: string }[] = [
-  { label: 'Name', value: 'Prototype User' },
-  { label: 'Email', value: 'hello@example.com' },
-];
-
 const notificationToggles: { id: string; label: string; hint: string }[] = [
   {
     id: 'email-checkins',
@@ -44,6 +39,10 @@ export default async function SettingsPage() {
     getMemoryEnabled(),
     session?.user.id ? memoryRepo.listForUser(session.user.id) : Promise.resolve([]),
   ]);
+  const profileRows: { label: string; value: string }[] = [
+    { label: 'Name', value: session?.user.name || session?.user.email?.split('@')[0] || 'Member' },
+    { label: 'Email', value: session?.user.email ?? '—' },
+  ];
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-8">
       <AdminHeader
@@ -145,7 +144,7 @@ export default async function SettingsPage() {
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — sample data. No real records, AI, or bookings are connected. These
+        Prototype — sample data. AI replies are live but not clinically reviewed. No real records, bookings or payments are connected. These
         controls are for demonstration only and won’t change any settings.
       </p>
     </div>

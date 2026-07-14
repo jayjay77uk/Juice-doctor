@@ -20,7 +20,7 @@ export default async function GoalsPage() {
         title="My goals"
         description="What you're working towards."
         actions={
-          <Button size="sm">
+          <Button size="sm" disabled title="Adding goals is coming soon">
             <Plus className="size-4" /> Add goal
           </Button>
         }
@@ -32,7 +32,7 @@ export default async function GoalsPage() {
           title="No goals just yet"
           description="Set your first goal and we'll help you make steady, encouraging progress towards it."
           action={
-            <Button size="sm">
+            <Button size="sm" disabled title="Adding goals is coming soon">
               <Plus className="size-4" /> Add goal
             </Button>
           }
@@ -86,7 +86,7 @@ export default async function GoalsPage() {
       )}
 
       <p className="text-sm text-muted-foreground">
-        Prototype — sample data. No real health records, AI, or bookings are connected.
+        Prototype — sample data. AI replies are live but not clinically reviewed. No real health records, bookings or payments are connected.
       </p>
     </div>
   );

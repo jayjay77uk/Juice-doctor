@@ -9,10 +9,14 @@ import { site } from '@/content/site';
 // Neutral placeholder host — old-business domain removed.
 export const SITE_URL = 'https://prototype.example.com';
 
+// Honest, non-placeholder title for the browser tab + share cards. Final approved
+// marketing wording is client-supplied; this is a factual product descriptor.
+const TITLE_DEFAULT = `${site.name} — Wellbeing Specialist Platform`;
+
 export const baseMetadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${site.name} — ${site.tagline}`,
+    default: TITLE_DEFAULT,
     template: `%s · ${site.name}`,
   },
   description: site.shortDescription,
@@ -21,13 +25,13 @@ export const baseMetadata: Metadata = {
   openGraph: {
     type: 'website',
     siteName: site.name,
-    title: `${site.name} — ${site.tagline}`,
+    title: TITLE_DEFAULT,
     description: site.shortDescription,
     locale: 'en_GB',
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${site.name} — ${site.tagline}`,
+    title: TITLE_DEFAULT,
     description: site.shortDescription,
   },
   // Prototype: keep the whole environment out of search indexes.

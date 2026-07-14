@@ -28,7 +28,7 @@ export default async function RegisterPage({
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-h2">Create an account</h1>
-        <p className="mt-2 text-muted-foreground">Sign up to get started. This is placeholder text in clear English.</p>
+        <p className="mt-2 text-muted-foreground">Create your account to access your wellbeing dashboard.</p>
       </div>
       <AuthForm mode="register" authReal={isSupabaseConfigured()} next={next} />
       <p className="text-center text-sm text-muted-foreground">

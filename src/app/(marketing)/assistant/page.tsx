@@ -6,8 +6,8 @@ import { receptionist } from '@/services/receptionist';
 import { ReceptionistConsole } from '@/components/sections/receptionist-console';
 
 export const metadata: Metadata = createMetadata({
-  title: 'AI receptionist',
-  description: 'Speak with the AI receptionist. Tell us what you need help with and we will point you to the right place.',
+  title: 'Ask Makela',
+  description: 'Speak with Makela, your wellbeing concierge. Tell her what you need and she will guide you to the right specialist.',
   path: '/assistant',
 });
 
@@ -18,9 +18,9 @@ export default async function AssistantPage() {
   return (
     <>
       <PageHero
-        eyebrow="AI receptionist"
-        title="Speak with the AI receptionist"
-        lede="Tell us what you need help with and we will point you to the right place — or connect you with a member of the team."
+        eyebrow="Your wellbeing concierge"
+        title="Ask Makela"
+        lede="Tell Makela what you need help with. She listens first, then guides you to the specialist best placed to help — or connects you with a member of the team."
       />
       <Section tone="default" spacing="lg" containerSize="narrow">
         {settings ? (
@@ -35,7 +35,7 @@ export default async function AssistantPage() {
           />
         ) : (
           <p className="text-muted-foreground">
-            The AI receptionist is currently unavailable. Please use the contact page.
+            Makela is currently unavailable. Please use the contact page.
           </p>
         )}
       </Section>

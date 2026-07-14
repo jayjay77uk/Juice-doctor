@@ -53,7 +53,7 @@ export interface ReceptionistSettings {
 export const DEFAULT_RECEPTIONIST_SETTINGS: ReceptionistSettings = {
   active: true,
   greeting:
-    'Hello, and welcome. I am the AI receptionist. Tell me what you need help with and I will point you to the right place — or connect you with a member of the team.',
+    'Hello, and welcome — I am Makela, your wellbeing concierge. Tell me what you need help with and I will listen first, then guide you to the specialist best placed to help — or connect you with a member of the team.',
   tone: 'Warm, clear and professional',
   questions: [
     { id: 'q1', prompt: 'What would you like help with today?', quickReplies: [] },

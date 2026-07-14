@@ -17,9 +17,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <Logo inverse />
         </div>
         <div className="relative flex flex-col gap-4">
-          <p className="font-serif text-3xl leading-tight">“{site.belief}”</p>
+          <p className="font-serif text-3xl leading-tight">“Your wellbeing team, coordinated around you.”</p>
           <p className="max-w-sm text-cream-100/90">
-            This is placeholder text in clear English. Final approved wording will be supplied later.
+            Eight specialists and one shared care plan — guided by Makela, your concierge.
           </p>
         </div>
         <p className="relative text-xs text-cream-200/70">

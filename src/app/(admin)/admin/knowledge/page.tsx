@@ -69,11 +69,6 @@ export default async function KnowledgeBasePage() {
         title="Knowledge Base"
         description="Manage source documents, versions and the publishing workflow that powers grounded AI answers."
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Knowledge Base' }]}
-        actions={
-          <Button size="sm">
-            <Upload className="size-4" /> Upload document
-          </Button>
-        }
       />
 
       <StatGrid>
@@ -151,7 +146,7 @@ export default async function KnowledgeBasePage() {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — mock data, served through the service layer. No production AI or patient data.
+        Prototype — mock data, served through the service layer. AI replies run on the live model (non-production); no real patient data.
       </p>
     </div>
   );

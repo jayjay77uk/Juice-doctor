@@ -81,7 +81,7 @@ export default async function JourneyPage() {
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — sample data. No real health records, AI, or bookings are connected.
+        Prototype — sample data. AI replies are live but not clinically reviewed. No real health records, bookings or payments are connected.
       </p>
     </div>
   );

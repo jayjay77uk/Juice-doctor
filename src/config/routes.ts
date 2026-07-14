@@ -20,7 +20,7 @@ export interface NavGroup {
 
 export const routes = {
   home: { href: '/', label: 'Home' },
-  assistant: { href: '/assistant', label: 'AI receptionist' },
+  assistant: { href: '/assistant', label: 'Ask Makela' },
   about: { href: '/about', label: 'About' },
   founder: { href: '/founder', label: 'Founder' },
   programmes: { href: '/programmes', label: 'Programmes' },

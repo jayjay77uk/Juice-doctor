@@ -371,7 +371,7 @@ export default async function SpecialistDetailPage({
                   </p>
                   <ComingSoon
                     title="Conversation history"
-                    body="Every subscriber conversation with this specialist is stored and searchable in the full platform. No AI runs in this prototype."
+                    body="Every subscriber conversation with this specialist is stored and searchable in the full platform."
                   />
                 </div>
               </Panel>

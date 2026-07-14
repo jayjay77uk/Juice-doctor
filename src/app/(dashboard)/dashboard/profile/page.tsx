@@ -136,7 +136,7 @@ export default async function HealthProfilePage() {
         title="Health profile"
         description="The information stored on this profile."
         actions={
-          <Button disabled>
+          <Button disabled title="Profile editing is available in the production platform">
             <Pencil className="size-4" />
             Edit profile
           </Button>
@@ -146,11 +146,11 @@ export default async function HealthProfilePage() {
       <Tabs tabs={tabs} defaultValue="health" />
 
       <p className="text-sm text-muted-foreground">
-        Editing your profile saves instantly in production — every change updates this record.
+        Prototype — profile editing is not enabled in this demonstration. In the production platform, changes save instantly to your record.
       </p>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — sample data. No real health records, AI, or bookings are connected.
+        Prototype — sample data. AI replies are live but not clinically reviewed. No real health records, bookings or payments are connected.
       </p>
     </div>
   );

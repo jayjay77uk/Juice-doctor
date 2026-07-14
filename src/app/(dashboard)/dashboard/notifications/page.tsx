@@ -32,7 +32,9 @@ export default async function NotificationsPage() {
           notifications.length > 0 ? (
             <button
               type="button"
-              className="text-sm font-medium text-primary hover:text-primary/80"
+              disabled
+              title="Coming soon"
+              className="cursor-not-allowed text-sm font-medium text-muted-foreground/60"
             >
               Mark all as read
             </button>
@@ -82,7 +84,7 @@ export default async function NotificationsPage() {
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — sample data. No real health records, AI, or bookings are connected.
+        Prototype — sample data. AI replies are live but not clinically reviewed. No real health records, bookings or payments are connected.
       </p>
     </div>
   );

@@ -73,7 +73,7 @@ export default function SpecialistsPage() {
             </p>
           </div>
           <ul className="mx-auto mt-10 grid max-w-3xl grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-            {HERNE_SHARED_DNA.slice(0, 8).map((d) => (
+            {HERNE_SHARED_DNA.map((d) => (
               <li key={d} className="flex items-start gap-3 text-sm text-foreground">
                 <ShieldCheck className="mt-0.5 size-4 shrink-0 text-secondary" />
                 {d}

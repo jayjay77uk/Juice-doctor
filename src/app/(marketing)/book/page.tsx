@@ -8,7 +8,7 @@ import { PageHero } from '@/components/sections/page-hero';
 import { BookingFlow, type BookingService } from '@/components/sections/booking-flow';
 
 export const metadata: Metadata = createMetadata({
-  title: ph.metaTitle,
+  title: 'Book an appointment',
   description: ph.metaDescription,
   path: '/book',
 });

@@ -130,7 +130,7 @@ export default async function BusinessDashboardPage() {
       </Panel>
 
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        <ArrowRight className="size-4" /> Everything here runs on mock data through the service layer — no live AI, payments or patient data.
+        <ArrowRight className="size-4" /> Everything here runs on mock data through the service layer — AI replies run on the live model (non-production); no real payments or patient data.
       </p>
     </div>
   );

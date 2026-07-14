@@ -8,7 +8,7 @@ import { PageHero } from '@/components/sections/page-hero';
 import { ContactForm } from '@/components/sections/contact-form';
 
 export const metadata: Metadata = createMetadata({
-  title: ph.metaTitle,
+  title: 'Contact',
   description: ph.metaDescription,
   path: '/contact',
 });

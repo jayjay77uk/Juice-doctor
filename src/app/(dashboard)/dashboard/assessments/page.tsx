@@ -73,8 +73,8 @@ export default async function AssessmentsPage() {
                     </dd>
                   </div>
                 </dl>
-                <Button asChild intent="outline" className="w-full">
-                  <Link href="#">View details</Link>
+                <Button intent="outline" className="w-full" disabled title="Detailed results view is coming soon">
+                  View details (coming soon)
                 </Button>
               </div>
             </Panel>
@@ -83,7 +83,7 @@ export default async function AssessmentsPage() {
       )}
 
       <p className="text-sm text-muted-foreground">
-        Prototype — sample data. No real records, AI, or bookings are connected.
+        Prototype — sample data. AI replies are live but not clinically reviewed. No real records, bookings or payments are connected.
       </p>
     </div>
   );

@@ -11,7 +11,7 @@ export default function Error({ reset }: { error: Error & { digest?: string }; r
       <p className="font-serif text-6xl text-primary">Oops</p>
       <div className="flex flex-col gap-2">
         <h1 className="text-h2">Something went wrong</h1>
-        <p className="measure text-muted-foreground">This is placeholder text in clear English. Something went wrong while loading this page. Final wording will be supplied later.</p>
+        <p className="measure text-muted-foreground">An unexpected error occurred while loading this page. Please try again — if it keeps happening, head back to the home page.</p>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button onClick={reset}>

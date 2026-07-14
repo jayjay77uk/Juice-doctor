@@ -12,7 +12,7 @@ import { Reveal } from '@/components/ui/reveal';
 import { CtaSection } from '@/components/sections/cta-section';
 
 export const metadata: Metadata = createMetadata({
-  title: ph.metaTitle,
+  title: 'Testimonials',
   description: ph.metaDescription,
   path: '/testimonials',
 });
