@@ -9,40 +9,64 @@ import Link from 'next/link';
 
 export const metadata = createMetadata({ title: 'Consultation case' });
 
-// prototype mock
-const CASE = {
-  member: 'Customer A',
-  practitioner: 'Practitioner One',
-  stage: 'practitioner_review',
-  status: 'in_progress',
-  reason: 'General enquiry',
-  started: '2026-07-06',
+// prototype mock — keyed by case id so the detail matches the row that was clicked.
+type CaseRecord = {
+  member: string;
+  practitioner: string;
+  stage: string;
+  status: string;
+  reason: string;
+  started: string;
+  timeline: { stage: string; title: string; at: string; actor: string }[];
+  notes: { author: string; at: string; text: string }[];
 };
 
-// prototype mock
-const TIMELINE = [
-  { stage: 'intake', title: 'Intake completed', at: '6 Jul, 09:12', actor: 'Customer A' },
-  { stage: 'assessment', title: 'Assessment scored', at: '6 Jul, 09:40', actor: 'System' },
-  { stage: 'ai_review', title: 'AI review drafted', at: '6 Jul, 09:41', actor: 'Makela' },
-  {
-    stage: 'practitioner_review',
-    title: 'Awaiting practitioner sign-off',
-    at: '7 Jul, 10:00',
-    actor: 'Practitioner One',
+const CASES: Record<string, CaseRecord> = {
+  case_1: {
+    member: 'Customer A', practitioner: 'Practitioner One', stage: 'assessment', status: 'in_progress',
+    reason: 'General enquiry', started: '2026-07-06',
+    timeline: [
+      { stage: 'intake', title: 'Intake completed', at: '6 Jul, 09:12', actor: 'Customer A' },
+      { stage: 'assessment', title: 'Assessment scored', at: '6 Jul, 09:40', actor: 'System' },
+      { stage: 'ai_review', title: 'AI review drafted', at: '6 Jul, 09:41', actor: 'Makela' },
+    ],
+    notes: [{ author: 'Practitioner One', at: '7 Jul', text: 'Reviewed intake; recommend starting with the first two pillars.' }],
   },
-];
-
-// prototype mock
-const NOTES = [
-  {
-    author: 'Practitioner One',
-    at: '7 Jul',
-    text: 'Reviewed intake; recommend starting with the first two pillars.',
+  case_2: {
+    member: 'Customer B', practitioner: 'Unassigned', stage: 'intake', status: 'awaiting_review',
+    reason: 'Flagged for review at intake', started: '2026-07-10',
+    timeline: [
+      { stage: 'intake', title: 'Intake completed', at: '10 Jul, 08:30', actor: 'Customer B' },
+      { stage: 'ai_review', title: 'Flagged for human review', at: '10 Jul, 08:31', actor: 'Makela' },
+    ],
+    notes: [],
   },
-];
+  case_3: {
+    member: 'Customer C', practitioner: 'Practitioner One', stage: 'practitioner_review', status: 'in_progress',
+    reason: 'Follow-up on care plan', started: '2026-07-08',
+    timeline: [
+      { stage: 'intake', title: 'Intake completed', at: '8 Jul, 11:00', actor: 'Customer C' },
+      { stage: 'assessment', title: 'Assessment scored', at: '8 Jul, 11:20', actor: 'System' },
+      { stage: 'practitioner_review', title: 'Awaiting practitioner sign-off', at: '8 Jul, 12:00', actor: 'Practitioner One' },
+    ],
+    notes: [{ author: 'Practitioner One', at: '8 Jul', text: 'Care plan progressing well; review hydration targets next session.' }],
+  },
+  case_4: {
+    member: 'Customer D', practitioner: 'Staff One', stage: 'follow_up', status: 'completed',
+    reason: 'Completed programme', started: '2026-07-05',
+    timeline: [
+      { stage: 'intake', title: 'Intake completed', at: '5 Jul, 09:00', actor: 'Customer D' },
+      { stage: 'follow_up', title: 'Programme completed', at: '5 Jul, 16:00', actor: 'Staff One' },
+    ],
+    notes: [{ author: 'Staff One', at: '5 Jul', text: 'Programme completed; member opted into a monthly check-in.' }],
+  },
+};
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const CASE = CASES[id] ?? CASES.case_1!;
+  const TIMELINE = CASE.timeline;
+  const NOTES = CASE.notes;
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">

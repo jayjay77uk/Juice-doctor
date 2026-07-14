@@ -5,6 +5,7 @@ import { signOut } from '@/services/actions';
 import { Logo } from './logo';
 import { SidebarNav, type NavVariant } from './sidebar-nav';
 import { PrototypeNotices } from './prototype-notices';
+import { MobileAppNav } from './mobile-app-nav';
 
 export type { NavVariant } from './sidebar-nav';
 
@@ -52,7 +53,8 @@ export function AppShell({
       {/* Main */}
       <div className="flex min-w-0 flex-col">
         <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-border bg-surface/85 px-6 py-4 backdrop-blur">
-          <div className="lg:hidden">
+          <div className="flex items-center gap-3 lg:hidden">
+            <MobileAppNav navVariant={navVariant} roleLabel={roleLabel} adminHref={adminHref} />
             <Logo />
           </div>
           <p className="hidden text-sm text-muted-foreground lg:block">
