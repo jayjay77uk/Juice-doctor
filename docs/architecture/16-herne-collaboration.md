@@ -4,6 +4,34 @@ The eight HERNE specialists operate as **one wellbeing institute**. They share o
 evidence base, one care plan and one timeline, and hand work to each other with
 full context so the user never starts over.
 
+## Team awareness, shared context & natural voice (in the system prompt)
+
+So a person experiences one coordinated team — not separate chatbots — every
+specialist's runtime prompt (`services/herne/reply.ts → assembleSystemPrompt`) now
+includes, from `data/herne/team.ts`:
+
+- **ABOUT THE INSTITUTE** (`HERNE_INSTITUTION_CONTEXT`) — the shared understanding of
+  the coordinated model, services and policies (concierge-led, one shared evidence
+  base, one shared care plan, general wellbeing support not diagnosis, consent
+  respected). Operational facts only; nothing invented.
+- **YOUR TEAM** (`teamRosterFor(slug)`) — the whole roster, marking the current
+  specialist "(you)" and every colleague with *what they are the right person for*
+  (derived from the client-supplied specialist domains). This lets a specialist
+  introduce the right colleague **by name** when a question is outside its expertise,
+  rather than answering as the wrong expert or vaguely deflecting.
+- **HOW YOU COMMUNICATE** (`HERNE_COMMUNICATION_VOICE`) — speak like an experienced
+  human professional on the team: conversational, empathetic, remember details, ask
+  follow-ups, adapt tone; **never** self-identify as an AI/bot/assistant; hand off
+  like *one colleague introducing another* (the context travels — the person never
+  repeats themselves); treat the output-format sections as a natural guide, not a
+  rigid script.
+- **RECENT JOURNEY** — the last few timeline events (referrals, handoffs, plan
+  updates) so a receiving specialist already has the context of a handoff.
+
+These complement the structured **REFERRAL BOUNDARIES** (the specialist's own matrix
+triggers) and the shared care plan, so cross-specialist awareness is both structured
+(rules) and conversational (roster + voice).
+
 ## Data model
 
 | Table | Purpose |

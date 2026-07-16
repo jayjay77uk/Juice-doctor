@@ -8,11 +8,12 @@ import { HERNE_ORG } from './records';
 import { retrieveForSpecialist, type HerneRetrieved } from './retrieval';
 import { herneProfile, type HerneSpecialistProfile } from '@/data/herne/specialist-profiles';
 import { HERNE_SHARED_DNA } from '@/data/herne/specialist-content';
+import { teamRosterFor, HERNE_INSTITUTION_CONTEXT, HERNE_COMMUNICATION_VOICE } from '@/data/herne/team';
 import { runLogRepo } from '../repositories/run-log-repo';
 import { memoryRepo, extractMemory, type MemoryItem } from '../repositories/memory-repo';
 import { languageDirective, HERNE_DEFAULT_PREFERENCE, type LanguagePreference } from './language';
 import { getLanguagePreferenceFor } from './language-store';
-import { carePlan, type CarePlan, type CarePlanAction } from './care-plan';
+import { carePlan, timeline, type CarePlan, type CarePlanAction, type TimelineEvent } from './care-plan';
 import { buildWearableContext, type WearableContext } from './wearable/store';
 import { referralRules, escalationEngine, type ReferralRule } from './referrals';
 import { activePrompt, type ActivePrompt } from './prompt-version';
@@ -83,6 +84,7 @@ interface AssemblyInput {
   planActions: CarePlanAction[];
   wearable: WearableContext | null;
   referralBoundaries: ReferralRule[];
+  journey: TimelineEvent[];
 }
 
 function assembleSystemPrompt(a: AssemblyInput): string {
@@ -125,16 +127,27 @@ function assembleSystemPrompt(a: AssemblyInput): string {
       ].join('\n')
     : null;
 
+  const journeyBlock = a.journey.length
+    ? [
+        'RECENT JOURNEY — what has already happened for this person, so you have the context and they do not repeat themselves:',
+        ...a.journey.slice(0, 5).map((e) => `- ${e.title}${e.specialist ? ` (${e.specialist})` : ''}${e.detail ? ` — ${e.detail}` : ''}`),
+      ].join('\n')
+    : null;
+
   return [
     'You are part of the HERNE wellbeing concierge — a coordinated team of specialists that interpret ONE shared approved evidence base.',
+    HERNE_INSTITUTION_CONTEXT,
     `SHARED DNA (every specialist upholds these):\n${dna.map((d) => `- ${d}`).join('\n')}`,
     `YOUR ROLE\nYou are ${profile.name}, ${profile.title}.\nConsultation principle: ${profile.principle}\n${profile.philosophy ? `Philosophy: ${profile.philosophy}` : 'Philosophy: (no approved philosophy yet — do not invent one)'}\nCommunication style: ${profile.tone}.\nYou MAY: ${profile.allowedActions}.\nYou MUST NOT: ${profile.mustNotDo}.\nReferral style: ${profile.referralStyle}.`,
+    teamRosterFor(profile.specialistId),
+    HERNE_COMMUNICATION_VOICE,
     `STARTER INSTRUCTIONS\n${a.starter}`,
     a.objective ? `USER OBJECTIVE — what this person wants from this conversation:\n${a.objective}` : null,
     carePlanBlock,
+    journeyBlock,
     `SHARED EVIDENCE — answer using ONLY these approved records and cite each you use as [RECORD-ID]. Include evidence strength, limitations and source where relevant. Never contradict this evidence or invent facts, figures, clinical claims, or citations.\n\n${evidenceBlock}`,
     wearableBlock,
-    `OUTPUT FORMAT — structure your answer with these sections, as ${profile.name}:\n${profile.outputFormat.map((s) => `- ${s}`).join('\n')}`,
+    `OUTPUT FORMAT — let these sections guide a helpful, complete answer as ${profile.name} (a natural guide, not a rigid template):\n${profile.outputFormat.map((s) => `- ${s}`).join('\n')}`,
     a.langDirective,
     referralBlock,
     'SAFETY — do not diagnose, prescribe, or advise stopping or changing medication. If the person reports alarm symptoms (e.g. severe or chest pain, fainting, blood in stool, pregnancy concerns, medication interactions, self-harm), recommend appropriate professional assessment and stop routine coaching.',
@@ -232,7 +245,7 @@ async function prepareTurn(agent: AiAgent, history: ChatMessage[], query: string
   }
 
   const started = Date.now();
-  const [retrieved, memory, dna, plan, wearable, active, rules] = await Promise.all([
+  const [retrieved, memory, dna, plan, wearable, active, rules, journey] = await Promise.all([
     retrieveForSpecialist(agent.slug, query, ctx?.goal ? { goal: ctx.goal } : {}),
     ctx?.userId || ctx?.conversationId
       ? memoryRepo.recall({ userId: ctx?.userId ?? null, conversationId: ctx?.conversationId ?? null, limit: 6 })
@@ -242,6 +255,7 @@ async function prepareTurn(agent: AiAgent, history: ChatMessage[], query: string
     ctx?.userId ? buildWearableContext(agent.slug, ctx.userId) : Promise.resolve<WearableContext | null>(null),
     activePrompt(agent.id),
     referralRules.list(),
+    ctx?.userId ? timeline.list(ctx.userId, 5) : Promise.resolve<TimelineEvent[]>([]),
   ]);
 
   const planActions = plan ? await carePlan.actions(plan.id) : [];
@@ -253,7 +267,7 @@ async function prepareTurn(agent: AiAgent, history: ChatMessage[], query: string
       profile, dna, retrieved,
       langDirective: languageDirective(pref),
       starter: active?.content ?? profile.starterPrompt,
-      objective, plan, planActions, wearable, referralBoundaries,
+      objective, plan, planActions, wearable, referralBoundaries, journey,
     }) +
     (memory.length ? `\n\nWHAT YOU REMEMBER ABOUT THIS PERSON (respect it):\n${memory.map((m) => `- ${m.content}`).join('\n')}` : '');
 
