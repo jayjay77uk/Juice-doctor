@@ -13,13 +13,16 @@
 
 | Role | Email | Password | Lands on |
 |---|---|---|---|
+| **Customer (Olivia Bennett)** | `customer@prototypeai.app` | `Customer!Demo2026` | `/dashboard` (member area) |
 | **Member** | `member@prototypeai.app` | `ChangeMe!Member2026` | `/dashboard` (member area) |
 | **Administrator** | `admin@prototypeai.app` | `ChangeMe!Admin2026` | `/admin` (admin portal) |
 | **Practitioner** | `practitioner@prototypeai.app` | `Practitioner!Demo2026` | `/dashboard` (staff-level access) |
 
 ### Notes on each role
-- **Member** — the everyday user. Use this account for the six demonstration journeys (specialist
-  chat, care plan, connected health, language settings).
+- **Customer (Olivia Bennett)** — a fictional everyday customer, ideal for showing the platform
+  "as a customer sees it". Login verified end-to-end on the live deployment.
+- **Member** — the original demo member. Use either member-level account for the six
+  demonstration journeys (specialist chat, care plan, connected health, language settings).
 - **Administrator** — the client operator. Use this for the admin portal walkthrough (HERNE hub,
   referrals, wearable, shared DNA, AI Playground, usage/cost).
 - **Practitioner** — represents the human clinician role that appears in referrals and escalations
