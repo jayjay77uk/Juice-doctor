@@ -65,7 +65,7 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-export const promptService = {
+const mockPrompts = {
   async list(filter?: { agentId?: string; kind?: PromptKind }): Promise<Result<Prompt[]>> {
     let rows = [...prompts];
     if (filter?.agentId) rows = rows.filter((p) => p.agentId === filter.agentId);
@@ -131,7 +131,7 @@ export const promptService = {
 
   /** Roll back the current pointer to an earlier version. */
   async rollback(promptId: string, version: number): Promise<Result<Prompt>> {
-    return promptService.publishVersion(promptId, version);
+    return mockPrompts.publishVersion(promptId, version);
   },
 
   /** Return two versions' content for side-by-side comparison. */
@@ -141,4 +141,23 @@ export const promptService = {
     if (!a || !b) return err({ code: 'not_found', message: 'Version not found.' });
     return ok({ a, b });
   },
+};
+
+/** Real DB registry when configured (closes the loop with runtime inference). */
+import { isSupabaseAdminConfigured } from '@/lib/env';
+import { promptsRepo } from './repositories/prompts-repo';
+
+function impl(): typeof mockPrompts {
+  return isSupabaseAdminConfigured() ? (promptsRepo as typeof mockPrompts) : mockPrompts;
+}
+
+export const promptService = {
+  list: (...a: Parameters<typeof mockPrompts.list>) => impl().list(...a),
+  byId: (id: string) => impl().byId(id),
+  versions: (promptId: string) => impl().versions(promptId),
+  currentContent: (promptId: string) => impl().currentContent(promptId),
+  createDraft: (...a: Parameters<typeof mockPrompts.createDraft>) => impl().createDraft(...a),
+  publishVersion: (promptId: string, version: number) => impl().publishVersion(promptId, version),
+  rollback: (promptId: string, version: number) => impl().rollback(promptId, version),
+  compare: (...a: Parameters<typeof mockPrompts.compare>) => impl().compare(...a),
 };

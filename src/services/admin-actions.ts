@@ -199,7 +199,7 @@ export async function savePromptDraftAction(_prev: ActionResult, formData: FormD
   const result = await promptService.createDraft(parsed.data.promptId, parsed.data.content, parsed.data.changeNote ?? 'Edited draft');
   if (!result.ok) return { status: 'error', message: result.error.message };
   revalidatePath(`/admin/ai/prompts/${parsed.data.promptId}`);
-  return { status: 'success', message: `Draft v${result.data.version} saved. (Prototype: in-memory.)` };
+  return { status: 'success', message: `Draft v${result.data.version} saved.` };
 }
 
 export async function publishPromptVersionAction(formData: FormData): Promise<void> {

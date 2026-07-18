@@ -95,7 +95,8 @@ export const analytics = {
       avgResponseMs: runs.avgLatencyMs > 0 ? runs.avgLatencyMs : avgLatency,
       satisfaction,
       tokensThisMonth: realTokens > 0 ? realTokens : tokens,
-      costThisMonthMicros: cost,
+      // Real estimated spend from ai_run_logs.cost_micros when live traffic exists.
+      costThisMonthMicros: runs.costMicros > 0 ? runs.costMicros : cost,
       currency: 'GBP',
     });
   },

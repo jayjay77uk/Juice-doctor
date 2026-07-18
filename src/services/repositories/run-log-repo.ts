@@ -88,13 +88,13 @@ export const runLogRepo = {
   },
 
   /** Aggregate stats for analytics (last N days). */
-  async stats(sinceDays = 30): Promise<{ total: number; errors: number; avgLatencyMs: number; tokensIn: number; tokensOut: number }> {
+  async stats(sinceDays = 30): Promise<{ total: number; errors: number; avgLatencyMs: number; tokensIn: number; tokensOut: number; costMicros: number }> {
     const sb = createAdminClient();
-    if (!sb) return { total: 0, errors: 0, avgLatencyMs: 0, tokensIn: 0, tokensOut: 0 };
+    if (!sb) return { total: 0, errors: 0, avgLatencyMs: 0, tokensIn: 0, tokensOut: 0, costMicros: 0 };
     const since = new Date(Date.now() - sinceDays * 86_400_000).toISOString();
     const { data } = await sb
       .from('ai_run_logs')
-      .select('status, latency_ms, tokens_input, tokens_output')
+      .select('status, latency_ms, tokens_input, tokens_output, cost_micros')
       .gte('created_at', since);
     const rows = data ?? [];
     const total = rows.length;
@@ -103,6 +103,7 @@ export const runLogRepo = {
     const avgLatencyMs = latencies.length ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : 0;
     const tokensIn = rows.reduce((a, r) => a + (Number(r.tokens_input) || 0), 0);
     const tokensOut = rows.reduce((a, r) => a + (Number(r.tokens_output) || 0), 0);
-    return { total, errors, avgLatencyMs, tokensIn, tokensOut };
+    const costMicros = rows.reduce((a, r) => a + (Number(r.cost_micros) || 0), 0);
+    return { total, errors, avgLatencyMs, tokensIn, tokensOut, costMicros };
   },
 };
