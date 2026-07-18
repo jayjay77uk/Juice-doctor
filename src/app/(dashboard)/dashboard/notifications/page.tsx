@@ -4,8 +4,10 @@ import { AdminHeader } from '@/components/admin/admin-header';
 import { Panel } from '@/components/admin/panel';
 import { EmptyState } from '@/components/admin/empty-state';
 import { member } from '@/services/member';
+import { markAllNotificationsReadAction } from '@/services/member-actions';
 
 export const metadata = createMetadata({ title: 'Notifications', path: '/dashboard/notifications' });
+export const dynamic = 'force-dynamic';
 
 function formatWhen(iso: string): string {
   const date = new Date(iso);
@@ -29,15 +31,12 @@ export default async function NotificationsPage() {
       <Panel
         padded={false}
         actions={
-          notifications.length > 0 ? (
-            <button
-              type="button"
-              disabled
-              title="Coming soon"
-              className="cursor-not-allowed text-sm font-medium text-muted-foreground/60"
-            >
-              Mark all as read
-            </button>
+          notifications.some((n) => n.readAt === null) ? (
+            <form action={markAllNotificationsReadAction}>
+              <button type="submit" className="text-sm font-medium text-primary hover:text-primary/80">
+                Mark all as read
+              </button>
+            </form>
           ) : undefined
         }
       >

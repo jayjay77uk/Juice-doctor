@@ -10,6 +10,10 @@ import { specialists } from './specialists';
 import { conversations_service } from './conversations';
 import { subscriptionsService } from './subscriptions';
 import { ok, type Result } from './result';
+import { isSupabaseAdminConfigured } from '@/lib/env';
+import { getSession } from './auth';
+import { memberRepo } from './repositories/member-repo';
+import { timeline } from './herne/care-plan';
 
 /**
  * Member (user dashboard) read layer. Prototype returns canned member data so
@@ -57,17 +61,93 @@ export interface SavedConversation { id: string; title: string; agent: string; u
 export interface PillarProgress { pillarOne: number; pillarTwo: number; pillarThree: number; pillarFour: number; pillarFive: number; overall: number; }
 export interface UpcomingItem { title: string; when: string; type: string; }
 
+/** The authenticated user's id when the real database is in use; null in preview. */
+async function realUserId(): Promise<string | null> {
+  if (!isSupabaseAdminConfigured()) return null;
+  const session = await getSession();
+  return session?.user.id ?? null;
+}
+
 export const member = {
-  async goals(): Promise<Result<Goal[]>> { return ok(goals); },
-  async healthProfile(): Promise<Result<HealthProfile>> { return ok(health); },
-  async fitnessProfile(): Promise<Result<FitnessProfile>> { return ok(fitness); },
-  async nutritionProfile(): Promise<Result<NutritionProfile>> { return ok(nutrition); },
-  async assessments(): Promise<Result<Assessment[]>> { return ok(assessments); },
-  async notifications(): Promise<Result<Notification[]>> { return ok(notifications); },
+  async goals(): Promise<Result<Goal[]>> {
+    const uid = await realUserId();
+    if (uid) return ok(await memberRepo.goals(uid));
+    return ok(goals);
+  },
+  async healthProfile(): Promise<Result<HealthProfile>> {
+    const uid = await realUserId();
+    if (uid) {
+      const real = await memberRepo.healthProfile(uid);
+      if (real) return ok(real);
+      // Honest empty profile for a member with no record yet.
+      return ok({ userId: uid, organisationId: ORG, dateOfBirth: null, biologicalSex: null, heightCm: null, weightKg: null, bloodType: null, conditions: [], allergies: [], medications: [], emergencyContact: null, notes: null, updatedAt: new Date().toISOString() });
+    }
+    return ok(health);
+  },
+  async fitnessProfile(): Promise<Result<FitnessProfile>> {
+    const uid = await realUserId();
+    if (uid) {
+      const real = await memberRepo.fitnessProfile(uid);
+      return ok(real ?? { userId: uid, organisationId: ORG, activityLevel: 'moderate', restingHeartRate: null, trainingDaysPerWeek: null, baselineMetrics: {}, notes: null });
+    }
+    return ok(fitness);
+  },
+  async nutritionProfile(): Promise<Result<NutritionProfile>> {
+    const uid = await realUserId();
+    if (uid) {
+      const real = await memberRepo.nutritionProfile(uid);
+      return ok(real ?? { userId: uid, organisationId: ORG, dietaryPattern: null, restrictions: [], intolerances: [], hydrationTargetMl: null, notes: null });
+    }
+    return ok(nutrition);
+  },
+  async assessments(): Promise<Result<Assessment[]>> {
+    const uid = await realUserId();
+    if (uid) return ok(await memberRepo.assessments(uid));
+    return ok(assessments);
+  },
+  async notifications(): Promise<Result<Notification[]>> {
+    const uid = await realUserId();
+    if (uid) return ok(await memberRepo.notifications(uid));
+    return ok(notifications);
+  },
   async progress(): Promise<Result<PillarProgress>> {
+    const uid = await realUserId();
+    if (uid) {
+      // Derive pillar progress from the member's real goals (category → pillar).
+      const rows = await memberRepo.goals(uid);
+      if (rows.length) {
+        const avg = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0);
+        const byCat = (cats: string[]) => avg(rows.filter((g) => cats.includes(g.category)).map((g) => g.progress));
+        const overall = avg(rows.map((g) => g.progress));
+        return ok({
+          pillarOne: byCat(['hydration']) || overall,
+          pillarTwo: byCat(['nutrition']) || overall,
+          pillarThree: byCat(['sleep']) || overall,
+          pillarFour: byCat(['fitness', 'movement']) || overall,
+          pillarFive: byCat(['wellbeing', 'other']) || overall,
+          overall,
+        });
+      }
+      return ok({ pillarOne: 0, pillarTwo: 0, pillarThree: 0, pillarFour: 0, pillarFive: 0, overall: 0 });
+    }
     return ok({ pillarOne: 78, pillarTwo: 58, pillarThree: 64, pillarFour: 70, pillarFive: 62, overall: 72 });
   },
   async journey(): Promise<Result<JourneyEvent[]>> {
+    const uid = await realUserId();
+    if (uid) {
+      // The member's real HERNE journey timeline (registrations, referrals,
+      // care-plan actions, escalations), newest first.
+      const events = await timeline.list(uid, 12);
+      const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
+      return ok(
+        events.map((e) => ({
+          date: fmt.format(new Date(e.createdAt)),
+          title: e.title,
+          description: e.detail ?? (e.specialist ? `With ${e.specialist}.` : ''),
+          type: (e.type === 'referral' ? 'session' : e.type === 'assessment' ? 'assessment' : 'milestone') as JourneyEvent['type'],
+        })),
+      );
+    }
     return ok([
       { date: '6 Jul', title: 'First assessment completed', description: 'Your baseline across all five pillars.', type: 'assessment' },
       { date: '6 Jul', title: 'Started Programme One', description: 'Focusing on the first pillars.', type: 'programme' },
@@ -89,6 +169,11 @@ export const member = {
     ]);
   },
   async upcoming(): Promise<Result<UpcomingItem[]>> {
+    const uid = await realUserId();
+    if (uid) {
+      const appts = await memberRepo.upcomingAppointments(uid);
+      return ok(appts.map((a) => ({ title: a.title, when: a.when, type: a.type })));
+    }
     return ok([
       { title: 'Follow-up with Practitioner One', when: 'Thu 17 Jul · 4:00pm', type: '1:1' },
       { title: 'Week 4 group check-in', when: 'Mon 21 Jul · 9:00am', type: 'Group' },
