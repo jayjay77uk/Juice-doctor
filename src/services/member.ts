@@ -181,22 +181,26 @@ export const member = {
   },
   /** Which specialist slugs the member can access (from active subscriptions). */
   async mySpecialistSlugs(): Promise<Result<string[]>> {
-    return subscriptionsService.memberAccess(USER);
+    const uid = await realUserId();
+    return subscriptionsService.memberAccess(uid ?? USER);
   },
   /** The specialist AIs this member can currently open and chat with. */
   async mySpecialists(): Promise<Result<AiAgent[]>> {
-    const [accessResult, allResult] = await Promise.all([subscriptionsService.memberAccess(USER), specialists.all()]);
+    const uid = await realUserId();
+    const [accessResult, allResult] = await Promise.all([subscriptionsService.memberAccess(uid ?? USER), specialists.all()]);
     const slugs = accessResult.ok ? accessResult.data : [];
     const list = allResult.ok ? allResult.data : [];
     return ok(list.filter((s) => slugs.includes(s.slug)));
   },
   /** The member's real conversations with their specialist AIs. */
   async myConversations(userId: string = USER): Promise<Result<Conversation[]>> {
-    return conversations_service.list(userId);
+    const uid = await realUserId();
+    return conversations_service.list(userId !== USER ? userId : uid ?? USER);
   },
   /** The member's subscriptions. */
   async mySubscriptions(): Promise<Result<CustomerSubscription[]>> {
-    return subscriptionsService.byMember(USER);
+    const uid = await realUserId();
+    return subscriptionsService.byMember(uid ?? USER);
   },
   /** Follow-up items for the member. */
   async myFollowUps(): Promise<Result<{ title: string; detail: string; when: string }[]>> {

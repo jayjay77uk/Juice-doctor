@@ -9,6 +9,8 @@ import type {
 } from '@/types/crm';
 import { specialists } from './specialists';
 import { ok, err, type Result } from './result';
+import { isSupabaseAdminConfigured } from '@/lib/env';
+import { subscriptionsRepo } from './repositories/subscriptions-repo';
 
 /**
  * Subscriptions service — admin-configurable plans + customer subscriptions.
@@ -61,7 +63,7 @@ function findSub(id: string): CustomerSubscription | undefined {
   return subscriptions.find((s) => s.id === id);
 }
 
-export const subscriptionsService = {
+const mockSubscriptions = {
   // ── Plans (admin-configurable) ─────────────────────────────────────────────
   plans: {
     async list(): Promise<Result<SpecialistPlan[]>> {
@@ -162,7 +164,7 @@ export const subscriptionsService = {
     return ok(sub);
   },
   async cancel(id: string): Promise<Result<CustomerSubscription>> {
-    return subscriptionsService.setState(id, 'canceled');
+    return mockSubscriptions.setState(id, 'canceled');
   },
   async recordPayment(id: string, note: string): Promise<Result<ManualPayment>> {
     const sub = findSub(id);
@@ -188,4 +190,30 @@ export const subscriptionsService = {
       canceled: subscriptions.filter((s) => s.state === 'canceled').length,
     });
   },
+};
+
+/** Real DB when configured (production); in-process store only in local preview. */
+function impl(): typeof mockSubscriptions {
+  return isSupabaseAdminConfigured() ? (subscriptionsRepo as unknown as typeof mockSubscriptions) : mockSubscriptions;
+}
+
+export const subscriptionsService = {
+  plans: {
+    list: () => impl().plans.list(),
+    all: () => impl().plans.all(),
+    byId: (id: string) => impl().plans.byId(id),
+    create: (...a: Parameters<typeof mockSubscriptions.plans.create>) => impl().plans.create(...a),
+    archive: (id: string) => impl().plans.archive(id),
+  },
+  list: () => impl().list(),
+  byId: (id: string) => impl().byId(id),
+  byMember: (memberId: string) => impl().byMember(memberId),
+  memberAccess: (memberId: string) => impl().memberAccess(memberId),
+  create: (...a: Parameters<typeof mockSubscriptions.create>) => impl().create(...a),
+  changePlan: (id: string, planId: string) => impl().changePlan(id, planId),
+  setState: (...a: Parameters<typeof mockSubscriptions.setState>) => impl().setState(...a),
+  cancel: (id: string) => impl().cancel(id),
+  recordPayment: (id: string, note: string) => impl().recordPayment(id, note),
+  payments: (subscriptionId: string) => impl().payments(subscriptionId),
+  summary: () => impl().summary(),
 };
