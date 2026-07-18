@@ -10,6 +10,7 @@ import { knowledgeRepo } from './repositories/knowledge-repo';
 import { featureFlags } from './feature-flags';
 import { playground } from './playground';
 import { assertRole } from '@/lib/auth/authorize';
+import { auditRepo } from './repositories/audit-repo';
 import type { ActionResult } from './result';
 import type { AgentVisibility } from '@/types/ai';
 import type { PublishStatus } from '@/types/knowledge';
@@ -76,7 +77,8 @@ const updateSchema = z.object({
 });
 
 export async function updateAgentAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
-  try { await assertRole('administrator'); } catch { return { status: 'error', message: 'You do not have permission to do this.' }; }
+  let actorId: string | null = null;
+  try { actorId = (await assertRole('administrator')).user.id; } catch { return { status: 'error', message: 'You do not have permission to do this.' }; }
   const parsed = updateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: 'error', message: 'Please check the fields.', fieldErrors: parsed.error.flatten().fieldErrors };
@@ -130,9 +132,10 @@ export async function updateAgentAction(_prev: ActionResult, formData: FormData)
   }
   const result = await agents.update(parsed.data.id, patch);
   if (!result.ok) return { status: 'error', message: result.error.message };
+  await auditRepo.log({ actorId, action: 'agent.updated', entityType: 'ai_agents', entityId: parsed.data.id, after: { label: patch.name } });
   revalidatePath(`/admin/ai/agents/${parsed.data.id}`);
   revalidatePath('/admin/ai/agents');
-  return { status: 'success', message: 'Agent saved. (Prototype: stored in the in-memory mock store.)' };
+  return { status: 'success', message: 'Agent saved.' };
 }
 
 // ── Single-operation form actions (hidden `id` field) ────────────────────────
@@ -143,24 +146,30 @@ async function readId(formData: FormData): Promise<string> {
 }
 
 export async function publishAgentAction(formData: FormData): Promise<void> {
-  await assertRole('administrator');
-  await agents.publish(await readId(formData));
+  const session = await assertRole('administrator');
+  const id = await readId(formData);
+  await agents.publish(id);
+  await auditRepo.log({ actorId: session.user.id, action: 'agent.published', entityType: 'ai_agents', entityId: id });
   revalidatePath('/admin/ai/agents');
-  revalidatePath(`/admin/ai/agents/${await readId(formData)}`);
+  revalidatePath(`/admin/ai/agents/${id}`);
 }
 
 export async function archiveAgentAction(formData: FormData): Promise<void> {
-  await assertRole('administrator');
-  await agents.archive(await readId(formData));
+  const session = await assertRole('administrator');
+  const id = await readId(formData);
+  await agents.archive(id);
+  await auditRepo.log({ actorId: session.user.id, action: 'agent.archived', entityType: 'ai_agents', entityId: id });
   revalidatePath('/admin/ai/agents');
 }
 
 export async function toggleAgentAction(formData: FormData): Promise<void> {
-  await assertRole('administrator');
+  const session = await assertRole('administrator');
   const id = await readId(formData);
   const current = await agents.byId(id);
   if (current.ok) {
-    await agents.setStatus(id, current.data.status === 'active' ? 'disabled' : 'active');
+    const next = current.data.status === 'active' ? 'disabled' : 'active';
+    await agents.setStatus(id, next);
+    await auditRepo.log({ actorId: session.user.id, action: `agent.${next}`, entityType: 'ai_agents', entityId: id, after: { label: current.data.name } });
   }
   revalidatePath('/admin/ai/agents');
   revalidatePath(`/admin/ai/agents/${id}`);
@@ -194,19 +203,21 @@ export async function savePromptDraftAction(_prev: ActionResult, formData: FormD
 }
 
 export async function publishPromptVersionAction(formData: FormData): Promise<void> {
-  await assertRole('administrator');
+  const session = await assertRole('administrator');
   const promptId = String(formData.get('promptId') ?? '');
   const version = Number(formData.get('version') ?? 0);
   await promptService.publishVersion(promptId, version);
+  await auditRepo.log({ actorId: session.user.id, action: 'prompt.version.published', entityType: 'ai_prompts', entityId: promptId, after: { version } });
   revalidatePath(`/admin/ai/prompts/${promptId}`);
   revalidatePath('/admin/ai/prompts');
 }
 
 export async function rollbackPromptAction(formData: FormData): Promise<void> {
-  await assertRole('administrator');
+  const session = await assertRole('administrator');
   const promptId = String(formData.get('promptId') ?? '');
   const version = Number(formData.get('version') ?? 0);
   await promptService.rollback(promptId, version);
+  await auditRepo.log({ actorId: session.user.id, action: 'prompt.version.rolled_back', entityType: 'ai_prompts', entityId: promptId, after: { version } });
   revalidatePath(`/admin/ai/prompts/${promptId}`);
 }
 
@@ -308,10 +319,11 @@ export async function archiveDocAction(formData: FormData): Promise<void> {
 // ── Feature flags (Configuration Centre) ─────────────────────────────────────
 
 export async function toggleFeatureFlagAction(formData: FormData): Promise<void> {
-  await assertRole('administrator');
+  const session = await assertRole('administrator');
   const key = String(formData.get('key') ?? '');
   if (featureFlags.isValidKey(key)) {
-    await featureFlags.toggle(key);
+    const enabled = await featureFlags.toggle(key);
+    await auditRepo.log({ actorId: session.user.id, action: 'feature_flag.toggled', entityType: 'feature_flags', entityId: key, after: { label: key, enabled } });
   }
   revalidatePath('/admin/config');
 }

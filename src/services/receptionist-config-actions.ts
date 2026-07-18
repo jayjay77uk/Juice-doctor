@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { assertRole } from '@/lib/auth/authorize';
-import { receptionistSettings, currentReceptionistSettings } from './receptionist-settings';
+import { receptionistSettings } from './receptionist-settings';
+import { auditRepo } from './repositories/audit-repo';
 import type { ActionResult } from './result';
 
 /**
@@ -14,9 +15,12 @@ export async function updateReceptionistSettingsAction(
   _prev: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
-  try { await assertRole('administrator'); } catch { return { status: 'error', message: 'You do not have permission to do this.' }; }
+  let actorId: string | null = null;
+  try { actorId = (await assertRole('administrator')).user.id; } catch { return { status: 'error', message: 'You do not have permission to do this.' }; }
 
-  const cur = currentReceptionistSettings();
+  const curResult = await receptionistSettings.get();
+  if (!curResult.ok) return { status: 'error', message: 'Settings are unavailable right now.' };
+  const cur = curResult.data;
 
   const greeting = String(formData.get('greeting') ?? '').trim();
   const tone = String(formData.get('tone') ?? '').trim();
@@ -55,6 +59,7 @@ export async function updateReceptionistSettingsAction(
     },
   });
 
+  await auditRepo.log({ actorId, action: 'receptionist.settings.updated', entityType: 'system_settings', entityId: 'receptionist_settings' });
   revalidatePath('/admin/receptionist');
   revalidatePath('/assistant');
   return { status: 'success', message: 'Receptionist settings saved.' };
