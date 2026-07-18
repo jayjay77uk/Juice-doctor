@@ -12,17 +12,19 @@ import type {
 import { LEAD_STATUS_ORDER } from '@/types/crm';
 import { ESCALATION_TARGET } from '@/config/receptionist';
 import { ok, err, type Result } from './result';
+import { isSupabaseAdminConfigured } from '@/lib/env';
+import { crmRepo } from './repositories/crm-repo';
 
 /**
  * AI-centric CRM — the operational core. Every lead is created by the
  * Receptionist AI and records the full conversation, the consultation summary,
  * the recommendation + confidence, alternative matches, the assigned specialist,
  * human-review / WhatsApp / subscription / follow-up status, progress, notes, a
- * responsible team member and an activity timeline. Prototype uses a mutable
- * in-process store; production reads crm_leads + crm_lead_events (migration 0015).
+ * responsible team member and an activity timeline.
  *
- * Seed content is NEUTRAL ENGLISH placeholder data referencing the four
- * configurable specialist placeholders — no invented product/domain content.
+ * PRODUCTION: when Supabase is configured, every method delegates to crmRepo
+ * (crm_leads + crm_lead_events — real rows, real events, migration 0015+0026).
+ * The in-process store below remains ONLY as the local preview fallback.
  */
 
 const ORG = '00000000-0000-0000-0000-000000000001';
@@ -113,7 +115,7 @@ function find(id: string): CrmLead | undefined {
   return leads.find((l) => l.id === id);
 }
 
-export const crm = {
+const mockCrm = {
   async list(filter?: { status?: LeadStatus; search?: string; followUp?: LeadFollowUp; assigned?: string }): Promise<Result<CrmLead[]>> {
     let rows = [...leads].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     if (filter?.status) rows = rows.filter((l) => l.status === filter.status);
@@ -293,4 +295,30 @@ export const crm = {
     addEvent(id, 'follow_up', at ? `Reminder set for ${at.slice(0, 10)}` : 'Reminder cleared', null, 'Admin');
     return ok(lead);
   },
+};
+
+/** Real DB when configured (production); in-process store only in local preview. */
+function impl(): typeof mockCrm {
+  return isSupabaseAdminConfigured() ? (crmRepo as typeof mockCrm) : mockCrm;
+}
+
+export const crm = {
+  list: (...a: Parameters<typeof mockCrm.list>) => impl().list(...a),
+  byId: (...a: Parameters<typeof mockCrm.byId>) => impl().byId(...a),
+  events: (...a: Parameters<typeof mockCrm.events>) => impl().events(...a),
+  escalationQueue: (...a: Parameters<typeof mockCrm.escalationQueue>) => impl().escalationQueue(...a),
+  pipeline: (...a: Parameters<typeof mockCrm.pipeline>) => impl().pipeline(...a),
+  create: (...a: Parameters<typeof mockCrm.create>) => impl().create(...a),
+  updateStatus: (...a: Parameters<typeof mockCrm.updateStatus>) => impl().updateStatus(...a),
+  approveRecommendation: (...a: Parameters<typeof mockCrm.approveRecommendation>) => impl().approveRecommendation(...a),
+  changeRecommendation: (...a: Parameters<typeof mockCrm.changeRecommendation>) => impl().changeRecommendation(...a),
+  addNote: (...a: Parameters<typeof mockCrm.addNote>) => impl().addNote(...a),
+  assign: (...a: Parameters<typeof mockCrm.assign>) => impl().assign(...a),
+  setFollowUp: (...a: Parameters<typeof mockCrm.setFollowUp>) => impl().setFollowUp(...a),
+  setWhatsapp: (...a: Parameters<typeof mockCrm.setWhatsapp>) => impl().setWhatsapp(...a),
+  takeOver: (...a: Parameters<typeof mockCrm.takeOver>) => impl().takeOver(...a),
+  setReviewStatus: (...a: Parameters<typeof mockCrm.setReviewStatus>) => impl().setReviewStatus(...a),
+  closeReview: (...a: Parameters<typeof mockCrm.closeReview>) => impl().closeReview(...a),
+  reopenReview: (...a: Parameters<typeof mockCrm.reopenReview>) => impl().reopenReview(...a),
+  setReminder: (...a: Parameters<typeof mockCrm.setReminder>) => impl().setReminder(...a),
 };
