@@ -75,15 +75,15 @@ export default async function SettingsPage() {
       <MemoryCard enabled={memoryEnabled} memories={memories} />
 
       <Panel
-        title="Notifications"
-        description="Choose how you'd like us to stay in touch."
+        title="Notification preferences"
+        description="Coming soon — choose how you'd like us to stay in touch."
       >
         <div className="flex flex-col gap-1">
           {notificationToggles.map((toggle) => (
             <label
               key={toggle.id}
               htmlFor={toggle.id}
-              className="flex cursor-pointer items-start justify-between gap-4 rounded-xl px-3 py-3 transition-colors hover:bg-surface-muted"
+              className="flex cursor-not-allowed items-start justify-between gap-4 rounded-xl px-3 py-3 opacity-60"
             >
               <span className="flex items-start gap-3">
                 <Bell className="mt-0.5 size-4 shrink-0 text-primary" />
@@ -96,11 +96,14 @@ export default async function SettingsPage() {
                 id={toggle.id}
                 type="checkbox"
                 defaultChecked
+                disabled
+                title="Coming soon"
                 className="mt-0.5 size-4 shrink-0 accent-[var(--color-primary)]"
               />
             </label>
           ))}
         </div>
+        <p className="mt-3 text-xs text-muted-foreground">These preferences are coming soon and can’t be changed yet.</p>
       </Panel>
 
       <Panel
@@ -109,17 +112,17 @@ export default async function SettingsPage() {
       >
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-3">
-            <Button intent="outline">
+            <Button intent="outline" disabled title="Data export is coming soon">
               <Shield className="size-4" />
-              Download my data
+              Download my data (coming soon)
             </Button>
             <Button asChild intent="ghost">
-              <Link href="/privacy">Manage consents</Link>
+              <Link href="/privacy">Privacy policy</Link>
             </Button>
           </div>
           <p className="text-sm text-muted-foreground">
-            Your data is GDPR-backed — you can export it or withdraw consent at any time,
-            and we’ll only ever use it to support your experience.
+            Your data is GDPR-backed. Self-service export and consent management are coming soon —
+            in the meantime, contact the team for any data request.
           </p>
         </div>
       </Panel>
@@ -131,21 +134,21 @@ export default async function SettingsPage() {
       >
         <div className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
-            Deactivating pauses your membership and hides your profile. You can come back
-            whenever you’re ready.
+            Deactivating pauses your membership and hides your profile. Self-service deactivation is
+            coming soon — contact the team if you’d like your account paused.
           </p>
           <div>
-            <Button intent="outline" className="border-danger/50 text-danger hover:bg-danger/5">
+            <Button intent="outline" disabled title="Coming soon" className="border-danger/50 text-danger">
               <Settings className="size-4" />
-              Deactivate account
+              Deactivate account (coming soon)
             </Button>
           </div>
         </div>
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — sample data. AI replies are live but not clinically reviewed. No real records, bookings or payments are connected. These
-        controls are for demonstration only and won’t change any settings.
+        Your profile, language, memory and subscription settings are live. Notification preferences,
+        data export and account deactivation are coming soon.
       </p>
     </div>
   );

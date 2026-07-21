@@ -98,9 +98,9 @@ export default async function SpecialistsPage() {
 
       <StatGrid>
         <StatCard label="Specialists" value={list.length} icon={Bot} />
-        <StatCard label="Active subscribers" value={activeSubscribers} icon={Users} />
-        <StatCard label="Monthly recurring" value={gbp(monthlyRecurring)} icon={Banknote} />
-        <StatCard label="Avg satisfaction" value={`${Math.round(avgSatisfaction * 100)}%`} icon={Smile} />
+        <StatCard label="Active subscribers" value={activeSubscribers} icon={Users} hint="Coming soon — illustrative" />
+        <StatCard label="Monthly recurring" value={gbp(monthlyRecurring)} icon={Banknote} hint="Coming soon — illustrative" />
+        <StatCard label="Avg satisfaction" value={`${Math.round(avgSatisfaction * 100)}%`} icon={Smile} hint="Coming soon — illustrative" />
       </StatGrid>
 
       <Panel padded={false}>

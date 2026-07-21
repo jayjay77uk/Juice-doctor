@@ -71,8 +71,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <AdminHeader
-        title={`Case · ${CASE.member}`}
-        description={`Case ${id} · ${CASE.reason}`}
+        title={`Case · ${CASE.member} (coming soon)`}
+        description={`Coming soon — demonstration data, not a real case. Case ${id} · ${CASE.reason}`}
         breadcrumbs={[
           { label: 'Consultations', href: '/admin/consultations' },
           { label: CASE.member },

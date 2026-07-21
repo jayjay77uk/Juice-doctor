@@ -35,7 +35,7 @@ export default async function AnalyticsPage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <AdminHeader
         title="AI Analytics"
-        description="Usage, satisfaction, cost and knowledge insights across all AI assistants. Figures are illustrative in the prototype."
+        description="Token, latency and cost figures are read from real AI runs. Charts and breakdowns below marked coming soon still use illustrative data."
         breadcrumbs={[{ label: 'AI', href: '/admin/ai' }, { label: 'Analytics' }]}
       />
 
@@ -52,12 +52,12 @@ export default async function AnalyticsPage() {
         <StatCard label="Cost (month)" value={s ? gbp(s.costThisMonthMicros) : '—'} icon={Banknote} />
       </StatGrid>
 
-      <Panel title="Conversations — last 30 days">
+      <Panel title="Conversations — last 30 days (coming soon)" description="Illustrative data until daily rollups are connected.">
         <MiniBarChart data={convChart} ariaLabel="Daily conversations over the last 30 days" />
       </Panel>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Popular questions" padded={false}>
+        <Panel title="Popular questions (coming soon)" description="Illustrative data." padded={false}>
           <ol className="divide-y divide-border">
             {questions.map((q, i) => (
               <li key={i} className="flex items-center justify-between gap-3 px-6 py-3.5">
@@ -73,7 +73,7 @@ export default async function AnalyticsPage() {
           </ol>
         </Panel>
 
-        <Panel title="Knowledge usage">
+        <Panel title="Knowledge usage (coming soon)" description="Illustrative data.">
           <ul className="flex flex-col gap-4">
             {usage.map((u) => (
               <li key={u.documentTitle} className="flex flex-col gap-1.5">
@@ -91,8 +91,8 @@ export default async function AnalyticsPage() {
       </div>
 
       <AdminHeader
-        title="Operational analytics"
-        description="Reception, consultations, subscriptions and customer follow-up across the AI assistants. Figures are illustrative in the prototype."
+        title="Operational analytics (coming soon)"
+        description="Coming soon — these figures are illustrative until the operational rollups are connected."
       />
 
       <StatGrid>
@@ -109,7 +109,7 @@ export default async function AnalyticsPage() {
       </StatGrid>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Specialist usage" description="Conversations per specialist over the last 30 days.">
+        <Panel title="Specialist usage (coming soon)" description="Illustrative — conversations per specialist over the last 30 days.">
           {ops && ops.specialistUsage.length > 0 ? (
             <ul className="flex flex-col gap-4">
               {ops.specialistUsage.map((u) => (
@@ -129,7 +129,7 @@ export default async function AnalyticsPage() {
           )}
         </Panel>
 
-        <Panel title="Customer feedback" description="Thumbs up and down from customers on AI responses.">
+        <Panel title="Customer feedback (coming soon)" description="Illustrative — thumbs up and down from customers on AI responses.">
           <div className="flex items-center gap-8">
             <div className="flex flex-col items-center gap-1">
               <span className="text-3xl">👍</span>

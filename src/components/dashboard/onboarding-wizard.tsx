@@ -163,7 +163,7 @@ export function OnboardingWizard() {
               {goals.length > 0
                 ? `We’ll focus on ${goals.length} area${goals.length === 1 ? '' : 's'} to start.`
                 : 'Your journey is ready.'}{' '}
-              (Prototype — nothing was saved.)
+              (Saving your onboarding answers is coming soon — nothing was stored yet.)
             </p>
             <Button asChild className="mt-2">
               <Link href="/dashboard">

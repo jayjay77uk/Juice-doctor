@@ -21,7 +21,7 @@ export default async function GoalsPage() {
         description="What you're working towards."
         actions={
           <Button size="sm" disabled title="Adding goals is coming soon">
-            <Plus className="size-4" /> Add goal
+            <Plus className="size-4" /> Add goal (coming soon)
           </Button>
         }
       />
@@ -33,7 +33,7 @@ export default async function GoalsPage() {
           description="Set your first goal and we'll help you make steady, encouraging progress towards it."
           action={
             <Button size="sm" disabled title="Adding goals is coming soon">
-              <Plus className="size-4" /> Add goal
+              <Plus className="size-4" /> Add goal (coming soon)
             </Button>
           }
         />

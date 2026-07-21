@@ -94,10 +94,10 @@ export default async function SpecialistDetailPage({
 
       {analytics && (
         <StatGrid>
-          <StatCard label="Subscribers" value={analytics.subscribers} icon={Users} />
-          <StatCard label="Active" value={analytics.activeSubscribers} icon={Users} />
-          <StatCard label="MRR" value={gbp(analytics.mrr)} icon={Banknote} />
-          <StatCard label="Satisfaction" value={pct(analytics.satisfaction)} icon={Smile} />
+          <StatCard label="Subscribers" value={analytics.subscribers} icon={Users} hint="Coming soon — illustrative" />
+          <StatCard label="Active" value={analytics.activeSubscribers} icon={Users} hint="Coming soon — illustrative" />
+          <StatCard label="MRR" value={gbp(analytics.mrr)} icon={Banknote} hint="Coming soon — illustrative" />
+          <StatCard label="Satisfaction" value={pct(analytics.satisfaction)} icon={Smile} hint="Coming soon — illustrative" />
         </StatGrid>
       )}
 

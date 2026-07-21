@@ -59,8 +59,8 @@ export default async function ConsultationsPage() {
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <AdminHeader
-        title="Consultations"
-        description="The full intake → assessment → review → appointment → follow-up pipeline."
+        title="Consultations (coming soon)"
+        description="Coming soon — this workflow is not yet connected to real data. The cases below are demonstration data."
         breadcrumbs={[{ label: 'Consultations' }]}
       />
 

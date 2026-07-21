@@ -67,8 +67,8 @@ export default async function MemoryCentrePage() {
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <AdminHeader
-        title="Memory Centre"
-        description="Six cleanly separated memory scopes. Each is isolated by design so a session note never leaks and an org fact never crosses tenants."
+        title="Memory Centre (coming soon)"
+        description="Coming soon — this admin view of the six memory scopes is illustrative. Real member memory is live (members manage it in their own Settings)."
         breadcrumbs={[{ label: 'AI', href: '/admin/ai' }, { label: 'Memory' }]}
       />
 
