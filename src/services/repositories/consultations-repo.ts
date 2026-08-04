@@ -98,18 +98,24 @@ export const consultationsRepo = {
       sb,
       rows.flatMap((r) => [String(r.member_id), r.practitioner_id ? String(r.practitioner_id) : '']),
     );
-    // Latest event stage per consultation (one query, newest first).
+    // Latest event stage per consultation — newest first, and when timestamps
+    // tie (batch inserts) the further-along stage wins.
+    const STAGE_ORDER = ['intake', 'assessment', 'ai_review', 'practitioner_review', 'appointment', 'follow_up', 'history'];
     const ids = rows.map((r) => String(r.id));
-    const stages = new Map<string, string>();
+    const stages = new Map<string, { stage: string; at: string }>();
     if (ids.length) {
       const { data: events } = await sb
         .from('consultation_events')
         .select('consultation_id, stage, created_at')
-        .in('consultation_id', ids)
-        .order('created_at', { ascending: false });
+        .in('consultation_id', ids);
       for (const e of events ?? []) {
         const key = String(e.consultation_id);
-        if (!stages.has(key)) stages.set(key, String(e.stage));
+        const stage = String(e.stage);
+        const at = String(e.created_at);
+        const cur = stages.get(key);
+        if (!cur || at > cur.at || (at === cur.at && STAGE_ORDER.indexOf(stage) > STAGE_ORDER.indexOf(cur.stage))) {
+          stages.set(key, { stage, at });
+        }
       }
     }
     return rows.map((r: Record<string, unknown>) => ({
@@ -119,7 +125,7 @@ export const consultationsRepo = {
       practitionerId: (r.practitioner_id as string | null) ?? null,
       practitionerName: r.practitioner_id ? nameMap.get(String(r.practitioner_id)) ?? 'Practitioner' : 'Unassigned',
       status: String(r.status ?? 'scheduled'),
-      stage: stages.get(String(r.id)) ?? 'intake',
+      stage: stages.get(String(r.id))?.stage ?? 'intake',
       reason: String(r.reason ?? ''),
       aiReview: (r.ai_review as string | null) ?? null,
       practitionerNotes: (r.practitioner_notes as string | null) ?? null,
