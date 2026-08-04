@@ -70,6 +70,29 @@ export const memberRepo = {
     }));
   },
 
+  /** Create a goal for the member. */
+  async createGoal(
+    userId: string,
+    input: { category: string; title: string; description?: string | null; targetValue?: number | null; unit?: string | null; targetDate?: string | null },
+  ): Promise<{ ok: boolean; error?: string }> {
+    const sb = createAdminClient();
+    if (!sb) return { ok: false, error: 'Not available right now.' };
+    const { error } = await sb.from('goals').insert({
+      user_id: userId,
+      organisation_id: ORG,
+      category: input.category,
+      title: input.title,
+      description: input.description?.trim() || null,
+      target_value: input.targetValue ?? null,
+      unit: input.unit?.trim() || null,
+      target_date: input.targetDate || null,
+      status: 'active',
+      progress: 0,
+    });
+    if (error) return { ok: false, error: 'Could not create the goal. Please try again.' };
+    return { ok: true };
+  },
+
   async healthProfile(userId: string): Promise<HealthProfile | null> {
     const sb = createAdminClient();
     if (!sb) return null;

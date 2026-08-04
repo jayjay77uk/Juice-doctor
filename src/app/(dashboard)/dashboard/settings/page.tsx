@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { User, Bell, Shield, Settings } from 'lucide-react';
+import { User, Shield, Settings } from 'lucide-react';
 import { createMetadata } from '@/config/metadata';
 import { AdminHeader } from '@/components/admin/admin-header';
 import { Panel } from '@/components/admin/panel';
@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { LanguageVoiceCard } from '@/components/settings/language-voice-card';
 import { getLanguagePreference } from '@/services/herne/language-store';
 import { MemoryCard } from '@/components/settings/memory-card';
+import { NotificationPrefsCard } from '@/components/settings/notification-prefs-card';
+import { getNotificationPrefs } from '@/services/notification-prefs';
 import { getMemoryEnabled } from '@/services/memory-prefs';
 import { memoryRepo } from '@/services/repositories/memory-repo';
 import { getSession } from '@/services/auth';
@@ -14,30 +16,13 @@ import { getSession } from '@/services/auth';
 export const metadata = createMetadata({ title: 'Settings' });
 export const dynamic = 'force-dynamic';
 
-const notificationToggles: { id: string; label: string; hint: string }[] = [
-  {
-    id: 'email-checkins',
-    label: 'Email check-ins',
-    hint: 'A short weekly note on how your programme is going.',
-  },
-  {
-    id: 'daily-nudges',
-    label: 'Daily nudges',
-    hint: 'Gentle reminders to stay on track.',
-  },
-  {
-    id: 'share-practitioner',
-    label: 'Share with practitioner',
-    hint: 'Let your practitioner see your progress ahead of sessions.',
-  },
-];
-
 export default async function SettingsPage() {
   const session = await getSession();
-  const [languagePreference, memoryEnabled, memories] = await Promise.all([
+  const [languagePreference, memoryEnabled, memories, notificationPrefs] = await Promise.all([
     getLanguagePreference(),
     getMemoryEnabled(),
     session?.user.id ? memoryRepo.listForUser(session.user.id) : Promise.resolve([]),
+    getNotificationPrefs(),
   ]);
   const profileRows: { label: string; value: string }[] = [
     { label: 'Name', value: session?.user.name || session?.user.email?.split('@')[0] || 'Member' },
@@ -74,37 +59,7 @@ export default async function SettingsPage() {
 
       <MemoryCard enabled={memoryEnabled} memories={memories} />
 
-      <Panel
-        title="Notification preferences"
-        description="Coming soon — choose how you'd like us to stay in touch."
-      >
-        <div className="flex flex-col gap-1">
-          {notificationToggles.map((toggle) => (
-            <label
-              key={toggle.id}
-              htmlFor={toggle.id}
-              className="flex cursor-not-allowed items-start justify-between gap-4 rounded-xl px-3 py-3 opacity-60"
-            >
-              <span className="flex items-start gap-3">
-                <Bell className="mt-0.5 size-4 shrink-0 text-primary" />
-                <span className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium text-foreground">{toggle.label}</span>
-                  <span className="text-sm text-muted-foreground">{toggle.hint}</span>
-                </span>
-              </span>
-              <input
-                id={toggle.id}
-                type="checkbox"
-                defaultChecked
-                disabled
-                title="Coming soon"
-                className="mt-0.5 size-4 shrink-0 accent-[var(--color-primary)]"
-              />
-            </label>
-          ))}
-        </div>
-        <p className="mt-3 text-xs text-muted-foreground">These preferences are coming soon and can’t be changed yet.</p>
-      </Panel>
+      <NotificationPrefsCard initial={notificationPrefs} />
 
       <Panel
         title="Privacy & data"
@@ -147,8 +102,8 @@ export default async function SettingsPage() {
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Your profile, language, memory and subscription settings are live. Notification preferences,
-        data export and account deactivation are coming soon.
+        Your profile, language, memory, notification and subscription settings are live. Data export
+        and account deactivation are coming soon.
       </p>
     </div>
   );

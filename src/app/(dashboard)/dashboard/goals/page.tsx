@@ -6,6 +6,7 @@ import { Panel } from '@/components/admin/panel';
 import { StatusBadge } from '@/components/admin/status-badge';
 import { EmptyState } from '@/components/admin/empty-state';
 import { Button } from '@/components/ui/button';
+import { AddGoalForm } from '@/components/dashboard/add-goal-form';
 import { member } from '@/services/member';
 
 export const metadata = createMetadata({ title: 'My goals', path: '/dashboard/goals' });
@@ -19,11 +20,7 @@ export default async function GoalsPage() {
       <AdminHeader
         title="My goals"
         description="What you're working towards."
-        actions={
-          <Button size="sm" disabled title="Adding goals is coming soon">
-            <Plus className="size-4" /> Add goal (coming soon)
-          </Button>
-        }
+        actions={<AddGoalForm />}
       />
 
       {goals.length === 0 ? (
@@ -31,11 +28,7 @@ export default async function GoalsPage() {
           icon={Target}
           title="No goals just yet"
           description="Set your first goal and we'll help you make steady, encouraging progress towards it."
-          action={
-            <Button size="sm" disabled title="Adding goals is coming soon">
-              <Plus className="size-4" /> Add goal (coming soon)
-            </Button>
-          }
+          action={<AddGoalForm />}
         />
       ) : (
         <div className="flex flex-col gap-6">
