@@ -66,6 +66,13 @@ export function AuthForm({
           autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
         />
       </Field>
+      {mode === 'login' && (
+        <p className="-mt-3 text-right text-sm">
+          <Link href="/forgot-password" className="font-medium text-primary hover:underline">
+            Forgot password?
+          </Link>
+        </p>
+      )}
       {mode === 'register' && (
         <Field label="Confirm password" name="confirm" required error={fieldErrors?.confirm?.[0]}>
           <Input id="confirm" name="confirm" type="password" autoComplete="new-password" />
