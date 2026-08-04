@@ -75,7 +75,7 @@ const NAV: Record<NavVariant, ShellNavSection[]> = {
         { label: 'Shared DNA', href: '/admin/herne/dna', icon: ShieldCheck },
       ],
     },
-    { title: 'CRM', items: [{ label: 'Leads', href: '/admin/crm', icon: ContactRound }] },
+    { title: 'CRM', items: [{ label: 'Leads', href: '/admin/crm', icon: ContactRound }, { label: 'Appointments', href: '/admin/appointments', icon: CalendarDays }] },
     {
       title: 'Administration',
       items: [

@@ -25,6 +25,16 @@ export interface UpcomingAppointment {
   scheduledStart: string;
 }
 
+export interface MemberAppointment {
+  id: string;
+  serviceSlug: string;
+  status: string;
+  locationType: string;
+  scheduledStart: string;
+  scheduledEnd: string;
+  notes: string | null;
+}
+
 function s(v: unknown): string | null {
   return v == null ? null : String(v);
 }
@@ -159,6 +169,102 @@ export const memberRepo = {
     if (!sb) return false;
     const { error } = await sb.from('notifications').update({ read_at: new Date().toISOString() }).eq('user_id', userId).is('read_at', null);
     return !error;
+  },
+
+  /** All of the member's appointments split into upcoming and past. */
+  async appointments(userId: string): Promise<{ upcoming: MemberAppointment[]; past: MemberAppointment[] }> {
+    const sb = createAdminClient();
+    if (!sb) return { upcoming: [], past: [] };
+    const { data } = await sb
+      .from('appointments')
+      .select('id, service_slug, status, location_type, scheduled_start, scheduled_end, notes')
+      .eq('member_id', userId)
+      .order('scheduled_start', { ascending: false })
+      .limit(50);
+    const rows: MemberAppointment[] = (data ?? []).map((r: Record<string, unknown>) => ({
+      id: String(r.id),
+      serviceSlug: String(r.service_slug ?? 'consultation'),
+      status: String(r.status ?? 'requested'),
+      locationType: String(r.location_type ?? 'video'),
+      scheduledStart: String(r.scheduled_start),
+      scheduledEnd: String(r.scheduled_end),
+      notes: s(r.notes),
+    }));
+    const now = Date.now();
+    const upcoming = rows
+      .filter((a) => new Date(a.scheduledStart).getTime() >= now && a.status !== 'cancelled')
+      .sort((a, b) => a.scheduledStart.localeCompare(b.scheduledStart));
+    const past = rows.filter((a) => new Date(a.scheduledStart).getTime() < now || a.status === 'cancelled');
+    return { upcoming, past };
+  },
+
+  /** Book a new appointment for the member (status 'requested' until confirmed). */
+  async bookAppointment(
+    userId: string,
+    input: { serviceSlug: string; locationType: string; startIso: string; durationMins: number; notes?: string | null },
+  ): Promise<{ ok: boolean; error?: string }> {
+    const sb = createAdminClient();
+    if (!sb) return { ok: false, error: 'Booking is not available right now.' };
+    const start = new Date(input.startIso);
+    const end = new Date(start.getTime() + input.durationMins * 60_000);
+    const { error } = await sb.from('appointments').insert({
+      organisation_id: ORG,
+      member_id: userId,
+      service_slug: input.serviceSlug,
+      status: 'requested',
+      location_type: input.locationType,
+      scheduled_start: start.toISOString(),
+      scheduled_end: end.toISOString(),
+      notes: input.notes?.trim() || null,
+      created_by: userId,
+    });
+    if (error) return { ok: false, error: 'Could not book the appointment. Please try again.' };
+    return { ok: true };
+  },
+
+  /** Cancel one of the member's OWN future appointments. */
+  async cancelAppointment(userId: string, appointmentId: string): Promise<{ ok: boolean; error?: string }> {
+    const sb = createAdminClient();
+    if (!sb) return { ok: false, error: 'Not available right now.' };
+    const { data, error } = await sb
+      .from('appointments')
+      .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+      .eq('id', appointmentId)
+      .eq('member_id', userId)
+      .in('status', ['requested', 'confirmed'])
+      .gte('scheduled_start', new Date().toISOString())
+      .select('id')
+      .maybeSingle();
+    if (error || !data) return { ok: false, error: 'This appointment could not be cancelled.' };
+    return { ok: true };
+  },
+
+  /** Move one of the member's OWN future appointments to a new time. */
+  async rescheduleAppointment(
+    userId: string,
+    appointmentId: string,
+    startIso: string,
+    durationMins: number,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const sb = createAdminClient();
+    if (!sb) return { ok: false, error: 'Not available right now.' };
+    const start = new Date(startIso);
+    const end = new Date(start.getTime() + durationMins * 60_000);
+    const { data, error } = await sb
+      .from('appointments')
+      .update({
+        scheduled_start: start.toISOString(),
+        scheduled_end: end.toISOString(),
+        status: 'requested',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', appointmentId)
+      .eq('member_id', userId)
+      .in('status', ['requested', 'confirmed'])
+      .select('id')
+      .maybeSingle();
+    if (error || !data) return { ok: false, error: 'This appointment could not be moved.' };
+    return { ok: true };
   },
 
   /** Upcoming appointments for the member, soonest first. */
