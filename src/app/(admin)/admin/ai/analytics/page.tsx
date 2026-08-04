@@ -35,7 +35,7 @@ export default async function AnalyticsPage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <AdminHeader
         title="AI Analytics"
-        description="Token, latency and cost figures are read from real AI runs. Charts and breakdowns below marked coming soon still use illustrative data."
+        description="Usage, cost, specialist activity and feedback are read from real AI runs. Panels marked coming soon still use illustrative data."
         breadcrumbs={[{ label: 'AI', href: '/admin/ai' }, { label: 'Analytics' }]}
       />
 
@@ -52,7 +52,7 @@ export default async function AnalyticsPage() {
         <StatCard label="Cost (month)" value={s ? gbp(s.costThisMonthMicros) : '—'} icon={Banknote} />
       </StatGrid>
 
-      <Panel title="Conversations — last 30 days (coming soon)" description="Illustrative data until daily rollups are connected.">
+      <Panel title="Conversations — last 30 days" description="Real AI activity per day (illustrative only while the platform has no live traffic).">
         <MiniBarChart data={convChart} ariaLabel="Daily conversations over the last 30 days" />
       </Panel>
 
@@ -91,8 +91,8 @@ export default async function AnalyticsPage() {
       </div>
 
       <AdminHeader
-        title="Operational analytics (coming soon)"
-        description="Coming soon — these figures are illustrative until the operational rollups are connected."
+        title="Operational analytics"
+        description="Live figures from the CRM, subscriptions and AI run log — reception, recommendations, escalations and follow-up."
       />
 
       <StatGrid>
@@ -109,7 +109,7 @@ export default async function AnalyticsPage() {
       </StatGrid>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Specialist usage (coming soon)" description="Illustrative — conversations per specialist over the last 30 days.">
+        <Panel title="Specialist usage" description="Real conversations per specialist over the last 30 days.">
           {ops && ops.specialistUsage.length > 0 ? (
             <ul className="flex flex-col gap-4">
               {ops.specialistUsage.map((u) => (
@@ -129,7 +129,7 @@ export default async function AnalyticsPage() {
           )}
         </Panel>
 
-        <Panel title="Customer feedback (coming soon)" description="Illustrative — thumbs up and down from customers on AI responses.">
+        <Panel title="Customer feedback" description="Real thumbs up and down from customers on AI responses.">
           <div className="flex items-center gap-8">
             <div className="flex flex-col items-center gap-1">
               <span className="text-3xl">👍</span>

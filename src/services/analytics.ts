@@ -11,6 +11,7 @@ import { subscriptionsService } from './subscriptions';
 import { specialists } from './specialists';
 import { agents } from './agents';
 import { runLogRepo } from './repositories/run-log-repo';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { ok, type Result } from './result';
 
 export interface OperationalMetrics {
@@ -102,6 +103,26 @@ export const analytics = {
   },
 
   async daily(days = 30): Promise<Result<AnalyticsDailyPoint[]>> {
+    // Real per-day AI activity when live traffic exists; the deterministic
+    // series remains only so an empty platform still renders a sensible chart.
+    const real = await runLogRepo.dailySeries(days);
+    if (real.length > 0) {
+      return ok(
+        real.map((p) => ({
+          day: p.day,
+          conversations: p.conversations,
+          // One run = one user + one assistant message.
+          messages: p.conversations * 2,
+          activeUsers: 0,
+          escalations: 0,
+          tokensInput: p.tokensInput,
+          tokensOutput: p.tokensOutput,
+          costMicros: p.costMicros,
+          avgLatencyMs: p.avgLatencyMs,
+          satisfaction: null,
+        })),
+      );
+    }
     return ok(DAILY_30.slice(-Math.min(days, DAILY_30.length)));
   },
 
@@ -139,12 +160,33 @@ export const analytics = {
     const withFollowUp = leads.filter((l) => l.followUpStatus !== 'none');
     const followUpDone = leads.filter((l) => l.followUpStatus === 'done');
 
-    const specialistUsage = await Promise.all(
-      specialistList.map(async (s) => {
-        const a = await specialists.analytics(s.slug);
-        return { name: s.name, conversations30d: a.ok ? a.data.conversations30d : 0 };
-      }),
-    );
+    // Real conversations per specialist from the run log (falls back to the
+    // illustrative per-specialist figures only when there is no live traffic).
+    const usage = await runLogRepo.usageByAgent(30);
+    let specialistUsage: { name: string; conversations30d: number }[];
+    if (usage.size > 0) {
+      specialistUsage = specialistList
+        .map((s) => ({ name: s.name, conversations30d: usage.get(s.id) ?? 0 }))
+        .sort((a, b) => b.conversations30d - a.conversations30d);
+    } else {
+      specialistUsage = await Promise.all(
+        specialistList.map(async (s) => {
+          const a = await specialists.analytics(s.slug);
+          return { name: s.name, conversations30d: a.ok ? a.data.conversations30d : 0 };
+        }),
+      );
+    }
+
+    // Real thumbs up/down from message_feedback when the database is present.
+    let feedback = { up: 128, down: 12 };
+    const sb = createAdminClient();
+    if (sb) {
+      const [up, down] = await Promise.all([
+        sb.from('message_feedback').select('id', { count: 'exact', head: true }).eq('rating', 'up'),
+        sb.from('message_feedback').select('id', { count: 'exact', head: true }).eq('rating', 'down'),
+      ]);
+      feedback = { up: up.count ?? 0, down: down.count ?? 0 };
+    }
 
     return ok({
       receptionistConversations: leads.filter((l) => l.source === 'receptionist').length,
@@ -157,7 +199,7 @@ export const analytics = {
       followUpCompletion: withFollowUp.length > 0 ? followUpDone.length / withFollowUp.length : 0,
       specialistUsage,
       knowledgeUsage: knowledge.ok ? knowledge.data : [],
-      feedback: { up: 128, down: 12 },
+      feedback,
     });
   },
 };

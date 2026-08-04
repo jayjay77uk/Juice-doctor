@@ -87,6 +87,63 @@ export const runLogRepo = {
     return (data ?? []) as Record<string, unknown>[];
   },
 
+  /** Real conversations per agent over the window (non-playground). */
+  async usageByAgent(sinceDays = 30): Promise<Map<string, number>> {
+    const sb = createAdminClient();
+    const map = new Map<string, number>();
+    if (!sb) return map;
+    const since = new Date(Date.now() - sinceDays * 86_400_000).toISOString();
+    const { data } = await sb
+      .from('ai_run_logs')
+      .select('agent_id')
+      .eq('organisation_id', ORG)
+      .eq('is_playground', false)
+      .gte('created_at', since);
+    for (const r of data ?? []) {
+      const key = r.agent_id ? String(r.agent_id) : '';
+      if (key) map.set(key, (map.get(key) ?? 0) + 1);
+    }
+    return map;
+  },
+
+  /** Real per-day aggregates for the analytics chart (non-playground). */
+  async dailySeries(sinceDays = 30): Promise<{ day: string; conversations: number; tokensInput: number; tokensOutput: number; costMicros: number; avgLatencyMs: number }[]> {
+    const sb = createAdminClient();
+    if (!sb) return [];
+    const since = new Date(Date.now() - sinceDays * 86_400_000).toISOString();
+    const { data } = await sb
+      .from('ai_run_logs')
+      .select('created_at, tokens_input, tokens_output, cost_micros, latency_ms')
+      .eq('organisation_id', ORG)
+      .eq('is_playground', false)
+      .gte('created_at', since);
+    const byDay = new Map<string, { conversations: number; tokensInput: number; tokensOutput: number; costMicros: number; latencySum: number; latencyCount: number }>();
+    for (const r of data ?? []) {
+      const day = String(r.created_at).slice(0, 10);
+      const b = byDay.get(day) ?? { conversations: 0, tokensInput: 0, tokensOutput: 0, costMicros: 0, latencySum: 0, latencyCount: 0 };
+      b.conversations += 1;
+      b.tokensInput += Number(r.tokens_input) || 0;
+      b.tokensOutput += Number(r.tokens_output) || 0;
+      b.costMicros += Number(r.cost_micros) || 0;
+      const lat = Number(r.latency_ms) || 0;
+      if (lat > 0) {
+        b.latencySum += lat;
+        b.latencyCount += 1;
+      }
+      byDay.set(day, b);
+    }
+    return [...byDay.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([day, b]) => ({
+        day,
+        conversations: b.conversations,
+        tokensInput: b.tokensInput,
+        tokensOutput: b.tokensOutput,
+        costMicros: b.costMicros,
+        avgLatencyMs: b.latencyCount ? Math.round(b.latencySum / b.latencyCount) : 0,
+      }));
+  },
+
   /** Aggregate stats for analytics (last N days). */
   async stats(sinceDays = 30): Promise<{ total: number; errors: number; avgLatencyMs: number; tokensIn: number; tokensOut: number; costMicros: number }> {
     const sb = createAdminClient();
