@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { ScrollText, ShieldCheck } from 'lucide-react';
 import { createMetadata } from '@/config/metadata';
-import { audit } from '@/services/platform';
 import { auditRepo } from '@/services/repositories/audit-repo';
 import { admin } from '@/services/admin';
 import { isSupabaseAdminConfigured } from '@/lib/env';
@@ -18,15 +17,6 @@ interface AuditRow {
   entity: string;
   at: string;
 }
-
-// prototype mock — the append-only audit trail is empty in the prototype.
-const ENTRIES: AuditRow[] = [
-  { id: 'a1', actor: 'Admin User', action: 'agent.published', entity: 'Makela', at: '10 Jul, 14:22' },
-  { id: 'a2', actor: 'Staff One', action: 'knowledge.document.approved', entity: 'Getting Started Guide', at: '10 Jul, 11:05' },
-  { id: 'a3', actor: 'Admin User', action: 'feature_flag.toggled', entity: 'ai.chat', at: '9 Jul, 16:40' },
-  { id: 'a4', actor: 'System', action: 'prompt.version.published', entity: 'System prompt · Intake & Triage', at: '9 Jul, 09:15' },
-  { id: 'a5', actor: 'Practitioner One', action: 'consultation.note.added', entity: 'Case · Customer A', at: '7 Jul, 10:03' },
-];
 
 const columns: Column<AuditRow>[] = [
   {
@@ -69,17 +59,7 @@ export default async function AuditLogsPage() {
       at: formatWhen(e.createdAt),
     }));
   } else {
-    const result = await audit.list();
-    const logged = result.ok ? result.data.items : [];
-    rows = logged.length > 0
-      ? logged.map((entry) => ({
-          id: entry.id,
-          actor: entry.actorId ?? 'System',
-          action: entry.action,
-          entity: entry.entityId ?? entry.entityType,
-          at: entry.createdAt,
-        }))
-      : ENTRIES;
+    rows = [];
   }
 
   return (

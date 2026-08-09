@@ -9,20 +9,11 @@ import { isSupabaseAdminConfigured } from '@/lib/env';
 
 /**
  * Admin service — the read layer the administration framework is built on
- * (user management, metrics). PRODUCTION: reads real profiles + live aggregates
- * (appointments, notifications, knowledge). The canned rows below remain only as
- * the local preview fallback.
+ * (user management, metrics) — real profiles + live aggregates (appointments,
+ * notifications, knowledge). No mock data; without a database it returns empty.
  */
 
-const SEED_ORG = '00000000-0000-0000-0000-000000000001';
-const SEED_TS = '2026-07-10T00:00:00.000Z';
-
-const SEED_USERS: Profile[] = [
-  { id: 'usr_admin', organisationId: SEED_ORG, role: 'administrator', email: 'admin@example.com', fullName: 'Admin User', displayName: 'Admin', avatarUrl: null, phone: null, locale: 'en-GB', timezone: 'Europe/London', status: 'active', onboardingCompleted: true, lastSeenAt: SEED_TS, createdAt: SEED_TS },
-  { id: 'usr_practitioner', organisationId: SEED_ORG, role: 'practitioner', email: 'practitioner@example.com', fullName: 'Practitioner One', displayName: 'Practitioner', avatarUrl: null, phone: null, locale: 'en-GB', timezone: 'Europe/London', status: 'active', onboardingCompleted: true, lastSeenAt: SEED_TS, createdAt: SEED_TS },
-  { id: 'usr_staff', organisationId: SEED_ORG, role: 'staff', email: 'staff@example.com', fullName: 'Staff One', displayName: 'Staff', avatarUrl: null, phone: null, locale: 'en-GB', timezone: 'Europe/London', status: 'active', onboardingCompleted: true, lastSeenAt: SEED_TS, createdAt: SEED_TS },
-  { id: 'usr_member', organisationId: SEED_ORG, role: 'member', email: 'member@example.com', fullName: 'Prototype User', displayName: 'Member', avatarUrl: null, phone: null, locale: 'en-GB', timezone: 'Europe/London', status: 'active', onboardingCompleted: false, lastSeenAt: SEED_TS, createdAt: SEED_TS },
-];
+const FALLBACK_TS = '2026-07-10T00:00:00.000Z';
 
 function rowToProfile(r: Record<string, unknown>): Profile {
   return {
@@ -39,7 +30,7 @@ function rowToProfile(r: Record<string, unknown>): Profile {
     status: (r.status as Profile['status']) ?? 'active',
     onboardingCompleted: Boolean(r.onboarding_completed),
     lastSeenAt: (r.last_seen_at as string | null) ?? null,
-    createdAt: String(r.created_at ?? SEED_TS),
+    createdAt: String(r.created_at ?? FALLBACK_TS),
   };
 }
 
@@ -54,18 +45,18 @@ export const admin = {
   users: {
     async list(q: ListQuery = {}): Promise<Result<Page<Profile>>> {
       const sb = createAdminClient();
-      if (!sb || !isSupabaseAdminConfigured()) return ok({ items: SEED_USERS, nextCursor: null });
+      if (!sb || !isSupabaseAdminConfigured()) return ok({ items: [], nextCursor: null });
       const { data, error } = await sb
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(q.limit ?? 100);
-      if (error) return ok({ items: SEED_USERS, nextCursor: null });
+      if (error) return ok({ items: [], nextCursor: null });
       return ok({ items: (data ?? []).map(rowToProfile), nextCursor: null });
     },
     async count(): Promise<Result<number>> {
       const sb = createAdminClient();
-      if (!sb || !isSupabaseAdminConfigured()) return ok(SEED_USERS.length);
+      if (!sb || !isSupabaseAdminConfigured()) return ok(0);
       const { count } = await sb.from('profiles').select('id', { count: 'exact', head: true });
       return ok(count ?? 0);
     },
@@ -73,7 +64,7 @@ export const admin = {
   async metrics(): Promise<Result<AdminMetrics>> {
     const sb = createAdminClient();
     if (!sb || !isSupabaseAdminConfigured()) {
-      return ok({ activeClients: 48, bookingsThisWeek: 12, unreadMessages: 5, publishedResources: 4 });
+      return ok({ activeClients: 0, bookingsThisWeek: 0, unreadMessages: 0, publishedResources: 0 });
     }
     const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
     const [clients, bookings, unread, published] = await Promise.all([

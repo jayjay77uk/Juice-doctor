@@ -44,12 +44,12 @@ export default async function BusinessDashboardPage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <AdminHeader
         title="AI Business Dashboard"
-        description="Run your AI business at a glance. Specialists, subscriptions and leads are live data; anything marked coming soon is illustrative."
+        description="Run your AI business at a glance — specialists, subscriptions, leads and AI activity, all live data."
       />
 
       <StatGrid>
         <StatCard label="Specialist AIs" value={s?.specialists ?? 0} icon={Bot} />
-        <StatCard label="Active subscribers" value={s ? s.activeSubscribers.toLocaleString() : '—'} icon={Users} hint="Coming soon — illustrative" />
+        <StatCard label="Active subscribers" value={s ? s.activeSubscribers.toLocaleString() : '—'} icon={Users} hint="Active + trialing" />
         <StatCard label="Monthly recurring" value={s ? gbp(s.mrr) : '—'} icon={Banknote} hint="MRR across all specialists" />
         <StatCard label="Leads (30d)" value={s?.leads30d ?? 0} icon={ContactRound} />
       </StatGrid>

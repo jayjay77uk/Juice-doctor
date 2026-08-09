@@ -9,7 +9,8 @@ import { ok, type Result } from './result';
 /**
  * Business roll-up for the admin AI-Business Dashboard. Aggregates specialists,
  * their subscriptions (MRR), CRM leads and receptionist performance into one
- * headline summary. Prototype figures are derived from the mock services.
+ * headline summary. All figures come from real rows (agents, subscriptions,
+ * CRM leads, AI run logs).
  */
 export const business = {
   async summary(): Promise<Result<BusinessSummary>> {

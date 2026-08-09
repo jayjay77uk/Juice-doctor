@@ -17,8 +17,8 @@ export default async function SafetyPage() {
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <AdminHeader
-        title="Safety Centre (coming soon)"
-        description="Coming soon — these configurable guardrail policies are not yet connected to live inference. The runtime safety checks (emergency block, medication boundary, citation stripping) are live and enforced in code."
+        title="Safety Centre"
+        description="Guardrail policies stored in the database. The runtime safety checks (emergency block, medication boundary, citation stripping) are live and enforced in code; wiring these configurable policies into inference is coming soon."
         breadcrumbs={[{ label: 'AI', href: '/admin/ai' }, { label: 'Safety' }]}
       />
 

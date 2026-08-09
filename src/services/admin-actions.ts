@@ -297,7 +297,7 @@ export async function advanceIndexAction(formData: FormData): Promise<void> {
 export async function failIndexAction(formData: FormData): Promise<void> {
   await assertRole('administrator');
   const id = String(formData.get('id') ?? '');
-  await knowledge.documents.setIndexState(id, 'failed', 'Processing failed in the prototype demo.');
+  await knowledge.documents.setIndexState(id, 'failed');
   revalidateKnowledge(id);
 }
 

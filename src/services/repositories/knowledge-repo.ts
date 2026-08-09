@@ -206,6 +206,152 @@ export const knowledgeRepo = {
     return !error;
   },
 
+
+  // ── Workflow operations (admin document controls) — all real rows ──────────
+
+  /** Documents assigned to a specialist, resolved by agent slug. */
+  async forSpecialistSlug(slug: string): Promise<KnowledgeDocument[]> {
+    const sb = createAdminClient();
+    if (!sb) return [];
+    const { data: agent } = await sb.from('ai_agents').select('id').eq('slug', slug).eq('organisation_id', ORG).maybeSingle();
+    if (!agent?.id) return [];
+    const docIds = await knowledgeRepo.assignedDocumentIds(sb, String(agent.id));
+    if (!docIds.length) return [];
+    const { data } = await sb.from('knowledge_documents').select('*').in('id', docIds).order('created_at', { ascending: false });
+    const docs = (data ?? []) as Row[];
+    const slugMap = await docSpecialistMap(sb, docs.map((d) => String(d.id)));
+    return docs.map((d) => rowToDocument(d, slugMap));
+  },
+
+  async getDocumentBySlug(slug: string): Promise<KnowledgeDocument | null> {
+    const sb = createAdminClient();
+    if (!sb) return null;
+    const { data } = await sb.from('knowledge_documents').select('*').eq('organisation_id', ORG).eq('slug', slug).maybeSingle();
+    if (!data) return null;
+    const slugMap = await docSpecialistMap(sb, [String(data.id)]);
+    return rowToDocument(data as Row, slugMap);
+  },
+
+  /** Create a metadata-only document (content ingestion happens via ingestText). */
+  async createDocument(input: {
+    title: string;
+    sourceType: string;
+    assignedSpecialistSlug: string;
+    categoryId: string | null;
+    description?: string | null;
+  }): Promise<KnowledgeDocument | null> {
+    const sb = createAdminClient();
+    if (!sb) return null;
+    const slugBase = input.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'document';
+    const { data, error } = await sb
+      .from('knowledge_documents')
+      .insert({
+        organisation_id: ORG,
+        title: input.title.trim(),
+        slug: `${slugBase}-${Math.abs(input.title.length * 7919 % 9973)}`,
+        description: input.description?.trim() || null,
+        source_type: input.sourceType,
+        category_id: input.categoryId,
+        publish_status: 'draft',
+        index_state: 'uploaded',
+      })
+      .select('*')
+      .single();
+    if (error || !data) return null;
+    if (input.assignedSpecialistSlug) await knowledgeRepo.assignSpecialist(String(data.id), input.assignedSpecialistSlug);
+    return knowledgeRepo.getDocument(String(data.id));
+  },
+
+  async setIndexState(id: string, state: string): Promise<KnowledgeDocument | null> {
+    const sb = createAdminClient();
+    if (!sb) return null;
+    const { error } = await sb.from('knowledge_documents').update({ index_state: state, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) return null;
+    return knowledgeRepo.getDocument(id);
+  },
+
+  /** Pause/resume a document in the specialist's brain without archiving. */
+  async setActive(id: string, active: boolean): Promise<KnowledgeDocument | null> {
+    return knowledgeRepo.setIndexState(id, active ? 'available' : 'indexed');
+  },
+
+  /** Publishing-workflow transition (validated by the caller with canTransition). */
+  async transition(id: string, to: string, approvedBy?: string | null): Promise<KnowledgeDocument | null> {
+    const sb = createAdminClient();
+    if (!sb) return null;
+    const patch: Record<string, unknown> = { publish_status: to, updated_at: new Date().toISOString() };
+    if (to === 'published') {
+      patch.approved_by = approvedBy ?? null;
+      patch.approved_at = new Date().toISOString();
+    }
+    const { error } = await sb.from('knowledge_documents').update(patch).eq('id', id);
+    if (error) return null;
+    return knowledgeRepo.getDocument(id);
+  },
+
+  /** Reassign a document to a specialist's brain (replaces prior assignment). */
+  async assignSpecialist(id: string, slug: string): Promise<KnowledgeDocument | null> {
+    const sb = createAdminClient();
+    if (!sb) return null;
+    const { data: agent } = await sb.from('ai_agents').select('id').eq('slug', slug).eq('organisation_id', ORG).maybeSingle();
+    if (!agent?.id) return null;
+    await sb.from('ai_agent_knowledge_sources').delete().eq('document_id', id);
+    await sb.from('ai_agent_knowledge_sources').insert({ agent_id: agent.id, document_id: id });
+    return knowledgeRepo.getDocument(id);
+  },
+
+  /** Real document versions (empty until versioning is used). */
+  async versions(documentId: string): Promise<{ id: string; documentId: string; version: number; title: string; content: string | null; storagePath: string | null; changeNote: string | null; createdBy: string | null; createdAt: string }[]> {
+    const sb = createAdminClient();
+    if (!sb) return [];
+    const { data } = await sb.from('knowledge_document_versions').select('*').eq('document_id', documentId).order('version', { ascending: false });
+    return (data ?? []).map((r: Row) => ({
+      id: String(r.id),
+      documentId: String(r.document_id),
+      version: Number(r.version) || 1,
+      title: String(r.title ?? ''),
+      content: (r.content as string | null) ?? null,
+      storagePath: (r.storage_path as string | null) ?? null,
+      changeNote: (r.change_note as string | null) ?? null,
+      createdBy: (r.created_by as string | null) ?? null,
+      createdAt: String(r.created_at),
+    }));
+  },
+
+  /** Real categories (idempotently seeded once as configuration rows). */
+  async categories(): Promise<import('@/types/knowledge').KnowledgeCategory[]> {
+    const sb = createAdminClient();
+    if (!sb) return [];
+    const { count } = await sb.from('knowledge_categories').select('id', { count: 'exact', head: true }).eq('organisation_id', ORG);
+    if ((count ?? 0) === 0) {
+      await sb.from('knowledge_categories').insert([
+        { organisation_id: ORG, slug: 'guides', name: 'Guides', sort_order: 1 },
+        { organisation_id: ORG, slug: 'reference', name: 'Reference', sort_order: 2 },
+        { organisation_id: ORG, slug: 'onboarding', name: 'Onboarding', sort_order: 3 },
+        { organisation_id: ORG, slug: 'internal', name: 'Internal', sort_order: 4 },
+      ]);
+    }
+    const { data } = await sb.from('knowledge_categories').select('*').eq('organisation_id', ORG).order('sort_order');
+    return (data ?? []).map((r: Row) => ({
+      id: String(r.id),
+      organisationId: String(r.organisation_id),
+      parentId: (r.parent_id as string | null) ?? null,
+      slug: String(r.slug),
+      name: String(r.name),
+      description: (r.description as string | null) ?? null,
+      sortOrder: Number(r.sort_order) || 0,
+      status: (r.status as 'draft' | 'active' | 'archived' | 'deleted') ?? 'active',
+    }));
+  },
+
+  /** Real collections (empty until collections are created). */
+  async collections(): Promise<{ id: string; name: string; description: string | null }[]> {
+    const sb = createAdminClient();
+    if (!sb) return [];
+    const { data } = await sb.from('knowledge_collections').select('id, name, description').eq('organisation_id', ORG).order('created_at');
+    return (data ?? []).map((r: Row) => ({ id: String(r.id), name: String(r.name), description: (r.description as string | null) ?? null }));
+  },
+
   async documentStats(): Promise<{ total: number; published: number; inReview: number; drafts: number; archived: number }> {
     const sb = createAdminClient();
     if (!sb) return { total: 0, published: 0, inReview: 0, drafts: 0, archived: 0 };

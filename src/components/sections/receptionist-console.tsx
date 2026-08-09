@@ -253,7 +253,7 @@ export function ReceptionistConsole({ settings }: { settings: ReceptionistConsol
               <Button type="submit" disabled={busy}>
                 {busy ? 'Submitting…' : 'Submit'}
               </Button>
-              <p className="text-xs text-muted-foreground">Prototype — your details are not really stored.</p>
+              <p className="text-xs text-muted-foreground">Your details are saved securely and a member of the team will follow up.</p>
             </div>
           </form>
         )}

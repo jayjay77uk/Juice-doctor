@@ -19,7 +19,7 @@ export default async function ConversationThreadPage({ params }: { params: Promi
 
   const [messagesResult, rememberedResult] = await Promise.all([
     conversations_service.messages(id),
-    conversations_service.remembered(session?.user.id),
+    session?.user.id ? conversations_service.remembered(session.user.id) : Promise.resolve({ ok: true as const, data: [] as string[] }),
   ]);
 
   let agentName = 'Specialist AI';

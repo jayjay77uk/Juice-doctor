@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Send, Paperclip, LifeBuoy, ThumbsUp, ThumbsDown, Square, FileText, AlertTriangle, ArrowRightLeft } from 'lucide-react';
+import { Send, LifeBuoy, ThumbsUp, ThumbsDown, Square, FileText, AlertTriangle, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { requestSupportAction, messageFeedbackAction } from '@/services/conversation-actions';
 import type { Message, MessageCitation } from '@/types/conversation';
@@ -52,7 +52,6 @@ export function SpecialistChat({
   const [error, setError] = React.useState<string | null>(null);
   const [rated, setRated] = React.useState<Record<string, 'up' | 'down'>>({});
   const scrollRef = React.useRef<HTMLDivElement>(null);
-  const fileRef = React.useRef<HTMLInputElement>(null);
   const abortRef = React.useRef<AbortController | null>(null);
 
   React.useEffect(() => {
@@ -139,12 +138,6 @@ export function SpecialistChat({
     await messageFeedbackAction(messageId, rating);
   }
 
-  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) send(`I’ve attached a file: ${file.name} (prototype — the file is not stored).`);
-    if (fileRef.current) fileRef.current.value = '';
-  }
-
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-border bg-surface">
       {/* Active specialist header */}
@@ -214,10 +207,6 @@ export function SpecialistChat({
       <div className="border-t border-border p-4">
         {error && <p className="mb-2 text-sm text-danger" role="alert">{error}</p>}
         <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="flex items-end gap-2">
-          <input ref={fileRef} type="file" className="hidden" onChange={onFile} aria-label="Upload a file" />
-          <Button type="button" intent="ghost" size="sm" aria-label="Attach a file" onClick={() => fileRef.current?.click()} disabled={busy}>
-            <Paperclip className="size-4" />
-          </Button>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}

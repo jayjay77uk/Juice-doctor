@@ -29,129 +29,113 @@ export interface OperationalMetrics {
 }
 
 /**
- * AI analytics foundation. Prototype returns deterministic mock figures so the
- * dashboards are fully populated; production reads analytics_events /
- * analytics_daily_rollup (migration 0014). All values are illustrative.
+ * AI analytics — every figure is computed from REAL rows (ai_run_logs, crm_leads,
+ * customer_subscriptions, message_feedback, herne_escalations, profiles). No
+ * fabricated series: an empty platform reports zeros and empty charts, honestly.
  */
 
-const BASE_DAY = '2026-07-10';
-
-/** Deterministic pseudo-random in [0,1) from an integer seed (no Math.random). */
-function seeded(n: number): number {
-  const x = Math.sin(n * 12.9898) * 43758.5453;
-  return x - Math.floor(x);
+async function feedbackCounts(): Promise<{ up: number; down: number }> {
+  const sb = createAdminClient();
+  if (!sb) return { up: 0, down: 0 };
+  const [up, down] = await Promise.all([
+    sb.from('message_feedback').select('id', { count: 'exact', head: true }).eq('rating', 'up'),
+    sb.from('message_feedback').select('id', { count: 'exact', head: true }).eq('rating', 'down'),
+  ]);
+  return { up: up.count ?? 0, down: down.count ?? 0 };
 }
-
-function isoDayMinus(base: string, daysAgo: number): string {
-  const d = new Date(`${base}T00:00:00.000Z`);
-  d.setUTCDate(d.getUTCDate() - daysAgo);
-  return d.toISOString().slice(0, 10);
-}
-
-function buildDailySeries(days: number): AnalyticsDailyPoint[] {
-  const points: AnalyticsDailyPoint[] = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const r = seeded(i + 1);
-    const conversations = 40 + Math.round(r * 60) + (days - i);
-    const messages = conversations * (5 + Math.round(seeded(i + 7) * 4));
-    points.push({
-      day: isoDayMinus(BASE_DAY, i),
-      conversations,
-      messages,
-      activeUsers: 25 + Math.round(seeded(i + 3) * 40),
-      escalations: Math.round(conversations * (0.03 + seeded(i + 11) * 0.04)),
-      tokensInput: messages * 180,
-      tokensOutput: messages * 320,
-      costMicros: messages * 900,
-      avgLatencyMs: 700 + Math.round(seeded(i + 5) * 900),
-      satisfaction: 0.82 + seeded(i + 13) * 0.14,
-    });
-  }
-  return points;
-}
-
-const DAILY_30 = buildDailySeries(30);
 
 export const analytics = {
   async summary(): Promise<Result<AnalyticsSummary>> {
-    const totalConversations = DAILY_30.reduce((s, p) => s + p.conversations, 0);
-    const escalations = DAILY_30.reduce((s, p) => s + p.escalations, 0);
-    const tokens = DAILY_30.reduce((s, p) => s + p.tokensInput + p.tokensOutput, 0);
-    const cost = DAILY_30.reduce((s, p) => s + p.costMicros, 0);
-    const avgLatency = Math.round(DAILY_30.reduce((s, p) => s + p.avgLatencyMs, 0) / DAILY_30.length);
-    const satisfaction =
-      DAILY_30.reduce((s, p) => s + (p.satisfaction ?? 0), 0) / DAILY_30.length;
+    const sb = createAdminClient();
+    const [runs, agentList, fb] = await Promise.all([runLogRepo.stats(30), agents.list(), feedbackCounts()]);
+    const activeAgents = agentList.ok ? agentList.data.filter((a) => a.status === 'active').length : 0;
 
-    // Real AI-usage metrics from the run log; illustrative baselines until enough
-    // real traffic exists (so an empty platform still renders a sensible page).
-    const [runs, agentList] = await Promise.all([runLogRepo.stats(30), agents.list()]);
-    const activeAgents = agentList.ok ? agentList.data.filter((a) => a.status === 'active').length : 3;
-    const realTokens = runs.tokensIn + runs.tokensOut;
+    let activeUsers = 0;
+    let escalations = 0;
+    if (sb) {
+      const [users, esc] = await Promise.all([
+        sb.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'member').eq('status', 'active'),
+        sb.from('herne_escalations').select('id', { count: 'exact', head: true }),
+      ]);
+      activeUsers = users.count ?? 0;
+      escalations = esc.count ?? 0;
+    }
 
+    const rated = fb.up + fb.down;
     return ok({
-      totalConversations: runs.total > 0 ? runs.total : totalConversations,
-      activeUsers: 342,
+      totalConversations: runs.total,
+      activeUsers,
       activeAgents,
-      escalationRate: escalations / totalConversations,
-      avgResponseMs: runs.avgLatencyMs > 0 ? runs.avgLatencyMs : avgLatency,
-      satisfaction,
-      tokensThisMonth: realTokens > 0 ? realTokens : tokens,
-      // Real estimated spend from ai_run_logs.cost_micros when live traffic exists.
-      costThisMonthMicros: runs.costMicros > 0 ? runs.costMicros : cost,
+      escalationRate: runs.total > 0 ? Math.min(1, escalations / runs.total) : 0,
+      avgResponseMs: runs.avgLatencyMs,
+      satisfaction: rated > 0 ? fb.up / rated : 0,
+      tokensThisMonth: runs.tokensIn + runs.tokensOut,
+      costThisMonthMicros: runs.costMicros,
       currency: 'GBP',
     });
   },
 
+  /** Real per-day AI activity. Empty when the platform has no traffic. */
   async daily(days = 30): Promise<Result<AnalyticsDailyPoint[]>> {
-    // Real per-day AI activity when live traffic exists; the deterministic
-    // series remains only so an empty platform still renders a sensible chart.
     const real = await runLogRepo.dailySeries(days);
-    if (real.length > 0) {
-      return ok(
-        real.map((p) => ({
-          day: p.day,
-          conversations: p.conversations,
-          // One run = one user + one assistant message.
-          messages: p.conversations * 2,
-          activeUsers: 0,
-          escalations: 0,
-          tokensInput: p.tokensInput,
-          tokensOutput: p.tokensOutput,
-          costMicros: p.costMicros,
-          avgLatencyMs: p.avgLatencyMs,
-          satisfaction: null,
-        })),
-      );
-    }
-    return ok(DAILY_30.slice(-Math.min(days, DAILY_30.length)));
+    return ok(
+      real.map((p) => ({
+        day: p.day,
+        conversations: p.conversations,
+        // One run = one user + one assistant message.
+        messages: p.conversations * 2,
+        activeUsers: 0,
+        escalations: 0,
+        tokensInput: p.tokensInput,
+        tokensOutput: p.tokensOutput,
+        costMicros: p.costMicros,
+        avgLatencyMs: p.avgLatencyMs,
+        satisfaction: null,
+      })),
+    );
   },
 
+  /** Coming soon — question clustering is not yet built. Never fabricated. */
   async popularQuestions(): Promise<Result<PopularQuestion[]>> {
-    return ok([
-      { question: 'How do I get started?', count: 214 },
-      { question: 'What features are included?', count: 187 },
-      { question: 'How do I update my account settings?', count: 156 },
-      { question: 'How does billing work?', count: 143 },
-      { question: 'How do I contact support?', count: 121 },
-    ]);
+    return ok([]);
   },
 
+  /** Real retrieval counts aggregated from each AI call's retrieved evidence. */
   async knowledgeUsage(): Promise<Result<KnowledgeUsageStat[]>> {
-    return ok([
-      { documentTitle: 'Getting Started Guide', retrievals: 892 },
-      { documentTitle: 'Overview', retrievals: 641 },
-      { documentTitle: 'Reference Notes', retrievals: 508 },
-      { documentTitle: 'Intake Questionnaire Reference', retrievals: 377 },
-    ]);
+    const sb = createAdminClient();
+    if (!sb) return ok([]);
+    const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    const { data } = await sb
+      .from('ai_run_logs')
+      .select('retrieved_knowledge')
+      .eq('is_playground', false)
+      .gte('created_at', since)
+      .limit(2000);
+    const counts = new Map<string, number>();
+    for (const row of data ?? []) {
+      const items = Array.isArray(row.retrieved_knowledge) ? (row.retrieved_knowledge as Record<string, unknown>[]) : [];
+      for (const item of items) {
+        const key = String(item.title ?? item.recordId ?? '').trim();
+        if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+    }
+    return ok(
+      [...counts.entries()]
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 8)
+        .map(([documentTitle, retrievals]) => ({ documentTitle, retrievals })),
+    );
   },
 
-  /** Operational analytics for the whole customer lifecycle (Phase 3.E). */
+  /** Operational analytics across the customer lifecycle — all real rows. */
   async operational(): Promise<Result<OperationalMetrics>> {
-    const [leadsResult, subSummary, specialistsResult, knowledge] = await Promise.all([
+    const [leadsResult, subSummary, specialistsResult, knowledge, fb, usage] = await Promise.all([
       crm.list(),
       subscriptionsService.summary(),
       specialists.all(),
       analytics.knowledgeUsage(),
+      feedbackCounts(),
+      runLogRepo.usageByAgent(30),
     ]);
     const leads = leadsResult.ok ? leadsResult.data : [];
     const specialistList = specialistsResult.ok ? specialistsResult.data : [];
@@ -160,33 +144,9 @@ export const analytics = {
     const withFollowUp = leads.filter((l) => l.followUpStatus !== 'none');
     const followUpDone = leads.filter((l) => l.followUpStatus === 'done');
 
-    // Real conversations per specialist from the run log (falls back to the
-    // illustrative per-specialist figures only when there is no live traffic).
-    const usage = await runLogRepo.usageByAgent(30);
-    let specialistUsage: { name: string; conversations30d: number }[];
-    if (usage.size > 0) {
-      specialistUsage = specialistList
-        .map((s) => ({ name: s.name, conversations30d: usage.get(s.id) ?? 0 }))
-        .sort((a, b) => b.conversations30d - a.conversations30d);
-    } else {
-      specialistUsage = await Promise.all(
-        specialistList.map(async (s) => {
-          const a = await specialists.analytics(s.slug);
-          return { name: s.name, conversations30d: a.ok ? a.data.conversations30d : 0 };
-        }),
-      );
-    }
-
-    // Real thumbs up/down from message_feedback when the database is present.
-    let feedback = { up: 128, down: 12 };
-    const sb = createAdminClient();
-    if (sb) {
-      const [up, down] = await Promise.all([
-        sb.from('message_feedback').select('id', { count: 'exact', head: true }).eq('rating', 'up'),
-        sb.from('message_feedback').select('id', { count: 'exact', head: true }).eq('rating', 'down'),
-      ]);
-      feedback = { up: up.count ?? 0, down: down.count ?? 0 };
-    }
+    const specialistUsage = specialistList
+      .map((s) => ({ name: s.name, conversations30d: usage.get(s.id) ?? 0 }))
+      .sort((a, b) => b.conversations30d - a.conversations30d);
 
     return ok({
       receptionistConversations: leads.filter((l) => l.source === 'receptionist').length,
@@ -199,7 +159,7 @@ export const analytics = {
       followUpCompletion: withFollowUp.length > 0 ? followUpDone.length / withFollowUp.length : 0,
       specialistUsage,
       knowledgeUsage: knowledge.ok ? knowledge.data : [],
-      feedback,
+      feedback: fb,
     });
   },
 };

@@ -3,14 +3,15 @@ import 'server-only';
 import type { AiAgent } from '@/types/ai';
 import type { SpecialistSubscription, SpecialistAnalytics } from '@/types/crm';
 import { agents } from './agents';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { ok, err, type Result } from './result';
 
 /**
  * Specialist AI service — treats specialist agents as SUBSCRIPTION PRODUCTS.
- * Each specialist is an agent (kind='specialist') with a commercial identity,
- * its own subscribers, customers and business analytics. Reuses the agents
- * service for the underlying config; adds the business layer on top. Prototype
- * data is mock; production reads ai_agents + specialist_subscriptions (0015).
+ * Config comes from ai_agents; the commercial layer reads REAL rows: subscribers
+ * from customer_subscriptions, conversations + latency from ai_run_logs. No mock
+ * data — a specialist with no subscribers or traffic reports zeros, honestly.
+ * (No pricing is configured, so MRR is 0 until the client sets prices.)
  */
 
 async function specialistList(): Promise<AiAgent[]> {
@@ -18,35 +19,44 @@ async function specialistList(): Promise<AiAgent[]> {
   return (result.ok ? result.data : []).filter((a) => a.kind === 'specialist');
 }
 
-/** Deterministic pseudo-value from a slug (no Math.random). */
-function seedFromSlug(slug: string): number {
-  let h = 0;
-  for (let i = 0; i < slug.length; i++) h = (h * 31 + slug.charCodeAt(i)) % 997;
-  return h / 997;
+/** Real customer subscriptions covering this specialist's slug. */
+async function realSubscriptions(slug: string): Promise<SpecialistSubscription[]> {
+  const sb = createAdminClient();
+  if (!sb) return [];
+  const { data } = await sb
+    .from('customer_subscriptions')
+    .select('id, customer_name, customer_email, scope, specialist_slugs, state, started_at, plan_name')
+    .contains('specialist_slugs', [slug]);
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    id: String(r.id),
+    specialistSlug: slug,
+    scope: (r.scope as SpecialistSubscription['scope']) ?? 'single',
+    customerName: String(r.customer_name),
+    customerEmail: String(r.customer_email),
+    state: (r.state as SpecialistSubscription['state']) ?? 'active',
+    mrr: 0, // no pricing configured — never invented
+    startedAt: String(r.started_at ?? ''),
+    plan: String(r.plan_name ?? 'Plan'),
+  }));
 }
 
-const CUSTOMER_NAMES = ['Rachel Adeyemi', 'Tom Blake', 'Priya Shah', 'Marcus Cole', 'Ebony Clarke', 'Paulette Nkemdirim', 'Jordan Rivera', 'Leah Fraser'];
-
-function subscriptionsFor(specialist: AiAgent): SpecialistSubscription[] {
-  const seed = seedFromSlug(specialist.slug);
-  const count = 3 + Math.round(seed * 5);
-  // No invented pricing: priceAmount is a placeholder (0) until the client sets it.
-  const mrrUnit = specialist.product?.priceAmount ?? 0;
-  return Array.from({ length: count }, (_, i) => {
-    const name = CUSTOMER_NAMES[(i + Math.round(seed * 7)) % CUSTOMER_NAMES.length] ?? 'Customer';
-    const state = i % 5 === 0 ? 'trialing' : i % 7 === 0 ? 'past_due' : 'active';
-    return {
-      id: `sub_${specialist.slug}_${i}`,
-      specialistSlug: specialist.slug,
-      scope: 'single',
-      customerName: name,
-      customerEmail: `${name.split(' ')[0]?.toLowerCase()}@example.com`,
-      state,
-      mrr: mrrUnit,
-      startedAt: '2026-06-15',
-      plan: specialist.product?.priceLabel ?? 'Standard plan',
-    } satisfies SpecialistSubscription;
-  });
+/** Real 30-day run-log stats for one agent. */
+async function agentRunStats(agentId: string): Promise<{ conversations30d: number; avgResponseMs: number }> {
+  const sb = createAdminClient();
+  if (!sb) return { conversations30d: 0, avgResponseMs: 0 };
+  const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const { data } = await sb
+    .from('ai_run_logs')
+    .select('latency_ms')
+    .eq('agent_id', agentId)
+    .eq('is_playground', false)
+    .gte('created_at', since);
+  const rows = data ?? [];
+  const latencies = rows.map((r) => Number(r.latency_ms) || 0).filter((n) => n > 0);
+  return {
+    conversations30d: rows.length,
+    avgResponseMs: latencies.length ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : 0,
+  };
 }
 
 export const specialists = {
@@ -69,22 +79,23 @@ export const specialists = {
   },
   async subscriptions(slug: string): Promise<Result<SpecialistSubscription[]>> {
     const match = (await specialistList()).find((a) => a.slug === slug);
-    return match ? ok(subscriptionsFor(match)) : err({ code: 'not_found', message: 'Specialist not found.' });
+    if (!match) return err({ code: 'not_found', message: 'Specialist not found.' });
+    return ok(await realSubscriptions(slug));
   },
   async analytics(slug: string): Promise<Result<SpecialistAnalytics>> {
     const match = (await specialistList()).find((a) => a.slug === slug);
     if (!match) return err({ code: 'not_found', message: 'Specialist not found.' });
-    const subs = subscriptionsFor(match);
-    const active = subs.filter((s) => s.state === 'active').length;
-    const seed = seedFromSlug(slug);
+    const [subs, runs] = await Promise.all([realSubscriptions(slug), agentRunStats(match.id)]);
+    const active = subs.filter((s) => s.state === 'active' || s.state === 'trialing').length;
+    const canceled = subs.filter((s) => s.state === 'canceled').length;
     return ok({
       subscribers: subs.length,
       activeSubscribers: active,
-      mrr: subs.filter((s) => s.state !== 'canceled').reduce((sum, s) => sum + s.mrr, 0),
-      conversations30d: 120 + Math.round(seed * 400),
-      satisfaction: 0.84 + seed * 0.12,
-      churnRate: 0.02 + seed * 0.05,
-      avgResponseMs: 700 + Math.round(seed * 700),
+      mrr: 0, // no pricing configured
+      conversations30d: runs.conversations30d,
+      satisfaction: 0, // per-specialist satisfaction reported once members rate replies
+      churnRate: subs.length ? canceled / subs.length : 0,
+      avgResponseMs: runs.avgResponseMs,
     });
   },
 };

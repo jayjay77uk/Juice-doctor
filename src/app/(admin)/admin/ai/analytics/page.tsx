@@ -35,12 +35,12 @@ export default async function AnalyticsPage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <AdminHeader
         title="AI Analytics"
-        description="Usage, cost, specialist activity and feedback are read from real AI runs. Panels marked coming soon still use illustrative data."
+        description="Every figure on this page is computed from real AI runs, subscriptions, feedback and CRM rows."
         breadcrumbs={[{ label: 'AI', href: '/admin/ai' }, { label: 'Analytics' }]}
       />
 
       <StatGrid>
-        <StatCard label="Conversations (30d)" value={s ? s.totalConversations.toLocaleString() : '—'} icon={MessagesSquare} trend={{ value: '+12%', direction: 'up' }} />
+        <StatCard label="Conversations (30d)" value={s ? s.totalConversations.toLocaleString() : '—'} icon={MessagesSquare} />
         <StatCard label="Active users" value={s ? s.activeUsers.toLocaleString() : '—'} icon={Users} />
         <StatCard label="Active agents" value={s?.activeAgents ?? 0} icon={Bot} />
         <StatCard label="Escalation rate" value={s ? `${(s.escalationRate * 100).toFixed(1)}%` : '—'} icon={TrendingUp} />
@@ -52,12 +52,15 @@ export default async function AnalyticsPage() {
         <StatCard label="Cost (month)" value={s ? gbp(s.costThisMonthMicros) : '—'} icon={Banknote} />
       </StatGrid>
 
-      <Panel title="Conversations — last 30 days" description="Real AI activity per day (illustrative only while the platform has no live traffic).">
+      <Panel title="Conversations — last 30 days" description="Real AI activity per day.">
         <MiniBarChart data={convChart} ariaLabel="Daily conversations over the last 30 days" />
       </Panel>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Popular questions (coming soon)" description="Illustrative data." padded={false}>
+        <Panel title="Popular questions (coming soon)" description="Question clustering is not built yet — nothing is shown until it is." padded={false}>
+          {questions.length === 0 && (
+            <p className="px-6 py-6 text-sm text-muted-foreground">Coming soon — no question clusters yet.</p>
+          )}
           <ol className="divide-y divide-border">
             {questions.map((q, i) => (
               <li key={i} className="flex items-center justify-between gap-3 px-6 py-3.5">
@@ -73,7 +76,8 @@ export default async function AnalyticsPage() {
           </ol>
         </Panel>
 
-        <Panel title="Knowledge usage (coming soon)" description="Illustrative data.">
+        <Panel title="Knowledge usage" description="Real retrieval counts — how often each evidence source informed an AI reply (30 days).">
+          {usage.length === 0 && <p className="text-sm text-muted-foreground">No retrievals yet.</p>}
           <ul className="flex flex-col gap-4">
             {usage.map((u) => (
               <li key={u.documentTitle} className="flex flex-col gap-1.5">
