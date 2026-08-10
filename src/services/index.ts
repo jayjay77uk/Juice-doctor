@@ -25,7 +25,7 @@ import { ok, err, type Page, type Result } from './result';
  * consume the async, paginated, error-typed shapes below.
  */
 
-const APP_MODE = process.env.APP_MODE ?? 'prototype';
+const APP_MODE = process.env.APP_MODE ?? 'standard';
 // Reserved seam: when `APP_MODE === 'production'`, swap in Supabase providers.
 export const isProductionData = APP_MODE === 'production';
 

@@ -4,7 +4,7 @@ import type { SignatureFeature } from '@/types/content';
  * Marketing content for the signature assessment features. The interactive
  * mechanics live in their page components; this is the surrounding copy.
  *
- * Prototype note: neither feature performs a real medical assessment. What the
+ * Note: neither feature performs a real medical assessment. What the
  * scans actually measure is unconfirmed with the client (see approval gate) —
  * copy here is deliberately outcome-framed, not diagnostic.
  */
@@ -76,7 +76,7 @@ export const selfieScan: SignatureFeature = {
     {
       question: 'Is my image kept private?',
       answer:
-        'In this prototype, nothing leaves your device — the scan is a demonstration only and no image is uploaded, stored or sent anywhere.',
+        'The remote selfie scan is not yet available. Nothing leaves your device — no image is uploaded, stored or sent anywhere.',
     },
     {
       question: 'Frequently asked question two?',

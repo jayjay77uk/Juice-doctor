@@ -66,8 +66,8 @@ export default async function BookPage({
               </ul>
             </div>
             <p className="rounded-xl bg-surface-muted px-5 py-4 text-xs text-muted-foreground">
-              Prototype — this flow is fully clickable but no appointment is actually reserved and no
-              details are stored.
+              Online booking from this page is not yet available — submitting this form does not
+              reserve an appointment. Please contact us directly to book.
             </p>
           </aside>
         </div>

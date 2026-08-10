@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 /* ============================================================================
-   Prototype AI — Design tokens
+   Ask Juice Doctor AI — Design tokens
    Tailwind CSS v4 CSS-first configuration. Tokens defined here generate the
    utility classes used across the app. Components reference INTENT tokens
    (bg-surface, text-primary), never raw brand hexes.
@@ -116,7 +116,6 @@
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
 
   /* ── Layout ─────────────────────────────────────────────────────────────── */
-  --banner-h: 2.25rem;
   --header-h: 4.5rem;
 }
 
@@ -128,8 +127,8 @@
 
   html {
     scroll-behavior: smooth;
-    /* Sticky-header offset accounts for the prototype banner (see §11). */
-    scroll-padding-top: calc(var(--banner-h) + var(--header-h) + 1rem);
+    /* Sticky-header offset for in-page anchors. */
+    scroll-padding-top: calc(var(--header-h) + 1rem);
     -webkit-text-size-adjust: 100%;
   }
 

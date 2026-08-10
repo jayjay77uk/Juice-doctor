@@ -43,8 +43,8 @@ export default function ContactPage() {
               ))}
             </div>
             <p className="rounded-xl bg-surface-muted px-5 py-4 text-sm text-muted-foreground">
-              This is a prototype. The contact form validates and confirms, but no message is
-              actually sent and no details are stored.
+              The contact form is not yet available — an email provider has not been connected.
+              Please use the contact details above in the meantime.
             </p>
           </aside>
         </div>

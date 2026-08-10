@@ -26,7 +26,7 @@ export const FEATURE_FLAGS = {
   },
   'ai.selfie_scan_inference': {
     key: 'ai.selfie_scan_inference',
-    description: 'Real inference for the Remote Selfie Scan (today the scan is an on-device demonstration only).',
+    description: 'Real inference for the Remote Selfie Scan (the scan is not yet available today).',
     defaultEnabled: false,
     category: 'ai',
   },

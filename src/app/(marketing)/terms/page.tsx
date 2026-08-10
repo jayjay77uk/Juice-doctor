@@ -5,7 +5,7 @@ import { LegalPage } from '@/components/sections/legal-page';
 export const metadata: Metadata = createMetadata({
   title: 'Terms of service',
   description:
-    'The terms that apply when using this prototype. Final approved wording will be supplied later.',
+    'The terms that apply when using Ask Juice Doctor AI. Final approved wording will be supplied later.',
   path: '/terms',
 });
 

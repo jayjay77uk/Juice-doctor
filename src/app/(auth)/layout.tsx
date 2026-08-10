@@ -22,9 +22,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             Eight specialists and one shared care plan — guided by Makela, your concierge.
           </p>
         </div>
-        <p className="relative text-xs text-cream-200/70">
-          Prototype environment — for demonstration only.
-        </p>
+        <p className="relative text-xs text-cream-200/70">{site.name}</p>
       </div>
 
       {/* Form panel */}

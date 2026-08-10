@@ -1,6 +1,6 @@
 # 02 · Authorization & RBAC
 
-> **Scope.** How *Prototype AI* decides **who may do what**. This document
+> **Scope.** How *Ask Juice Doctor AI* decides **who may do what**. This document
 > covers the role hierarchy, the fine-grained permission catalogue, the
 > role→permission matrix, per-user overrides, the pure decision engine, the
 > server-side guards, and — most importantly — **why** the same rules are
@@ -10,10 +10,11 @@
 > **Status.** Everything described here is now *live*: the session seam resolves
 > real Supabase Auth sessions, the SQL migrations are applied to the live
 > Postgres, and RLS enforces these rules on real rows. (This document was
-> originally written in Phase 2, when the app ran on typed mock providers and
-> the SQL was unexecuted design; canned personas survive only as a local-dev
-> fallback when Supabase is not configured.) The authorization model itself is
-> unchanged — it was the real thing from day one.
+> originally written in Phase 2, when the app ran on typed in-memory providers
+> and the SQL was unexecuted design; the placeholder development personas of
+> that era have since been removed — without a real session the caller is a
+> guest.) The authorization model itself is unchanged — it was the real thing
+> from day one.
 
 ---
 
@@ -353,17 +354,17 @@ the guard never leaks the permission key, a user id, or SQL to the client.
 
 Every guard resolves the caller through `getSession()` in
 [`session.ts`](../../src/lib/auth/session.ts), then `toAuthContext()` projects the
-role + overrides into the engine's `AuthContext`. When Supabase is not configured
-(local dev), `getSession` falls back to a **canned persona** (a `roleHint` lets
-each shell present member vs admin); on the deployed platform it reads the
-Supabase auth cookie, refreshes the token, and loads the profile (role, org).
-**Only `loadSession()`'s body distinguishes the two** — the guards, the engine,
-and RLS are untouched by that split.
+role + overrides into the engine's `AuthContext`. `loadSession()` reads the
+Supabase auth cookie, refreshes the token, and loads the profile (role, org);
+when Supabase is not configured or no session exists it returns `null` and the
+caller is treated as a guest — there is no persona fallback. **Only
+`loadSession()`'s body knows how a session is produced** — the guards, the
+engine, and RLS depend only on the returned shape.
 
 ```ts
-// src/lib/auth/session.ts — the single swap point (live shape)
-async function loadSession(roleHint: AppRole): Promise<Session | null> {
-  if (!isSupabaseConfigured()) return { user: CANNED[roleHint] }; // local-dev fallback
+// src/lib/auth/session.ts — the single resolution point (live shape)
+async function loadSession(): Promise<Session | null> {
+  if (!isSupabaseConfigured()) return null; // honest guest — no fictional fallback
   // live: Supabase auth cookie → getUser() → load profile (role, org) → session
   // …
 }
@@ -509,7 +510,7 @@ prevent. The mechanisms:
 | [`src/config/permissions.ts`](../../src/config/permissions.ts) | Permission catalogue (`PERMISSIONS`, `PermissionKey`), `ROLE_BASE_PERMISSIONS` |
 | [`src/lib/auth/permissions.ts`](../../src/lib/auth/permissions.ts) | Pure engine: `ROLE_PERMISSIONS`, `hasPermission`, `hasAll/AnyPermissions`, `effectivePermissions` |
 | [`src/lib/auth/authorize.ts`](../../src/lib/auth/authorize.ts) | Guards: `require*` (redirect), `assert*` (throw), `can`/`canAny` |
-| [`src/lib/auth/session.ts`](../../src/lib/auth/session.ts) | The session seam: `getSession`, `toAuthContext`, canned personas / Supabase swap point |
+| [`src/lib/auth/session.ts`](../../src/lib/auth/session.ts) | The session seam: `getSession`, `toAuthContext`, Supabase cookie → profile resolution |
 | [`src/lib/auth/index.ts`](../../src/lib/auth/index.ts) | Public barrel (server-only pieces re-exported deliberately) |
 | [`src/proxy.ts`](../../src/proxy.ts) | Edge middleware: headers, CSRF origin, route-group protection |
 | [`src/lib/security/errors.ts`](../../src/lib/security/errors.ts) | `AppError` hierarchy incl. `AuthenticationError` / `AuthorizationError` with user-safe messages |
@@ -520,9 +521,9 @@ prevent. The mechanisms:
 
 ## 11. Deliberate deferrals & invariants
 
-- **Live auth landed as designed.** The Phase-2 swap to Supabase Auth touched
-  exactly one function body (`loadSession()`); canned personas survive only as
-  the local-dev fallback, and RLS now runs on the live database.
+- **Live auth landed as designed.** The swap to Supabase Auth touched exactly
+  one function body (`loadSession()`); the pre-production development personas
+  were removed outright, and RLS now runs on the live database.
 - **Overrides expiry is resolved outside the engine.** The pure engine takes
   already-filtered `grants`/`denies`; RLS honours `expires_at` in the database.
   (The live session loader does not yet load overrides onto the session.)

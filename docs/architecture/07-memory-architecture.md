@@ -1,7 +1,7 @@
 # 07 · Memory Architecture
 
 > **Status:** live — `ai_memory` is a real table on the live database, and inference is wired: specialist replies read and write memory through it. (Originally designed in Phase 2, before any inference ran.)
-> **Scope of this document:** the persistent memory substrate for *Prototype AI*.
+> **Scope of this document:** the persistent memory substrate for *Ask Juice Doctor AI*.
 > **Primary sources:** [`db/migrations/0011_memory.sql`](../../db/migrations/0011_memory.sql), [`src/types/memory.ts`](../../src/types/memory.ts), [`src/services/repositories/memory-repo.ts`](../../src/services/repositories/memory-repo.ts) (+ [`src/services/memory-actions.ts`](../../src/services/memory-actions.ts) for member-facing controls).
 > **Related:** [05 · AI Agent Framework](./05-ai-agent-framework.md), [02 · Authorization & RBAC](./02-authorization-rbac.md), [03 · Database & tenancy](./03-database.md).
 

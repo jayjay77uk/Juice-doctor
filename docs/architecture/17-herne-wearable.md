@@ -1,8 +1,9 @@
 # HERNE Wearable Foundation — Thryve-Ready Architecture
 
 One normalised wearable intelligence layer that can receive data from Thryve later
-**without redesigning the platform**. Thryve is **not** connected in this increment;
-a mock adapter provides deterministic fixtures.
+**without redesigning the platform**. No device integration is connected yet: no
+measurements are synced, and wearable reads return honest empty states until a
+live provider (e.g. Thryve) is wired.
 
 ## Data model (14 tables, all with RLS — users own their rows)
 
@@ -27,11 +28,11 @@ implies access. `canSpecialistAccessMetric` requires: catalogue permission **AND
 consent **AND** in-scope purpose **AND** acceptable data quality. Example: HRV is
 Optimus + Atlas only; Luca cannot see it even with consent.
 
-## Data flow
+## Data flow (the measurement source is future — no provider is connected yet)
 
 ```mermaid
 flowchart LR
-    T[Mock Thryve adapter] -->|fetchMeasurements| N[normalise + quality checks]
+    T[Future provider adapter e.g. Thryve] -->|fetchMeasurements| N[normalise + quality checks]
     N -->|good/fair/poor| M[(wearable_measurements)]
     N -->|issues| Q[(data_quality_flags)]
     M --> B[baselines + trends]
@@ -51,9 +52,10 @@ logged to `wearable_access_logs` + `wearable_ai_context_logs`.
 
 ## Consent flow
 
-Specific, versioned, timestamped, revocable, purpose-bound. Grant → connect (mock)
-→ sync. Revoke → future AI context is empty. Disconnect stops future sync;
-historical data follows retention status rather than silent deletion.
+Specific, versioned, timestamped, revocable, purpose-bound. Grant → connect →
+sync (connect/sync await a live provider integration; today no sync occurs).
+Revoke → future AI context is empty. Disconnect stops future sync; historical
+data follows retention status rather than silent deletion.
 
 ## Data quality
 
@@ -89,16 +91,17 @@ sequenceDiagram
 
 ## Future Thryve connection
 
-`WearableProviderAdapter` defines createConnection / revokeConnection /
-refreshConnection / listProviders / fetchMeasurements / receiveWebhook /
-verifyWebhook / normaliseMeasurement / retrySync / getConnectionStatus. Only the
-**mock** adapter is implemented. Connecting live Thryve = implement the same
-interface with real credentials + webhook verification; nothing else changes.
+The synchronisation seam is deliberately open: no provider adapter is implemented
+today, so no measurements are written. Connecting live Thryve = implement an
+adapter (create/revoke/refresh connection, fetch measurements, webhook receipt +
+verification, retry) with real credentials, feeding vendor readings through the
+existing `normaliseMeasurement` + quality checks into the existing tables;
+nothing else changes.
 
-## Prototype limitations / awaiting client
+## Current limitations / awaiting client
 
-- No live Thryve — mock adapter + deterministic fixtures; connection actions are
-  labelled prototype.
+- No live Thryve — no device integration is connected; wearable surfaces show
+  honest empty states and are labelled "not yet available".
 - The catalogue's category, sensitivity and trend/baseline suitability are DERIVED
   defaults (flagged in `derivedFields`); the five supplied fields are authoritative.
   Additional per-metric interpretation/prohibited-claim detail is awaiting client input.

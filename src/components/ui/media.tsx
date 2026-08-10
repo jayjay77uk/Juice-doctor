@@ -4,9 +4,9 @@ import type { BrandTone, ImageRef } from '@/types/content';
 import { cn } from '@/lib/cn';
 
 /**
- * Renders an ImageRef. In the prototype (`src` omitted) it draws a brand-graded
- * placeholder carrying the intended warm/teal treatment, so reviewers judge the
- * real aesthetic rather than grey boxes. In production it renders `next/image`.
+ * Renders an ImageRef. When `src` is omitted (final imagery pending from the
+ * client) it draws a brand-graded placeholder carrying the intended warm/teal
+ * treatment rather than a grey box. With a `src` it renders `next/image`.
  */
 
 const toneGradient: Record<BrandTone, string> = {

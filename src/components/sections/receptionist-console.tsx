@@ -151,7 +151,7 @@ export function ReceptionistConsole({ settings }: { settings: ReceptionistConsol
         </div>
       </div>
       <p className="border-b border-border bg-surface-muted/50 px-5 py-2.5 text-xs text-muted-foreground">
-        Prototype — AI-generated, not clinically reviewed. Not for emergencies — if you need urgent help, call your local emergency services.
+        AI-generated, not clinically reviewed. Not for emergencies — if you need urgent help, call your local emergency services.
       </p>
 
       {/* Conversation */}

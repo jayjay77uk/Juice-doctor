@@ -50,7 +50,7 @@ export default async function HerneWearablePage() {
         </Link>
         <AdminHeader
           title="Wearable data"
-          description="The client metric catalogue, per-specialist access permissions, consents and the AI access log. Live Thryve is not connected — measurements come from the mock adapter."
+          description="The client metric catalogue, per-specialist access permissions, consents and the AI access log. No wearable device integration is connected yet — no measurements are being synchronised."
         />
       </div>
 

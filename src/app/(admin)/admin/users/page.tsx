@@ -82,7 +82,7 @@ export default async function UsersPage() {
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Live data from the platform database — real user accounts, including the fictional demonstration accounts.
+        Live data from the platform database — real user accounts.
       </p>
     </div>
   );

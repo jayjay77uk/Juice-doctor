@@ -151,7 +151,7 @@ export default function SpecialistsPage() {
         </div>
       </section>
 
-      {/* CTA + prototype notice */}
+      {/* CTA + safety notice */}
       <section className="bg-surface">
         <div className="mx-auto max-w-3xl px-5 py-16 text-center sm:px-8">
           <h2 className="font-serif text-3xl text-foreground">Your journey starts with one conversation</h2>
@@ -164,8 +164,8 @@ export default function SpecialistsPage() {
             </Button>
           </div>
           <p className="mt-8 text-xs text-muted-foreground">
-            Prototype — this is a demonstration of the wellbeing-institute experience. Specialists provide general
-            wellbeing support, not diagnosis, and escalate to a human when clinical review is needed.
+            Specialists provide general wellbeing support, not diagnosis, and escalate to a human
+            when clinical review is needed.
           </p>
         </div>
       </section>

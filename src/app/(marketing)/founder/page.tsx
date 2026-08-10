@@ -37,8 +37,8 @@ export default function FounderPage() {
             <p className="measure text-muted-foreground">This is placeholder text in clear English. It stands in for the final content until approved wording is supplied.</p>
             <p className="measure text-muted-foreground">This is placeholder text in clear English. It stands in for the final content until approved wording is supplied.</p>
             <p className="rounded-xl bg-surface-muted px-5 py-4 text-sm text-muted-foreground">
-              Prototype note: a full, client-approved biography and verified credentials are supplied
-              before launch. Placeholder detail is shown here for demonstration.
+              A full, client-approved biography and verified credentials are supplied before
+              launch. Placeholder detail is shown here pending client-supplied copy.
             </p>
           </div>
         </div>

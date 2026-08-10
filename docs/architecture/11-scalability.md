@@ -1,7 +1,7 @@
 # 11 · Future Scalability
 
-> **Status:** Written in Phase 2 as production-shaped design. **Update (2026-08-10):** the platform now runs live — Supabase Postgres persistence, real Supabase Auth, and live Anthropic Claude inference (receptionist + eight HERNE specialists). Statements below about mocks or unwired inference are historical; the growth-surface analysis itself still holds.
-> **Scope of this document:** the *growth surfaces* of the platform — every axis along which _Prototype AI_ is expected to expand, and the proof that each axis is already **modelled**, so growth is **data and configuration, not a re-architecture**.
+> **Status:** Written in Phase 2 as production-shaped design. **Update (2026-08-10):** the platform now runs live — Supabase Postgres persistence, real Supabase Auth, and live Anthropic Claude inference (receptionist + eight HERNE specialists). Statements below about unwired data or inference describe the pre-production state; the growth-surface analysis itself still holds.
+> **Scope of this document:** the *growth surfaces* of the platform — every axis along which _Ask Juice Doctor AI_ is expected to expand, and the proof that each axis is already **modelled**, so growth is **data and configuration, not a re-architecture**.
 > **Primary sources:** [`db/migrations/0002_tenancy.sql`](../../db/migrations/0002_tenancy.sql), [`db/migrations/0004_auth_sessions_oauth.sql`](../../db/migrations/0004_auth_sessions_oauth.sql), [`db/migrations/0009_ai_agents.sql`](../../db/migrations/0009_ai_agents.sql), [`db/migrations/0010_conversations.sql`](../../db/migrations/0010_conversations.sql), [`src/config/ai-agents.ts`](../../src/config/ai-agents.ts), [`src/types/ai.ts`](../../src/types/ai.ts), [`src/types/conversation.ts`](../../src/types/conversation.ts), [`db/README.md`](../../db/README.md).
 > **Related:** [00 · Overview](./00-overview.md), [03 · Database](./03-database.md), [07 · Memory](./07-memory-architecture.md), [08 · Consultation Workflow](./08-consultation-workflow.md).
 
@@ -109,7 +109,7 @@ Honesty is a design rule here (see [00 · Overview §2](./00-overview.md)), so t
 
 - **Vector search** — still deferred: retrieval today is ranked Postgres full-text search (`ts_rank`); embeddings/`pgvector` are not enabled. `knowledge_chunks` and `knowledge_embeddings` (`0012`) model the full pipeline, so enabling the extension is additive, not structural. See [`db/README.md`](../../db/README.md).
 - **Inference** — *no longer deferred*: live Anthropic Claude inference runs today (receptionist assessment, streaming HERNE specialists, knowledge-grounded replies), driven by published prompt versions and logged to `ai_run_logs`. The runtime reads configuration rather than hard-coding behaviour, exactly as designed.
-- **Live providers** — *no longer deferred for data and model*: services run on Supabase Postgres and Anthropic Claude. Still mock at the source: the Thryve wearable adapter (deterministic fixtures; the wearable tables, consent and AI-context pipeline around it are real). Voice (STT/TTS), email and payment providers are not integrated.
+- **Live providers** — *no longer deferred for data and model*: services run on Supabase Postgres and Anthropic Claude. Still deferred at the source: wearable device integration is not connected (no provider adapter; reads show honest empty states, while the wearable tables, consent and AI-context pipeline around it are real). Voice (STT/TTS), email and payment providers are not integrated.
 
 Deferring these was safe precisely because each sits behind an interface or a modelled table that already had the right shape — the data and model swaps have since happened without redesign, which validates the approach for the remaining ones.
 

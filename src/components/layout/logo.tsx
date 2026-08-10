@@ -5,7 +5,7 @@ import { site } from '@/content/site';
 
 /**
  * Brand wordmark. A simple, premium lockup: a drop glyph + the name.
- * Placeholder mark for the prototype — a real logo would be supplied by the client.
+ * Interim mark — replace the glyph when the client supplies final logo artwork.
  */
 export function Logo({ className, inverse = false }: { className?: string; inverse?: boolean }) {
   return (
@@ -36,7 +36,7 @@ export function Logo({ className, inverse = false }: { className?: string; inver
       <span className={cn('flex flex-col leading-none', inverse ? 'text-cream-50' : 'text-foreground')}>
         <span className="font-serif text-lg font-semibold tracking-tight">{site.name}</span>
         <span className={cn('text-[0.62rem] font-medium uppercase tracking-[0.22em]', inverse ? 'text-cream-200' : 'text-muted-foreground')}>
-          AI · Prototype
+          Wellbeing Platform
         </span>
       </span>
     </Link>

@@ -81,7 +81,7 @@ export default function SpeakingPage() {
           ))}
         </ul>
         <p className="mt-6 text-sm text-muted-foreground">
-          Prototype — full talk details, past events and booking terms are added with the client.
+          Full talk details, past events and booking terms are pending client-supplied copy.
         </p>
       </Section>
 

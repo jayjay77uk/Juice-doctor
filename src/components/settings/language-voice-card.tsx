@@ -13,9 +13,8 @@ import { saveLanguagePreferenceAction } from '@/services/herne/language-actions'
 const controlClass =
   'w-full rounded-xl border border-border bg-surface px-4 py-3 text-foreground focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-ring)]';
 
-function statusBadge(status: 'live' | 'prototype' | 'planned') {
+function statusBadge(status: 'live' | 'planned') {
   if (status === 'live') return <Badge tone="secondary">Available now</Badge>;
-  if (status === 'prototype') return <Badge tone="accent">Prototype</Badge>;
   return <Badge tone="outline">Planned</Badge>;
 }
 

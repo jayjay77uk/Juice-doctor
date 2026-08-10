@@ -1,7 +1,7 @@
 # 10 — Security
 
 > **Originally a Phase-2 design document; updated status 2026-08-10.** When first
-> written, everything here was production-shaped but ran on typed mock providers
+> written, everything here was production-shaped but ran on typed in-memory providers
 > and paper SQL. That is no longer the case: the platform now runs **live** —
 > real Supabase Auth sessions, a connected Supabase Postgres with the migrations
 > applied and RLS enforced, HTTPS on the Vercel production deployment, real
@@ -10,7 +10,7 @@
 > (field-level encryption, malware scanning, API-key auth, CSP script nonce,
 > MFA step-up). See §13 for the current live/not-live table.
 
-Security for Prototype AI is not a single module — it is a **posture**
+Security for Ask Juice Doctor AI is not a single module — it is a **posture**
 that runs through every layer. A member's profile is protected four
 different ways at four different distances from the attacker: by the CSP that
 governs what runs in their browser, by the middleware that rejects a forged
@@ -348,14 +348,13 @@ distinction is load-bearing:
 
 | Variable | Visibility | Purpose |
 | --- | --- | --- |
-| `NEXT_PUBLIC_APP_MODE` | **Public** (safe in the client bundle) | Cosmetic only — drives the demonstration banner |
 | `APP_MODE` | **Server-only, non-public** | Reserved server-only mode switch (`src/services/index.ts`) |
 
 All data access happens inside `server-only` service/repository modules, so a
 Supabase client — and the keys it needs — **can never be tree-shaken into a
-client bundle**. `config.isPrototype` derives from the cosmetic public flag and
-is used *only* for UI affordances; no secret is ever gated on it. This is Rule 2
-of the project philosophy expressed as a security control.
+client bundle**. (The earlier public `NEXT_PUBLIC_APP_MODE` flag, which drove a
+cosmetic environment banner, has been removed; no secret was ever gated on it.)
+This is Rule 2 of the project philosophy expressed as a security control.
 
 **The secret surface** is enumerated in [`.env.example`](../../.env.example) and
 set on the deployed platform:
@@ -524,9 +523,8 @@ const scriptSrc = dev
 
 `style-src` keeps `'unsafe-inline'` in both modes — a documented, deliberate
 trade-off for the inline/critical-CSS approach, and a far weaker vector than
-inline script. The `dev` flag comes from `process.env.NODE_ENV`, not from the
-cosmetic app mode, so a production build is strict regardless of prototype
-banners.
+inline script. The `dev` flag comes from `process.env.NODE_ENV`, not from any
+app-level setting, so a production build is strict unconditionally.
 
 ---
 
@@ -620,7 +618,7 @@ An honest security document says what is *not* yet real. As of 2026-08-10:
 
 ## Related documents
 
-- [`00-overview.md`](00-overview.md) — the prototype-vs-production philosophy and the seam
+- [`00-overview.md`](00-overview.md) — the pre-production-vs-production philosophy and the seam
 - [`02-authorization-rbac.md`](02-authorization-rbac.md) — the full role & permission model summarised in §2
 - [`03-database.md`](03-database.md) — schema conventions, the `app` helper functions, and the ERD
 - [`04-rls-security-model.md`](04-rls-security-model.md) — Row-Level Security, the authoritative data-layer control

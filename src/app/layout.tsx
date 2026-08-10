@@ -1,11 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import { baseMetadata } from '@/config/metadata';
-import { PrototypeBanner } from '@/components/layout/prototype-banner';
 import './globals.css';
 
 /**
  * Fonts: the design calls for Fraunces (display) + Inter (text). To keep the
- * prototype fast and offline-resilient, we render with high-quality system
+ * platform fast and offline-resilient, we render with high-quality system
  * serif/sans stacks (see `--font-serif` / `--font-sans` in globals.css). To ship
  * the exact faces, drop self-hosted woff2 files in and wire `next/font/local`,
  * setting `--font-fraunces` / `--font-inter` — no other change is needed.
@@ -28,7 +27,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Skip to content
         </a>
-        <PrototypeBanner />
         {children}
       </body>
     </html>

@@ -6,7 +6,6 @@ import { PageHero } from '@/components/sections/page-hero';
 import { SectionHeading } from '@/components/sections/section-heading';
 import { FeatureGrid } from '@/components/sections/feature-grid';
 import { Accordion } from '@/components/ui/accordion';
-import { SelfieScanFlow } from '@/components/sections/selfie-scan-flow';
 import { CtaSection } from '@/components/sections/cta-section';
 
 export const metadata: Metadata = createMetadata({
@@ -25,9 +24,13 @@ export default function SelfieScanPage() {
         lede="This is placeholder text written in clear English. Final approved wording will be supplied later."
       />
 
-      {/* The interactive mock flow — the point of the feature. */}
       <Section tone="default" spacing="lg" containerSize="narrow">
-        <SelfieScanFlow />
+        <div className="rounded-2xl border border-border bg-surface-muted px-6 py-8 text-center">
+          <p className="font-serif text-xl text-foreground">The Remote Selfie Scan is not yet available.</p>
+          <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
+            This assessment is being built. When it launches you will be able to complete it here.
+          </p>
+        </div>
       </Section>
 
       <Section tone="sage" spacing="lg">

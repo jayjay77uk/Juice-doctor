@@ -1,15 +1,14 @@
 # 08 — Consultation workflow
 
-> **Status: live.** Originally a Phase-2 design running on mocks and unexecuted
-> SQL, this workflow now runs on real rows: members book appointments, staff
-> confirm/complete/cancel them from an admin queue, and consultations carry a
-> real append-only event timeline plus practitioner notes and
-> approve/request-changes actions — all on the applied `0007` schema. The
+> **Status: live.** Originally a Phase-2 design running on in-memory providers
+> and unexecuted SQL, this workflow now runs on real rows: members book
+> appointments, staff confirm/complete/cancel them from an admin queue, and
+> consultations carry a real append-only event timeline plus practitioner notes
+> and approve/request-changes actions — all on the applied `0007` schema. The
 > AI-review fields (`ai_summary`, `ai_review`) are not yet produced by a live AI
-> pass; seeded demonstration cases carry fictional `ai_review` text, labelled as
-> such.
+> pass and remain empty on real records.
 
-The consultation workflow is the clinical spine of the Prototype AI
+The consultation workflow is the clinical spine of the Ask Juice Doctor AI
 platform — the journey a member takes from first data capture to a durable
 health history. It is deliberately modelled as a **linear pipeline of stages**
 plus an **append-only event timeline**, so that every surface (member dashboard,
@@ -321,8 +320,7 @@ The `ai_review` stage sits deliberately **between** `assessment` and
 summary/triage, and hands a clinician a head-start rather than a blank page.
 This automated review pass is **not yet implemented** — live AI runs elsewhere
 on the platform (receptionist assessment, specialist replies), but no model
-populates these fields yet; seeded demonstration cases carry fictional
-`ai_review` text labelled as such:
+populates these fields yet; on real records they remain empty:
 
 | Placeholder | Location | Phase-2 value | Phase-3 role |
 | --- | --- | --- | --- |
@@ -420,7 +418,7 @@ for everyone.**
 
 ---
 
-## 8. Prototype → production seam (exercised)
+## 8. Pre-production → production seam (exercised)
 
 Phase 2 authored the design without hooking anything up: the **schema** (0007)
 in full with RLS, the **types** (`src/types/consultation.ts`), the **stage

@@ -58,8 +58,8 @@ export default async function TestimonialsPage() {
           ))}
         </div>
         <p className="mt-8 text-sm text-muted-foreground">
-          Prototype — testimonials shown are illustrative. Consented, named client stories are
-          supplied for the full platform.
+          Testimonials shown are illustrative placeholders pending client-supplied copy.
+          Consented, named client stories will replace them.
         </p>
       </Section>
 

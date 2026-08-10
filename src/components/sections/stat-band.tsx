@@ -31,7 +31,7 @@ export function StatBand({
       </dl>
       {hasNote && (
         <p className="mt-8 text-sm text-current/60">
-          Prototype: figures shown are placeholder values for illustration only.
+          Figures shown are placeholder values pending final client-supplied data.
         </p>
       )}
     </Section>

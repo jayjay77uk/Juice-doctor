@@ -23,10 +23,10 @@ function continuePath(next: FormDataEntryValue | null): string {
 }
 
 /**
- * Write path — Server Actions. Auth (sign-in / register / sign-out) is REAL
+ * Write path — Server Actions. Auth (sign-in / register / sign-out) is real
  * Supabase Auth and rate-limited per visitor. The marketing forms (contact,
- * newsletter, booking) remain declared mocks until an email provider is wired:
- * they validate and return a typed, honest "(Prototype: …)" success.
+ * newsletter, public booking) have no provider connected yet, so they return
+ * an honest "not available yet" error — nothing is ever simulated.
  */
 
 const authLimiter = createInMemoryRateLimiter(RATE_LIMIT_POLICIES.auth);
@@ -57,11 +57,6 @@ function fieldErrorsFrom(error: z.ZodError): Record<string, string[]> {
   return out;
 }
 
-/** Simulate the latency of a real network call so loading states are visible. */
-async function simulateLatency(ms = 700): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export async function submitContact(
   _prev: ActionResult,
   formData: FormData,
@@ -74,11 +69,10 @@ export async function submitContact(
       fieldErrors: fieldErrorsFrom(parsed.error),
     };
   }
-  await simulateLatency();
-  // Prototype: no email is sent. Phase 2: Resend + Supabase insert here.
+  // No email provider is connected yet — never pretend a message was sent.
   return {
-    status: 'success',
-    message: `Thank you, ${parsed.data.name.split(' ')[0]} — we’ll be in touch soon. (Prototype: no message was actually sent.)`,
+    status: 'error',
+    message: 'The contact form is not available yet — messaging is being connected. Please check back soon.',
   };
 }
 
@@ -94,10 +88,10 @@ export async function subscribeNewsletter(
       fieldErrors: fieldErrorsFrom(parsed.error),
     };
   }
-  await simulateLatency(500);
+  // No email provider is connected yet — never pretend a subscription exists.
   return {
-    status: 'success',
-    message: 'You’re on the list. (Prototype: no subscription was created.)',
+    status: 'error',
+    message: 'Newsletter sign-up is not available yet. Please check back soon.',
   };
 }
 
@@ -115,8 +109,7 @@ export async function signIn(_prev: ActionResult, formData: FormData): Promise<A
   }
   const next = formData.get('next');
   if (!isSupabaseConfigured()) {
-    await simulateLatency();
-    return { status: 'success', message: 'Signed in. (Prototype: no real account — the dashboard is a demo.)' };
+    return { status: 'error', message: 'Sign-in is currently unavailable. Please try again later.' };
   }
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { status: 'error', message: 'Sign-in is currently unavailable. Please try again later.' };
@@ -143,8 +136,7 @@ export async function register(_prev: ActionResult, formData: FormData): Promise
   }
   const next = formData.get('next');
   if (!isSupabaseConfigured()) {
-    await simulateLatency();
-    return { status: 'success', message: 'Account created. (Prototype: no real account is stored.)' };
+    return { status: 'error', message: 'Registration is currently unavailable. Please try again later.' };
   }
   const admin = createAdminClient();
   const supabase = await createSupabaseServerClient();
@@ -183,10 +175,10 @@ export async function submitBooking(
       fieldErrors: fieldErrorsFrom(parsed.error),
     };
   }
-  await simulateLatency();
+  // Public booking is not connected yet — signed-in members book real
+  // appointments from the dashboard; never pretend a slot was reserved here.
   return {
-    status: 'success',
-    message:
-      'Your request is in. (Prototype: no appointment is actually reserved — we’ll confirm availability with you.)',
+    status: 'error',
+    message: 'Online booking from this page is not available yet. Members can book from their dashboard.',
   };
 }

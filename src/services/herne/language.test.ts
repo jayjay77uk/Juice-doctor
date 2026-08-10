@@ -78,9 +78,9 @@ describe('HERNE language directive', () => {
 });
 
 describe('HERNE capability model (honest live/planned split)', () => {
-  it('reports text as live, language as prototype, voice as planned', () => {
+  it('reports text and language as live, voice and dialect as planned', () => {
     expect(HERNE_CAPABILITIES.text.status).toBe('live');
-    expect(HERNE_CAPABILITIES.language.status).toBe('prototype');
+    expect(HERNE_CAPABILITIES.language.status).toBe('live');
     expect(HERNE_CAPABILITIES.voice.status).toBe('planned');
     expect(HERNE_CAPABILITIES.dialect.status).toBe('planned');
   });

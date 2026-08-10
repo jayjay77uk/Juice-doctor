@@ -88,7 +88,8 @@ export function AuthForm({
       </div>
       {!authReal && (
         <p className="rounded-lg bg-surface-muted px-4 py-3 text-center text-xs text-muted-foreground">
-          Prototype — no real account is created. The dashboard is a demonstration shell.
+          Account services aren’t connected in this environment, so sign-in and registration are
+          unavailable.
         </p>
       )}
     </form>

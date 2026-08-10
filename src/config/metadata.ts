@@ -3,14 +3,12 @@ import { site } from '@/content/site';
 
 /**
  * SEO defaults. Per-route pages extend these via `createMetadata()`.
- * The prototype sets `robots: noindex` globally (see `app/robots.ts`) — access
- * is guarded by Vercel Deployment Protection, not by SEO directives.
+ * Indexing stays off until the client approves public launch (see `app/robots.ts`).
  */
-// Neutral placeholder host — old-business domain removed.
-export const SITE_URL = 'https://prototype.example.com';
+// The deployed origin; override with NEXT_PUBLIC_SITE_URL when the client's
+// final domain goes live.
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://prototypeai-rose.vercel.app';
 
-// Honest, non-placeholder title for the browser tab + share cards. Final approved
-// marketing wording is client-supplied; this is a factual product descriptor.
 const TITLE_DEFAULT = `${site.name} — Wellbeing Specialist Platform`;
 
 export const baseMetadata: Metadata = {
@@ -34,7 +32,7 @@ export const baseMetadata: Metadata = {
     title: TITLE_DEFAULT,
     description: site.shortDescription,
   },
-  // Prototype: keep the whole environment out of search indexes.
+  // Indexing off until the client approves public launch (final copy + domain).
   robots: { index: false, follow: false },
 };
 

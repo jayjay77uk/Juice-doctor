@@ -3,7 +3,6 @@ import { loadWearableCatalog, EXPECTED_METRIC_COUNT, parseSpecialistAccess } fro
 import { canSpecialistAccessMetric, permittedMetricsFor } from './access';
 import { normaliseMeasurement, checkQuality, isDuplicate, type RawMeasurement } from './normalise';
 import { computeBaseline, computeTrend } from './trends';
-import { createMockThryveAdapter } from './thryve-adapter';
 
 describe('wearable metric catalogue', () => {
   it('loads exactly the client catalogue count (15)', () => {
@@ -85,20 +84,5 @@ describe('baselines + trends', () => {
     const t = computeTrend([{ value: 60, observedAt: '2026-07-01T07:00:00Z' }], { window: 'weekly' });
     expect(t.confidence).toBeLessThan(0.5);
     expect(t.missingNotice).toBeTruthy();
-  });
-});
-
-describe('mock Thryve adapter contract', () => {
-  it('implements the adapter interface and returns fixtures (no live calls)', async () => {
-    const a = createMockThryveAdapter();
-    expect(a.isMock).toBe(true);
-    const conn = await a.createConnection('user-1234');
-    expect(conn.status).toBe('connected');
-    const measurements = await a.fetchMeasurements('user-1234');
-    expect(measurements.length).toBeGreaterThan(0);
-    expect(a.verifyWebhook('mock-signature', '{}')).toBe(true);
-    expect(a.verifyWebhook('bad', '{}')).toBe(false);
-    const norm = a.normaliseMeasurement(measurements[0]!);
-    expect(norm.canonicalName.length).toBeGreaterThan(0);
   });
 });

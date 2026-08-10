@@ -5,7 +5,7 @@ import { LegalPage } from '@/components/sections/legal-page';
 export const metadata: Metadata = createMetadata({
   title: 'Privacy policy',
   description:
-    'How this prototype handles personal information. Final approved wording will be supplied later.',
+    'How Ask Juice Doctor AI handles personal information. Final approved wording will be supplied later.',
   path: '/privacy',
 });
 

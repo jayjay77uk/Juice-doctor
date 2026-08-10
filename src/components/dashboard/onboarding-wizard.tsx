@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 
 /**
- * User onboarding wizard — a multi-step, fully interactive flow (prototype: no
- * data is stored; a real submit would write health_profiles / goals / prefs).
- * Architecture + interface only; no AI.
+ * User onboarding wizard — a multi-step, fully interactive flow. Answers are
+ * not yet persisted; a future submit will write health_profiles / goals /
+ * prefs. Architecture + interface only; no AI.
  */
 
 const GOALS = [

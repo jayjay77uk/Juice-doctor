@@ -1,6 +1,6 @@
 # Production Implementation Roadmap
 
-A phased path from the current prototype to a production wellbeing platform. Phases are ordered so
+A phased path from the current live platform to full production launch. Phases are ordered so
 that clinical safety and the client's own accounts come first. Timings are indicative and depend on
 the outstanding client approvals.
 
@@ -31,7 +31,8 @@ the outstanding client approvals.
 - On receipt of Thryve credentials and the commercial agreement, connect the real Thryve adapter
   behind the existing wearable data model (built to be Thryve-ready).
 - Validate consent, data-quality flags, permissions and the AI-access log against live data.
-- **Exit:** real wearable trends flow through the same permission/consent model, replacing the mock.
+- **Exit:** real wearable trends flow through the existing permission/consent model, and the
+  wearable surfaces' empty states populate with live data.
 
 ## Phase 4 — Accounts, identity & practitioner console
 - Production authentication hardening (email verification, MFA options — password reset already
@@ -59,7 +60,7 @@ the outstanding client approvals.
 
 ---
 
-### What carries straight over from the prototype
+### What carries straight over from the current build
 The core architecture is production-shaped and reused as-is: the provider-neutral AI layer, the
 one-shared-evidence retrieval + ranking, the runtime prompt assembly, the referral matrix, the
 shared care-plan state machine, the wearable data model (Thryve-ready), the consent-gated memory,

@@ -1,22 +1,22 @@
-# Prototype Completion Report
+# Completion Report
 
-**Product:** HERNE Multi-Specialist Wellbeing Platform (working prototype)
-**Environment:** `https://prototypeai-rose.vercel.app` — Prototype / demonstration only
-**Status:** Complete and ready for client demonstration
-**Date:** 14 July 2026
+**Product:** Ask Juice Doctor AI — HERNE Multi-Specialist Wellbeing Platform
+**Environment:** `https://prototypeai-rose.vercel.app` — live deployment
+**Status:** Delivered and live
+**Date:** 14 July 2026 (status refreshed 10 August 2026)
 
 ---
 
 ## 1. What has been built
 
-A working, end-to-end prototype of a multi-specialist AI wellbeing platform. It presents a
+A working, end-to-end multi-specialist AI wellbeing platform. It presents a
 coordinated team of **eight wellbeing specialists** — led by Makela, a concierge who listens
 first and routes each person to the right specialist — all working from **one shared evidence
 base** and **one shared care plan**.
 
-The prototype demonstrates the full member journey (public website → sign-up → dashboard →
-live specialist conversations) and a comprehensive admin portal that shows how the client will
-own and operate the platform (specialists, evidence, prompts, referrals, wearable permissions,
+The platform delivers the full member journey (public website → sign-up → dashboard →
+live specialist conversations) and a comprehensive admin portal through which the client
+owns and operates the platform (specialists, evidence, prompts, referrals, wearable permissions,
 safety, care plans, usage and cost).
 
 ## 2. The eight specialists
@@ -34,7 +34,7 @@ safety, care plans, usage and cost).
 
 Exactly these eight exist across the platform. No other AI specialists are present.
 
-## 3. Capabilities demonstrated
+## 3. Capabilities delivered
 
 **Live intelligence (powered by the Anthropic Claude model):**
 - Each specialist gives a differentiated, evidence-grounded response to the same question, drawing
@@ -47,8 +47,10 @@ Exactly these eight exist across the platform. No other AI specialists are prese
   message; unsupported claims and fabricated citations are stripped from responses.
 - Multilingual text: the member can choose a language and specialists reply in it, with continuity
   preserved across a handoff.
-- Mock wearable trends: specialists can reference simulated wearable trends (never raw data,
-  never as a diagnosis), with clear limitations.
+- Wearable architecture: the metric catalogue, per-specialist permissions, consents and AI-access
+  logs are in place. No device integration is connected yet, so wearable surfaces show honest
+  empty states; when connected, specialists will only ever see permitted trend summaries (never
+  raw data, never a diagnosis).
 
 **Client-owned operations (admin portal):**
 - Manage the eight specialists, the shared HERNE evidence base, versioned prompts and the shared
@@ -59,17 +61,19 @@ Exactly these eight exist across the platform. No other AI specialists are prese
 
 ## 4. Verification
 
-The prototype has been verified end-to-end on the live deployment. All eight specialists respond
+The platform has been verified end-to-end on the live deployment. All eight specialists respond
 live and grounded; specialist differentiation, referrals, the safety block, multilingual replies,
-mock wearable context, and token/cost logging have all been confirmed against the running system.
+and token/cost logging have all been confirmed against the running system.
 
 Engineering quality gates (run on every change): type-checking, linting, an automated test suite,
 and a production build all pass.
 
 ## 5. Deliberate boundaries (see the Limitations document)
 
-- No real patient data is used — all data is fictional or anonymised demonstration data.
-- Wearable data is **simulated** (the live Thryve connection is not enabled).
+- The pre-production build used only fictional data; those fictional records have since been
+  deleted from the live database. Real member accounts are created by registration.
+- Wearable device integration is **not connected** (the live Thryve connection is not enabled);
+  wearable surfaces show empty states.
 - Voice conversations are **planned**, clearly labelled, and not connected.
 - Language replies are AI-generated and **not yet clinically reviewed** — English is the reference.
 - Emergency and self-harm wording is **interim** and awaits client-approved clinical copy.

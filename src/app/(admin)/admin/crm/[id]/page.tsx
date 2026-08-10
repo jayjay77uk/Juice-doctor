@@ -302,7 +302,7 @@ export default async function CrmLeadDetailPage({
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Live data from the platform database — includes seeded demonstration leads. AI replies run on the live model and are not clinically reviewed. No payment provider is connected.
+        Live data from the platform database. AI replies run on the live model and are not clinically reviewed. No payment provider is connected.
       </p>
     </div>
   );

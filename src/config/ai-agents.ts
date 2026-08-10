@@ -22,7 +22,7 @@ import type {
  * `makeAgent` shape, with no code change.
  */
 
-const PROTOTYPE_ORG = '00000000-0000-0000-0000-000000000001';
+const DEFAULT_ORG = '00000000-0000-0000-0000-000000000001';
 const SYSTEM_OWNER = 'usr_super';
 
 const DEFAULT_MEMORY: AgentMemoryConfig = {
@@ -56,7 +56,7 @@ type DefInput = Partial<AiAgentDefinition> &
 
 function makeAgent(input: DefInput): AiAgentDefinition {
   return {
-    organisationId: PROTOTYPE_ORG,
+    organisationId: DEFAULT_ORG,
     product: null,
     code: '',
     purpose: 'Set the purpose of this AI in the admin backend.',

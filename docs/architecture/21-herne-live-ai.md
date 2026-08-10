@@ -1,4 +1,4 @@
-# HERNE Live Claude AI Integration & End-to-End Prototype (Increment K)
+# HERNE Live Claude AI Integration — End-to-End (Increment K)
 
 Wires the HERNE wellbeing concierge to a **real** Claude model behind a
 provider-neutral interface, and closes the loop end-to-end: a signed-in person
@@ -58,9 +58,10 @@ errors rather than a vague provider failure. Secrets are **never** exposed to th
 | `AI_MAX_INPUT_TOKENS` | `14000` | Input budget guardrail for assembled prompts. |
 | `AI_MAX_OUTPUT_TOKENS` | `1024` | Default `max_tokens`. `validateAiEnv()` rejects values above the safe ceiling (8192). |
 | `AI_REQUEST_TIMEOUT` | `60000` | Per-call timeout. Accepts **milliseconds** (≥1000) or **seconds** (<1000, scaled up). |
-| `AI_DAILY_USER_LIMIT` | `50` | Per-user daily message cap (prototype usage limit). |
+| `AI_DAILY_USER_LIMIT` | `50` | Per-user daily message cap (standing usage limit). |
 | `AI_MONTHLY_USER_LIMIT` | `500` | Per-user monthly message cap. |
-| `NEXT_PUBLIC_APP_MODE` | `prototype` | **Cosmetic only** (client-visible): drives the demonstration-environment banner (`config.isPrototype`). Never gate secrets on it. The model-facing PROTOTYPE RESTRICTIONS safety block is unconditional — it does not depend on this flag. |
+
+(The former cosmetic `NEXT_PUBLIC_APP_MODE` environment-banner flag has been retired; the model-facing PLATFORM RESTRICTIONS safety block is unconditional and never depended on it.)
 
 ## Prompt-assembly flow
 
@@ -80,7 +81,7 @@ order**, each pulled from platform state rather than baked into a single string:
 10. **Language directive** — `languageDirective(pref)` (Increment I), keeping safety/citations/format intact in the target language.
 11. **Referral boundaries** — the specialist's outgoing rules from the referral matrix.
 12. **Safety rules** — do not diagnose, prescribe, or advise changing medication; on alarm symptoms, recommend professional assessment and stop routine coaching.
-13. **PROTOTYPE RESTRICTIONS** — the standing demonstration-only, AI-generated, no-real-records, simulated-wearable block.
+13. **PLATFORM RESTRICTIONS** — the standing safety block: general wellbeing support, not medical diagnosis or treatment; AI-generated, not reviewed by a healthcare professional; never invent data not supplied (no wearable data unless it appears above); recommend a qualified professional for anything clinical, uncertain or urgent.
 14. **Remembered memory** — appended when memory is enabled and any durable facts were recalled.
 
 ```mermaid
@@ -97,7 +98,7 @@ flowchart LR
       MEM[Remembered memory]
     end
     platform --> ASM["assembleSystemPrompt()"]
-    ASM --> SYS["system prompt<br/>(+ safety + prototype block)"]
+    ASM --> SYS["system prompt<br/>(+ safety + platform restrictions)"]
     HIST["history.slice(-8) + user turn"] --> MSGS[messages]
     SYS --> CLAUDE[[Claude via AiProvider]]
     MSGS --> CLAUDE
@@ -252,7 +253,7 @@ Rename and archive (status) actions are supported; the table stays append-only f
 
 ## Usage limits
 
-`src/services/ai-usage.ts` enforces prototype caps:
+`src/services/ai-usage.ts` enforces standing usage caps:
 
 - **`checkUsageLimit(userId)`** — durable per-user daily/monthly counts from
   `ai_run_logs` (`runLogRepo.userUsage`, non-playground, by `actor_id` and time window).
@@ -279,14 +280,15 @@ citations and output format in the target language, and instructs the model to k
 English clinical term in brackets rather than guess. Translated output is labelled
 AI-generated and **not** clinically human-reviewed (English is the reference version).
 
-## Prototype restrictions
+## Platform restrictions
 
-`PROTOTYPE_NOTICES` (`src/config/app.ts`) is the single source of truth for the honesty
-wording, consumed by the banner, the app-shell disclaimer, the `/disclaimer` page and the
-chat footer, so it can never drift between surfaces. The assembled prompt independently
-includes a **PROTOTYPE RESTRICTIONS** block (demonstration only; general wellbeing support,
-not diagnosis/treatment; AI-generated, not clinician-reviewed; no real patient records;
-simulated wearable data). There is no live Thryve connection and voice is planned.
+`STANDING_NOTICES` (`src/config/app.ts`) is the single source of truth for the standing
+safety + status wording, consumed by the `/disclaimer` page so it can never drift; the
+chat surface carries its own always-visible safety line (AI-generated, not clinically
+reviewed, not for emergencies). The assembled prompt independently includes a
+**PLATFORM RESTRICTIONS** block (general wellbeing support, not diagnosis/treatment;
+AI-generated, not clinician-reviewed; never invent data not supplied). There is no live
+Thryve connection and voice is planned.
 
 ## Migrations
 
@@ -302,7 +304,7 @@ simulated wearable data). There is no live Thryve connection and voice is planne
 
 ## Migration to the client-owned Anthropic account
 
-The prototype currently runs on a development Anthropic key. Handover requires **no code
+The platform currently runs on a development Anthropic key. Handover requires **no code
 change** — the provider reads the credential from the environment:
 
 1. Set **`ANTHROPIC_API_KEY`** to the client's own key in the Vercel environment (and
@@ -310,20 +312,20 @@ change** — the provider reads the credential from the environment:
 2. **Rotate / revoke** the current development key once the client key is live.
 3. Optionally raise **`AI_DAILY_USER_LIMIT`** / **`AI_MONTHLY_USER_LIMIT`** for production
    volumes.
-4. Leave **`NEXT_PUBLIC_APP_MODE`** as `prototype` until a live clinical deployment is
-   separately approved; flip it when going to production.
 
 Because everything is read through `env` and the provider abstraction, no orchestration or
 UI change is needed to point the platform at the client's own account.
 
-## Prototype limitations / awaiting client
+## Current limitations / awaiting client
 
 - **Emergency / crisis wording is interim** (`awaiting_client_approval`) and must be
   replaced with client-approved copy before any real clinical use.
-- **Live Thryve is not connected** — all wearable data is simulated; the prompt only ever
-  receives consented, minimised trends, never raw history or a diagnosis.
+- **Live Thryve is not connected** — no device integration syncs wearable data; the
+  prompt only ever receives consented, minimised trends (none exist until an
+  integration is connected), never raw history or a diagnosis.
 - **Voice is planned**, not connected (no live speech-to-text / text-to-speech provider).
 - **Language output is AI-generated**, not clinically human-reviewed; English is the
   reference version.
-- **No real patient records** are used, and the AI provides general wellbeing support,
-  not medical diagnosis or treatment.
+- **The AI is grounded only in the approved evidence base and the person's own
+  consented platform data**, and provides general wellbeing support, not medical
+  diagnosis or treatment.

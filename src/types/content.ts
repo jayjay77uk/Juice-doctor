@@ -9,12 +9,12 @@
  * Components depend on these types, never on where the data came from.
  */
 
-/** Brand tone used to grade placeholder imagery in the prototype. */
+/** Brand tone used to grade placeholder imagery pending client-supplied assets. */
 export type BrandTone = 'teal' | 'green' | 'amber' | 'sage' | 'ink';
 
 /**
- * A reference to an image. In the prototype, `src` is usually omitted and a
- * graded placeholder is rendered from `tone`. In production, `src` is a
+ * A reference to an image. Until client imagery is supplied, `src` is usually
+ * omitted and a graded placeholder is rendered from `tone`. A real `src` is a
  * Supabase Storage path. `alt` is always required (accessibility).
  */
 export interface ImageRef {
@@ -88,7 +88,7 @@ export interface PodcastEpisode {
   durationLabel: string;
   publishedLabel: string;
   topics: string[];
-  /** Null in the prototype — no media is hosted. */
+  /** Null until audio hosting is connected — no media is hosted yet. */
   audioUrl: string | null;
 }
 
@@ -103,7 +103,7 @@ export interface Resource {
   readingTimeLabel: string;
   publishedLabel: string;
   image: ImageRef;
-  /** Long-form body is Phase-2 content; optional in the prototype. */
+  /** Long-form body is pending client-supplied copy; optional until then. */
   body?: string;
 }
 

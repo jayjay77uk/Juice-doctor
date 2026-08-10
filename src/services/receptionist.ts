@@ -4,6 +4,7 @@ import type { AiAgent } from '@/types/ai';
 import type { ReceptionistRecommendation, ConversationTurn, ConsultAnswer } from '@/types/crm';
 import { DEFAULT_RECEPTIONIST_SETTINGS, type ReceptionistSettings } from '@/config/receptionist';
 import { getAiProvider } from '@/lib/ai';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { parseReceptionistResult, type ReceptionistResult } from '@/lib/ai/receptionist-schema';
 import { receptionistSettings } from './receptionist-settings';
 import { agents } from './agents';
@@ -227,8 +228,32 @@ export const receptionist = {
     return ok(result.data.recommendation);
   },
 
-  /** Business stats about the receptionist's performance. */
+  /**
+   * Business stats about the receptionist's performance, computed from REAL
+   * crm_leads rows (every receptionist consultation that captured a lead):
+   * volume over 30 days, how often a confident recommendation was made vs a
+   * human escalation, and the mean recommendation confidence.
+   */
   async stats(): Promise<Result<{ consultations30d: number; recommendationRate: number; escalationRate: number; avgConfidence: number }>> {
-    return ok({ consultations30d: 0, recommendationRate: 0, escalationRate: 0, avgConfidence: 0 });
+    const sb = createAdminClient();
+    if (!sb) return ok({ consultations30d: 0, recommendationRate: 0, escalationRate: 0, avgConfidence: 0 });
+    const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    const { data, error } = await sb
+      .from('crm_leads')
+      .select('recommended_specialist_slug, recommendation_confidence, escalated, created_at')
+      .gte('created_at', since)
+      .limit(1000);
+    if (error) return ok({ consultations30d: 0, recommendationRate: 0, escalationRate: 0, avgConfidence: 0 });
+    const rows = data ?? [];
+    const total = rows.length;
+    const recommended = rows.filter((r) => r.recommended_specialist_slug).length;
+    const escalated = rows.filter((r) => r.escalated).length;
+    const confidences = rows.map((r) => Number(r.recommendation_confidence)).filter((n) => Number.isFinite(n));
+    return ok({
+      consultations30d: total,
+      recommendationRate: total ? recommended / total : 0,
+      escalationRate: total ? escalated / total : 0,
+      avgConfidence: confidences.length ? confidences.reduce((a, b) => a + b, 0) / confidences.length : 0,
+    });
   },
 };

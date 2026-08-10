@@ -1,7 +1,7 @@
 # Outstanding Client Approvals
 
 The items below need the client's input, content, or a commercial decision before the corresponding
-capability can move from prototype to production. Each is flagged in the product where relevant.
+capability can be switched on in full. Each is flagged in the product where relevant.
 
 ---
 
@@ -31,9 +31,9 @@ capability can move from prototype to production. Each is flagged in the product
 ## Wearables & integrations
 | # | Item | What we need |
 |---|---|---|
-| 12 | **Thryve credentials & commercial agreement** | Live Thryve API credentials and the commercial agreement, before the live wearable connection is enabled (currently simulated) |
+| 12 | **Thryve credentials & commercial agreement** | Live Thryve API credentials and the commercial agreement, before the live wearable connection is enabled (no device integration is currently connected) |
 
-## Also helpful (not blocking the demo)
+## Also helpful (not blocking current operation)
 - Final approved **marketing copy** for the public website (currently neutral placeholder text).
 - Confirmation of the **product/brand name** to apply consistently across the site.
 - Final **pricing** and subscription structure for the specialists.

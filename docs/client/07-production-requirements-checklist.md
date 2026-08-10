@@ -27,14 +27,14 @@ engineering team, never in client-facing documents.
 - [ ] Thryve commercial agreement signed
 - [ ] Live Thryve adapter connected behind the existing data model
 - [ ] Consent, data-quality and permission model validated against live data
-- [ ] "Wearable data is simulated" notices removed once live
+- [ ] Wearable empty states replaced by live data once the connection is enabled
 
 ## Identity, accounts & access
 - [ ] Production authentication (email verification, optional MFA — password reset already works)
 - [ ] Role-based access verified for member / practitioner / administrator (+ any others)
 - [ ] Practitioner console built (human review + case management)
 - [ ] Multi-organisation/tenant support (if required)
-- [ ] Demo accounts disabled or rotated
+- [ ] Operational admin credentials rotated (the former fictional accounts are already deleted)
 
 ## Data protection & compliance
 - [ ] Data Protection Impact Assessment (DPIA) completed
@@ -72,7 +72,7 @@ engineering team, never in client-facing documents.
 
 ---
 
-### Already in place from the prototype (verify, don't rebuild)
+### Already in place from the initial build (verify, don't rebuild)
 Provider-neutral AI layer with streaming/cancellation/retry/typed errors · one shared evidence
 base + multi-factor retrieval · runtime prompt assembly · safety pre/post checks · 15-rule referral
 matrix · shared care-plan state machine · Thryve-ready wearable model with permissions/consent/AI

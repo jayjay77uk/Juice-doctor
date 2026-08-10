@@ -1,8 +1,8 @@
 # Database architecture
 
-The complete production database **design** for the Prototype AI platform. These migrations are the source of truth from which the TypeScript model (`src/types/db.ts`) is derived.
+The production database design for the Ask Juice Doctor AI platform. These migrations are the source of truth from which the TypeScript model (`src/types/db.ts`) is derived.
 
-> **Prototype note.** The prototype does **not** run this database — it uses typed mock providers behind the server-only service layer. These migrations exist so that (a) the model is designed exactly as production requires, and (b) moving to Supabase in a later phase is "run the migrations + swap the provider", not a redesign. Nothing here is executed and no data is stored.
+> **Status.** These migrations are **applied to the live Supabase database** — the platform reads and writes this schema through the server-only service layer. (In the initial pre-production build the schema existed on paper only; that is no longer the case.)
 
 Dialect: **PostgreSQL 15+ / Supabase**.
 
@@ -45,7 +45,7 @@ Run in numeric order — later migrations depend on earlier ones.
 | 0014 | `ai_platform_management` | `ai_prompts`, `ai_prompt_versions`, `ai_safety_policies`, `ai_agent_safety_policies`, `knowledge_collections`, `knowledge_collection_documents`, `analytics_events`, `analytics_daily_rollup`, `ai_run_logs` (Phase 3) |
 | 0015 | `ai_business` | extends `ai_agents` (`kind`, `product`); `crm_leads`, `crm_lead_events`, `specialist_subscriptions` (Phase 4 — the AI-business lifecycle) |
 
-**~67 tables across 15 migrations.** 0001–0013 = Phase-2 foundation; 0014 = Phase-3 AI-management surface; 0015 = Phase-4 AI business (receptionist routing, specialist products, AI-centric CRM).
+**~67 tables across the first 15 migrations.** 0001–0013 = Phase-2 foundation; 0014 = Phase-3 AI-management surface; 0015 = Phase-4 AI business (receptionist routing, specialist products, AI-centric CRM). Migrations 0016–0030 (see `db/migrations/`) continue the same conventions: HERNE evidence/agent-config/collaboration/wearable schema, knowledge FTS, AI telemetry, care-plan states, production CRM/subscriptions, support tickets and correctness/grant fixes — 30 migrations applied in total.
 
 ## Entity map
 
@@ -114,6 +114,6 @@ RLS is the primary access-control boundary — **defence in depth** alongside th
 
 - **Multi-organisation / multi-clinic** — every tenant table already carries `organisation_id`; going multi-tenant is data, not a migration of every table.
 - **Multi-language** — `organisations.locales` + per-row locale fields.
-- **Vector search** — `knowledge_chunks` + `knowledge_embeddings` model the pipeline; the `embedding vector(N)` column is added when `pgvector` is enabled (Phase 3).
+- **Vector search** — `knowledge_chunks` + `knowledge_embeddings` model the pipeline; the `embedding vector(N)` column is added when `pgvector` is enabled (embeddings are not yet implemented — retrieval runs on ranked full-text search).
 - **Unlimited AI agents** — agents are data (`ai_agents` + versions + tools + knowledge sources), so the client creates them without code changes.
 - **Payments / wearables / integrations** — `payments`/`subscriptions` are provider-agnostic; `api_keys` + `oauth_accounts` model external access.

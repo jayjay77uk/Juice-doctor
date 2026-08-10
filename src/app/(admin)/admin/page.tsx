@@ -130,7 +130,7 @@ export default async function BusinessDashboardPage() {
       </Panel>
 
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        <ArrowRight className="size-4" /> Live data from the platform database (includes seeded demonstration leads). AI replies run on the live model and are not clinically reviewed. No payment provider is connected — payments are recorded manually.
+        <ArrowRight className="size-4" /> Live data from the platform database. AI replies run on the live model and are not clinically reviewed. No payment provider is connected — payments are recorded manually.
       </p>
     </div>
   );

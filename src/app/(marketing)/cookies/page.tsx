@@ -5,7 +5,7 @@ import { LegalPage } from '@/components/sections/legal-page';
 export const metadata: Metadata = createMetadata({
   title: 'Cookie policy',
   description:
-    'How this prototype uses cookies and similar storage. Final approved wording will be supplied later.',
+    'How Ask Juice Doctor AI uses cookies and similar storage. Final approved wording will be supplied later.',
   path: '/cookies',
 });
 
@@ -17,11 +17,11 @@ export default function CookiesPage() {
       sections={[
         {
           heading: 'What cookies we use',
-          body: 'This is placeholder text describing the cookies and storage used. In this prototype, only minimal, non-tracking storage is used.',
+          body: 'This is placeholder text describing the cookies and storage used. At present, only minimal, non-tracking storage is used.',
         },
         {
           heading: 'Third-party cookies',
-          body: 'This is placeholder text describing cookies set by third parties. None are active in this prototype.',
+          body: 'This is placeholder text describing cookies set by third parties. None are currently active.',
         },
         {
           heading: 'Managing your preferences',

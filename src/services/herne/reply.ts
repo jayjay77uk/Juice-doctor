@@ -28,8 +28,8 @@ import { isMemoryEnabled } from '../memory-prefs';
  * the shared DNA, the specialist profile + consultation style, the active published
  * prompt version, the specialist output format, the user objective, the shared care
  * plan, permitted memory, ranked shared evidence with citations, permitted wearable
- * trends, the language preference, referral boundaries, safety rules and prototype
- * restrictions. Safety runs BEFORE (emergency/medication/diagnosis) and AFTER
+ * trends, the language preference, referral boundaries, safety rules and
+ * current-capability restrictions. Safety runs BEFORE (emergency/medication/diagnosis) and AFTER
  * (fabricated-citation stripping, unsupported-claim flagging) inference. Never
  * fabricates: honest unavailable states, evidence-only answers, real escalations.
  */
@@ -72,8 +72,8 @@ async function sharedDna(): Promise<string[]> {
   return Array.isArray(value?.dna) ? (value?.dna as string[]) : HERNE_SHARED_DNA;
 }
 
-const PROTOTYPE_RESTRICTIONS =
-  'PROTOTYPE RESTRICTIONS — This is a demonstration prototype. You provide general wellbeing support, not medical diagnosis or treatment. Your answers are AI-generated and not yet reviewed by a healthcare professional. No real patient records are used; any wearable data is simulated. For anything clinical, uncertain, or urgent, recommend a qualified healthcare professional.';
+const PLATFORM_RESTRICTIONS =
+  'PLATFORM RESTRICTIONS — You provide general wellbeing support, not medical diagnosis or treatment. Your answers are AI-generated and not reviewed by a healthcare professional. Never invent data you were not given (there is no wearable data unless it appears above). For anything clinical, uncertain, or urgent, recommend a qualified healthcare professional.';
 
 interface AssemblyInput {
   profile: HerneSpecialistProfile;
@@ -153,7 +153,7 @@ function assembleSystemPrompt(a: AssemblyInput): string {
     a.langDirective,
     referralBlock,
     'SAFETY — do not diagnose, prescribe, or advise stopping or changing medication. If the person reports alarm symptoms (e.g. severe or chest pain, fainting, blood in stool, pregnancy concerns, medication interactions, self-harm), recommend appropriate professional assessment and stop routine coaching.',
-    PROTOTYPE_RESTRICTIONS,
+    PLATFORM_RESTRICTIONS,
   ]
     .filter(Boolean)
     .join('\n\n');

@@ -3,8 +3,8 @@ import { site } from '@/content/site';
 import { Container } from '@/components/ui/container';
 
 /**
- * "As featured in" strip. Uses styled wordmarks as placeholders — real,
- * verified media logos are supplied by the client before the demo.
+ * "As featured in" strip. Uses styled wordmarks as placeholders pending
+ * client-supplied, verified media logos.
  */
 export function PressStrip() {
   return (

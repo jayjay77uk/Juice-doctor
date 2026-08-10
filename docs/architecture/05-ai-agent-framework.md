@@ -10,7 +10,7 @@
 | TypeScript model | [`src/types/ai.ts`](../../src/types/ai.ts) |
 | Seed registry (agents as data) | [`src/config/ai-agents.ts`](../../src/config/ai-agents.ts) |
 | Read / registry service | [`src/services/agents.ts`](../../src/services/agents.ts) |
-| Prototype seam | [`src/config/app.ts`](../../src/config/app.ts) (`config.isPrototype`) |
+| App identity & notices | [`src/config/app.ts`](../../src/config/app.ts) (`APP_NAME`, `STANDING_NOTICES`) |
 | Cross-domain: transcripts | [`db/migrations/0010_conversations.sql`](../../db/migrations/0010_conversations.sql) |
 | Cross-domain: memory | [`db/migrations/0011_memory.sql`](../../db/migrations/0011_memory.sql), [`src/services/repositories/memory-repo.ts`](../../src/services/repositories/memory-repo.ts) |
 | Cross-domain: knowledge | [`db/migrations/0012_knowledge.sql`](../../db/migrations/0012_knowledge.sql), [`src/services/knowledge.ts`](../../src/services/knowledge.ts) |
@@ -29,7 +29,7 @@ By modelling agents as data we get three properties that a code-per-agent design
 2. **Governance for free.** Because a prompt change is a database write, it is *auditable, versioned, diffable, and reversible* (see §5). A non-engineer editing the operative system prompt of a member-facing assistant is exactly the case where you want one-click rollback.
 3. **A stable seam for the runtime.** The Phase-3 inference engine loads an agent by reading its row and satellites. Adding, editing, or retiring agents never touches the runtime — the runtime only ever *interprets* configuration.
 
-> **Implementation today.** The `ai_agents` table is the live source of truth: `src/services/agents.ts` reads and writes through `repositories/agents-repo.ts`, which idempotently seeds the roster — the Receptionist AI plus the eight HERNE specialists (seeded from the client pack by `services/herne/seed.ts`). `src/config/ai-agents.ts` holds the seed definitions as `AiAgentDefinition[]`. The Phase-2 mock provider is gone — exactly the wiring swap the seam was designed for. See §9.
+> **Implementation today.** The `ai_agents` table is the live source of truth: `src/services/agents.ts` reads and writes through `repositories/agents-repo.ts`, which idempotently seeds the roster — the Receptionist AI plus the eight HERNE specialists (seeded from the client pack by `services/herne/seed.ts`). `src/config/ai-agents.ts` holds the seed definitions as `AiAgentDefinition[]`. The Phase-2 in-memory provider is gone — exactly the wiring swap the seam was designed for. See §9.
 
 ---
 
@@ -288,7 +288,7 @@ Two subtleties worth calling out:
 
 - Agents were the seed registry in `src/config/ai-agents.ts`; `src/services/agents.ts` was the read/registry seam. There was **no inference, no provider call, no token spend**.
 - The schema (`0009`), the types (`src/types/ai.ts`), and the RLS policies were all production-shaped, so the runtime landed as an *additive* change, not a redesign.
-- The data-source choice is made **server-side** in `server-only` modules; `NEXT_PUBLIC_APP_MODE` is cosmetic only (the banner). A Supabase client can never be tree-shaken into a client bundle.
+- The data-source choice is made **server-side** in `server-only` modules. A service-role Supabase client can never be tree-shaken into a client bundle; the browser only ever holds the RLS-enforced anon-key auth client.
 
 **Phase 3 (delivered) — the runtime interprets the data.** The following now run against the *existing* shape, unchanged (except where noted):
 
@@ -303,9 +303,9 @@ The framework's promise holds end-to-end: **nothing about adding, editing, versi
 
 ## 10. The original three seed agents (historical illustration)
 
-> **Note (August 2026):** the live roster is now the **Receptionist AI plus the eight client-approved HERNE specialists** (Makela, Serena, Atlas, Aqua, Sage, Luca, Felix, Optimus), seeded from the client pack by `services/herne/seed.ts`. The three illustrative agents below were the Phase-2 seed set and are retained here as the original demonstration that genuinely different agents are expressible purely as data.
+> **Note (August 2026):** the live roster is now the **Receptionist AI plus the eight client-approved HERNE specialists** (Makela, Serena, Atlas, Aqua, Sage, Luca, Felix, Optimus), seeded from the client pack by `services/herne/seed.ts`. The three illustrative agents below were the Phase-2 seed set and are retained here as the original proof that genuinely different agents are expressible purely as data.
 
-The Phase-2 seed registry proved the framework's claim: three genuinely different agents, expressed entirely as data, differing only in configuration. All three were seeded `status: 'draft'` (nothing was live in Phase 2) and owned by the system super-admin in the prototype org.
+The Phase-2 seed registry proved the framework's claim: three genuinely different agents, expressed entirely as data, differing only in configuration. All three were seeded `status: 'draft'` (nothing was live in Phase 2) and owned by the system super-admin in the platform's single organisation.
 
 | Property | Assistant AI | Intake & Triage Assistant | Specialist Copilot |
 | --- | --- | --- | --- |

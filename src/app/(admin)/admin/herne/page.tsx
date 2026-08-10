@@ -93,7 +93,7 @@ export default async function HerneAdminPage() {
 
       <p className="flex items-center gap-2 rounded-xl bg-surface-muted px-5 py-4 text-sm text-muted-foreground">
         <HeartPulse className="size-4 shrink-0 text-primary" />
-        Collaboration and wearable rows are produced by the runtime engines; admin views are read-only except the shared DNA. Live Thryve is not connected — wearable figures come from the mock adapter.
+        Collaboration rows are produced by the runtime engines; admin views are read-only except the shared DNA. No wearable device integration is connected yet — no measurements are being synchronised.
       </p>
     </div>
   );

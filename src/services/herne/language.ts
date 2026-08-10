@@ -5,7 +5,7 @@
  * Two honest ideas kept separate:
  *   1. A person's PREFERENCE — the language, optional dialect, and whether they want
  *      voice. A preference can be expressed before a capability exists.
- *   2. The platform CAPABILITY — what is actually live today versus prototype/planned.
+ *   2. The platform CAPABILITY — what is actually live today versus planned.
  *      Text conversations in the chosen language are produced by the AI and work now,
  *      but are AI-generated (not clinically human-reviewed); voice and separately
  *      verified dialect coverage are NOT connected. The UI must never imply otherwise.
@@ -18,7 +18,7 @@ import {
   type HerneLanguage,
 } from '@/data/herne/languages';
 
-export type CapabilityStatus = 'live' | 'prototype' | 'planned';
+export type CapabilityStatus = 'live' | 'planned';
 
 export interface LanguagePreference {
   /** Supported BCP-47 code (always a catalogue member; defaults to English). */
@@ -43,7 +43,7 @@ export interface Capability {
 
 /**
  * The capability model — the SINGLE place that states what is live. Referenced by
- * the settings card and the public statement so the prototype/planned labelling can
+ * the settings card and the public statement so the live/planned labelling can
  * never drift from reality.
  */
 export const HERNE_CAPABILITIES: Record<'text' | 'language' | 'dialect' | 'voice', Capability> = {
@@ -53,7 +53,7 @@ export const HERNE_CAPABILITIES: Record<'text' | 'language' | 'dialect' | 'voice
     note: 'Chat with any specialist by text is available now.',
   },
   language: {
-    status: 'prototype',
+    status: 'live',
     label: 'Preferred language',
     note: 'Specialists can reply in your chosen language. Replies are AI-generated and not yet human-reviewed for clinical accuracy — English remains the reference version.',
   },

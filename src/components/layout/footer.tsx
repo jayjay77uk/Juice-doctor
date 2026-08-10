@@ -12,11 +12,11 @@ const socialIcons = {
   youtube: Youtube,
   linkedin: Linkedin,
   facebook: Facebook,
-  spotify: Youtube, // lucide has no Spotify brand mark; placeholder in prototype
+  spotify: Youtube, // lucide has no Spotify brand mark; placeholder icon
 } as const;
 
 export function Footer() {
-  const year = 2026; // prototype: fixed to keep builds deterministic
+  const year = 2026; // fixed to keep builds deterministic
 
   return (
     <footer className="bg-teal-800 text-cream-100">
@@ -88,7 +88,7 @@ export function Footer() {
           </ul>
         </div>
         <p className="mt-6 text-xs text-cream-200/70">
-          Prototype environment for demonstration only. Not medical advice. AI responses are live but for demonstration only and are not clinically reviewed. No real payments or patient data are used.
+          Not medical advice. AI responses are AI-generated and not clinically reviewed — not for emergencies; if you need urgent help, call your local emergency services. Online payments are not yet available.
         </p>
       </Container>
     </footer>

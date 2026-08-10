@@ -45,8 +45,8 @@ the admin views observe them rather than fabricate them.
 
 ## Honesty
 
-- Live Thryve is not connected — wearable figures come from the mock adapter, stated
-  on the overview and wearable pages.
+- Live Thryve is not connected — no device integration syncs data, so wearable
+  figures are honest empty states, stated on the overview and wearable pages.
 - When the DB is unconfigured, the overview shows a banner and zeros (no invented
   data).
 - The access matrix is derived from the catalogue's `specialist_access` (already

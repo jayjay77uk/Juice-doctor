@@ -92,17 +92,14 @@ export type AnalyticsEventType =
   | 'agent_run'
   | 'token_usage';
 
+/** Per-day AI activity — every field is measured from ai_run_logs, nothing derived. */
 export interface AnalyticsDailyPoint {
   day: string;
   conversations: number;
-  messages: number;
-  activeUsers: number;
-  escalations: number;
   tokensInput: number;
   tokensOutput: number;
   costMicros: number;
   avgLatencyMs: number;
-  satisfaction: number | null;
 }
 
 /** Aggregated headline metrics for the analytics dashboard. */

@@ -1,6 +1,6 @@
 import type { Consultation, Programme } from '@/types/content';
 
-/** Prototype placeholder content. */
+/** Placeholder content pending client-supplied copy. */
 export const programmes: Programme[] = [
   {
     id: 'prog-1',
@@ -68,7 +68,7 @@ export const programmes: Programme[] = [
   },
 ];
 
-/** Consultation types. Prototype placeholder content. */
+/** Consultation types. Placeholder content pending client-supplied copy. */
 export const consultations: Consultation[] = [
   {
     id: 'con-1',

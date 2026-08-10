@@ -1,9 +1,9 @@
 import type { Testimonial } from '@/types/content';
 
 /**
- * Testimonials — placeholder content for development only.
+ * Testimonials — placeholder content pending client-supplied copy.
  * `isSelfReported` drives the honesty footnote. Real, consented testimonials
- * are client-supplied before the demo (see approval gate).
+ * are client-supplied before public launch (see approval gate).
  */
 export const testimonials: Testimonial[] = [
   {

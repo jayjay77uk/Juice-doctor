@@ -1,7 +1,7 @@
 # 12 — Architecture Decision Records
 
-> **Prototype AI** — Phase 2: the enterprise backend foundation.
-> These records were written when the platform was production-*shaped* but not yet production-*wired*. **Update (2026-08-10):** the wiring has since happened — the migrations run on a live Supabase Postgres, sessions are real Supabase Auth, and Anthropic Claude inference is live. The decisions below stand; historical context sentences about mocks or an unconnected database describe the state at decision time, with per-record updates noted where the realised code has since moved on.
+> **Ask Juice Doctor AI** — Phase 2: the enterprise backend foundation.
+> These records were written when the platform was production-*shaped* but not yet production-*wired*. **Update (2026-08-10):** the wiring has since happened — the migrations run on a live Supabase Postgres, sessions are real Supabase Auth, and Anthropic Claude inference is live. The decisions below stand; historical context sentences about in-process stand-in stores or an unconnected database describe the state at decision time, with per-record updates noted where the realised code has since moved on.
 
 This document records the load-bearing decisions taken in Phase 2. Each is a compact **Architecture Decision Record (ADR)**: the **context** that forced a choice, the **decision** we took, the **rationale** (the *why*), and the **alternative we rejected** and why it lost.
 
@@ -18,7 +18,7 @@ An ADR is not documentation of a feature — it is a record of a *fork in the ro
 | **Rejected** | The strongest alternative and the specific reason it lost. |
 | **Realised in** | The real files/paths where the decision lives. |
 
-A cross-cutting theme runs through almost every record: **the prototype must be production-*shaped*.** Where a decision would be cheaper to fudge for a demo, we paid the cost to model it correctly, because the entire point of Phase 2 is to prove the *shape* is right (see [ADR-0003](#adr-0003--data-provider-selection-off-the-non-public-app_mode)).
+A cross-cutting theme runs through almost every record: **the pre-production build must be production-*shaped*.** Where a decision would be cheaper to fudge for a short-lived build, we paid the cost to model it correctly, because the entire point of Phase 2 is to prove the *shape* is right (see [ADR-0003](#adr-0003--data-provider-selection-off-the-non-public-app_mode)).
 
 ```mermaid
 mindmap
@@ -101,13 +101,13 @@ mindmap
 
 **Status:** Accepted · **Domain:** The seam
 
-**Context.** The prototype must *look and behave* like production while touching no live data, and the eventual switch to Supabase must be a swap, not a rewrite. Two independent concerns hide inside "are we in prototype mode?": (a) a **cosmetic** one — showing the "Prototype Environment" banner and demo affordances in the browser; and (b) a **security-sensitive** one — choosing the *data provider* (typed mocks vs. a real Supabase client). Conflating them risks the worst outcome: a Supabase client, and its service credentials, tree-shaken into a client bundle because a public flag decided the provider.
+**Context.** The pre-production build had to *look and behave* like production while touching no live data, and the eventual switch to Supabase had to be a swap, not a rewrite. Two independent concerns hide inside "which environment is this?": (a) a **cosmetic** one — client-visible environment labelling in the browser; and (b) a **security-sensitive** one — choosing the *data provider* (typed in-process stand-in stores vs. a real Supabase client). Conflating them risks the worst outcome: a Supabase client, and its service credentials, tree-shaken into a client bundle because a public flag decided the provider.
 
-**Decision.** Split the flag in two. `NEXT_PUBLIC_APP_MODE` is **cosmetic only** and safe to expose — it drives the banner via `src/config/app.ts` (`config.isPrototype`, `PROTOTYPE_BANNER_TEXT`). The **data-provider selection** is made separately in the **server-only** service layer, off the **non-public** `APP_MODE` env, so a Supabase client can never reach the browser. The whole prototype↔production switch is funnelled through a **single seam**: `config.isPrototype` for behaviour, and the provider branch inside `server-only` services (`src/services/*`, `src/lib/auth/session.ts`).
+**Decision.** Split the flag in two. `NEXT_PUBLIC_APP_MODE` was **cosmetic only** and safe to expose — it drove the environment banner via `src/config/app.ts`. The **data-provider selection** is made separately in the **server-only** service layer, off the **non-public** `APP_MODE` env, so a Supabase client can never reach the browser. The whole pre-production↔production switch is funnelled through a **single seam**: the provider branch inside `server-only` services (`src/services/*`, `src/lib/auth/session.ts`). **Update (2026-08-10):** the cosmetic half has since been retired — the environment banner mechanism is removed and `src/config/app.ts` now exports the app identity (`APP_NAME`) plus the standing safety/status notices. The security-sensitive half — provider selection on the non-public `APP_MODE` inside `server-only` modules — remains the live seam.
 
-**Rationale.** Keeping the provider decision on a *non-public* variable inside `server-only` modules makes it *physically impossible* for the client bundle to import a database driver — the boundary is enforced by the `import 'server-only'` guard, not by discipline. Keeping the cosmetic flag public means the banner renders without a round-trip. Funnelling both through *one named seam* means going live is auditable: you can point at exactly the code that changes.
+**Rationale.** Keeping the provider decision on a *non-public* variable inside `server-only` modules makes it *physically impossible* for the client bundle to import a database driver — the boundary is enforced by the `import 'server-only'` guard, not by discipline. Keeping the cosmetic flag public meant the banner rendered without a round-trip. Funnelling both through *one named seam* means going live is auditable: you can point at exactly the code that changes.
 
-**Rejected.** *A single public `NEXT_PUBLIC_*` flag driving both banner and provider.* Simpler to wire, but it is a security foot-gun: a public env var deciding which database client to instantiate invites credential leakage into the client bundle, and blurs the line between "cosmetic demo state" and "which backend is live." The minor duplication of two variables is a deliberate price for an un-leakable boundary.
+**Rejected.** *A single public `NEXT_PUBLIC_*` flag driving both banner and provider.* Simpler to wire, but it is a security foot-gun: a public env var deciding which database client to instantiate invites credential leakage into the client bundle, and blurs the line between "cosmetic environment state" and "which backend is live." The minor duplication of two variables is a deliberate price for an un-leakable boundary.
 
 **Realised in:** `src/config/app.ts`, `src/lib/auth/session.ts` (`loadSession` provider branch), `src/services/actions.ts`, `src/services/*` (`import 'server-only'`).
 
@@ -117,7 +117,7 @@ mindmap
 
 **Status:** Accepted · **Domain:** Data model
 
-**Context.** There are two candidate homes for the canonical data model: TypeScript types (ergonomic, close to the app) or SQL migrations (close to the database that ultimately enforces everything). If TypeScript leads, the migrations are a lossy afterthought and RLS/constraints get under-modelled. At decision time the prototype did **not run** the database — but the model it declared had to be *exactly* production's. (The migrations have since been applied to the live Supabase Postgres.)
+**Context.** There are two candidate homes for the canonical data model: TypeScript types (ergonomic, close to the app) or SQL migrations (close to the database that ultimately enforces everything). If TypeScript leads, the migrations are a lossy afterthought and RLS/constraints get under-modelled. At decision time the pre-production build did **not run** the database — but the model it declared had to be *exactly* production's. (The migrations have since been applied to the live Supabase Postgres.)
 
 **Decision.** The **~55 tables across 13 migrations in `db/migrations/`** are the **source of truth**; the TypeScript model (`src/types/db.ts` and the domain `src/types/*`) is **derived from them**. The migrations are authored, reviewed, and version-controlled — real, correct DDL (originally "paper SQL", now executed against the live database). Conventions are fixed in `0001` and applied uniformly: `uuid` PKs, `created_at`/`updated_at` + the `app.set_updated_at` trigger, `organisation_id` tenancy, **RLS on every table**, append-only logs, and `app`-schema helper functions.
 
@@ -133,11 +133,11 @@ mindmap
 
 **Status:** Accepted · **Domain:** Multi-tenancy
 
-**Context.** Today there is one organisation (Prototype Organisation). But the organisation may run multiple clinics, and the platform is plausibly sold to other operators. Retrofitting multi-tenancy onto a single-tenant schema is one of the most expensive migrations in software — it touches *every* table, *every* query, and *every* RLS policy at once, on live data.
+**Context.** Today there is one organisation. But the organisation may run multiple clinics, and the platform is plausibly sold to other operators. Retrofitting multi-tenancy onto a single-tenant schema is one of the most expensive migrations in software — it touches *every* table, *every* query, and *every* RLS policy at once, on live data.
 
 **Decision.** Model tenancy **from the first migration**: `organisations`, `clinics`, and `organisation_memberships` land in `0002`, and **every tenant-scoped table carries `organisation_id`**. RLS policies scope by `app.current_org_id()` (with `or app.is_super_admin()` for platform-wide reads). Multi-org / multi-clinic is therefore a matter of *data*, not a schema rewrite.
 
-**Rationale.** The marginal cost of carrying `organisation_id` on a table that currently holds one org's data is nearly zero — one column, one index, one clause in each policy. The cost of *not* having it, discovered later, is a platform-wide data migration under load. Adding the column up front also forces every RLS policy to be written tenant-aware from the start, which is exactly the discipline that prevents cross-tenant leakage. The prototype seeds a single canonical org (`00000000-0000-0000-0000-000000000001`) so the shape is exercised end to end.
+**Rationale.** The marginal cost of carrying `organisation_id` on a table that currently holds one org's data is nearly zero — one column, one index, one clause in each policy. The cost of *not* having it, discovered later, is a platform-wide data migration under load. Adding the column up front also forces every RLS policy to be written tenant-aware from the start, which is exactly the discipline that prevents cross-tenant leakage. The platform seeds a single canonical org (`00000000-0000-0000-0000-000000000001`) so the shape is exercised end to end.
 
 **Rejected.** *Single-tenant now, add tenancy "when we need it."* Cheaper this week, catastrophic later: the retrofit is a big-bang migration touching everything, precisely when the system is most valuable and least safe to disrupt. Carrying an unused-but-correct tenancy key is the textbook example of a cheap option bought early to avoid an expensive forced move later.
 
@@ -221,7 +221,7 @@ mindmap
 
 **Rejected.** *Keeping `middleware.ts`, or scattering headers/CSRF/route-guards across route handlers and a `<meta>` tag.* The former simply would not execute under Next 16. The latter loses the single chokepoint: security headers set per-route drift, and CSRF/route-protection checks get forgotten on new endpoints. One edge file is the smallest trusted surface.
 
-**Realised in:** `src/proxy.ts`, `src/lib/security/headers.ts`, `src/lib/security/csrf.ts`, `src/config/app.ts` (`isPrototype`).
+**Realised in:** `src/proxy.ts`, `src/lib/security/headers.ts`, `src/lib/security/csrf.ts`.
 
 ---
 
@@ -265,7 +265,7 @@ mindmap
 
 **Decision.** Split the **server-only service layer** by verb. **Reads are getters** — plain `server-only` functions returning typed `Result`/`Page` values (`src/services/*.ts`, e.g. `knowledge`, `memory`, `agents`, `admin.metrics`). **Writes are Server Actions** behind the `'use server'` boundary (`src/services/actions.ts`), invoked from client forms via `useActionState`, validated with `zod`. UI (`src/components`) → domain (`src/lib`, `src/hooks`) → services; components never reach a provider directly.
 
-**Rationale.** The verb split aligns the code with the two distinct concerns: getters are the natural home for the read provider and caching (`react` `cache`), while Server Actions are the single validated mutation entry point where CSRF (same-origin, [ADR-0010](#adr-0010--middleware-lives-in-proxyts-next-16-convention)) and permission guards ([ADR-0002](#adr-0002--rbac-in-the-app-and-rls-in-the-database-defence-in-depth)) belong. Because the mock lives *behind* the `'use server'` / `server-only` boundary, moving to Supabase + Resend is a **body swap**, not a component rewrite — client forms already have real pending/error/success wiring. It also enforces the layering: a component cannot accidentally import a database client.
+**Rationale.** The verb split aligns the code with the two distinct concerns: getters are the natural home for the read provider and caching (`react` `cache`), while Server Actions are the single validated mutation entry point where CSRF (same-origin, [ADR-0010](#adr-0010--middleware-lives-in-proxyts-next-16-convention)) and permission guards ([ADR-0002](#adr-0002--rbac-in-the-app-and-rls-in-the-database-defence-in-depth)) belong. Because the provider lives *behind* the `'use server'` / `server-only` boundary, moving to Supabase (since done) — and later to a live email provider — is a **body swap**, not a component rewrite: client forms already have real pending/error/success wiring. It also enforces the layering: a component cannot accidentally import a database client.
 
 **Rejected.** *Ad-hoc data access in components / mixed read-write "repository" methods.* Convenient, but it dissolves the read/write distinction, spreads the provider seam across the codebase, and leaves no single place to attach validation and authorisation to mutations. One getter layer plus one actions layer keeps the seam and the security surface small and named.
 
@@ -312,7 +312,7 @@ These records are not independent — they reinforce one another around a few sp
 | Theme | Records | The through-line |
 | --- | --- | --- |
 | **Defence in depth** | 0002, 0009, 0012, 0015 | Every security control is enforced at *two* boundaries, or by the *absence* of a capability, never by discipline alone. |
-| **One named seam** | 0003, 0004, 0010, 0011, 0013 | Prototype↔production is a *swap*, funnelled through `config.isPrototype` and `server-only` provider branches — auditable, not scattered. |
+| **One named seam** | 0003, 0004, 0010, 0011, 0013 | Pre-production↔production is a *swap*, funnelled through `server-only` provider branches — auditable, not scattered. |
 | **Model it now, wire it later** | 0005, 0006, 0007, 0008, 0011 | The expensive-to-retrofit *shape* (tenancy, agents, memory, knowledge, flags) was designed correctly first; inference and live data have since been wired in on that shape, and vector search remains the one deferral. |
 | **Single definition** | 0001, 0002, 0006, 0014 | Roles, permissions, agents, and workflows each have exactly one source of truth, from which every consumer derives. |
 

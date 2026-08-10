@@ -147,7 +147,7 @@ export function BookingFlow({
               ))}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Prototype — these are sample times, not live availability.
+              Example times shown — live availability isn’t connected yet.
             </p>
           </fieldset>
         )}
@@ -182,7 +182,8 @@ export function BookingFlow({
               <SubmitButton />
             </div>
             <p className="text-xs text-muted-foreground">
-              Prototype — no appointment is actually reserved.
+              Online booking from this page isn’t available yet — no appointment will be
+              reserved. Members can book from their dashboard.
             </p>
           </form>
         )}

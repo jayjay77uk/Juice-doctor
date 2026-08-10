@@ -1,7 +1,7 @@
 # 03 · Database Architecture
 
-> **Status note.** Originally authored as a *paper design*: in Phase 2 the prototype
-> executed **no** SQL and ran on typed mock providers. That stage is history — the
+> **Status note.** Originally authored as a *paper design*: in Phase 2 the platform
+> executed **no** SQL and ran on typed in-memory providers. That stage is history — the
 > migrations in [`db/migrations/`](../../db/migrations) (the set now runs `0001`–`0030`)
 > are **applied to the live Supabase Postgres**, and every operational read/write goes
 > through the server-only service layer (`src/services/*`, backed by repositories over
@@ -22,8 +22,8 @@ requires* — but never executed — is the highest-leverage way to hit that bri
 - It forces every downstream decision (RLS posture, tenancy, the AI-agent-as-data model,
   the memory scopes) to be **real**, because it has to compile as SQL and as TypeScript.
 - It makes the eventual switch to a live database a **mechanical** step — *run the
-  migrations, swap the mock provider for the Supabase client* — rather than a redesign.
-- It kept the Phase-2 prototype cheap and safe: no live data, no auth, no PHI, no bills.
+  migrations, swap the in-memory provider for the Supabase client* — rather than a redesign.
+- It kept the Phase-2 build cheap and safe: no live data, no auth, no PHI, no bills.
 
 Everything below was therefore written to be **correct in production**, deliberately
 *not run* during Phase 2 — and has since been applied unchanged to the live database.
@@ -120,7 +120,7 @@ depend on earlier ones. Grouped by domain concern:
 | # | File | Key objects | Notes |
 | --- | --- | --- | --- |
 | 0001 | `extensions_and_helpers` | `app_role`, `record_status`, `publish_status` enums; `app.set_updated_at`; role/permission/tenant helper fns | pgcrypto, citext, pg_trgm enabled; `vector` declared but deferred. |
-| 0002 | `tenancy` | `organisations`, `clinics`, `organisation_memberships` | One org in the prototype; the column & RLS exist everywhere. |
+| 0002 | `tenancy` | `organisations`, `clinics`, `organisation_memberships` | One org on the platform today; the column & RLS exist everywhere. |
 
 ### Identity, auth & consent
 
@@ -264,7 +264,7 @@ to satisfy it is before any data exists. So:
 
 - **Multi-tenancy is data, not a rewrite.** Every tenant-scoped table already carries
   `organisation_id`; `organisations` + `clinics` + `organisation_memberships` (`0002`)
-  already model the hierarchy. In the prototype exactly **one** organisation row exists and
+  already model the hierarchy. Today exactly **one** organisation row exists and
   the column is effectively constant — but the column, the FK, the index, and the RLS
   policy are all already present. Going multi-tenant means *inserting rows*, not migrating
   every table and rewriting every policy.

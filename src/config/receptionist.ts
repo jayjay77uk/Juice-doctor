@@ -74,7 +74,7 @@ export const DEFAULT_RECEPTIONIST_SETTINGS: ReceptionistSettings = {
     'When confidence is below the threshold, hand the conversation to a member of the team instead of recommending an AI.',
   whatsappEnabled: true,
   whatsappNumber: '+44 0000 000000',
-  escalationTarget: { name: 'Prototype Team', role: 'Client team', channel: 'whatsapp' },
+  escalationTarget: { name: 'Ask Juice Doctor AI Team', role: 'Client team', channel: 'whatsapp' },
 };
 
 /** Back-compat exports used by the CRM seed and the receptionist service. */

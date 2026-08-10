@@ -1,8 +1,8 @@
 import type { PodcastEpisode } from '@/types/content';
 
 /**
- * Placeholder episodes. `audioUrl` is null in the prototype (no media is
- * hosted); Phase 2 points it at real hosting.
+ * Placeholder episodes. `audioUrl` is null until audio hosting is connected
+ * (no media is hosted yet).
  */
 export const podcastEpisodes: PodcastEpisode[] = [
   {

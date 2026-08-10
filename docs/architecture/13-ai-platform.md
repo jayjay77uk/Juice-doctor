@@ -1,6 +1,6 @@
 # 13 · AI Management Platform
 
-> **Status (updated 2026-08-10):** written for Phase 3, when no inference ran and the services were mock-backed. **Both of those are history**: the platform now runs **live Anthropic Claude inference** (default `claude-sonnet-5`), and the identical services read/write **real Supabase tables** (migrations 0009 / 0012 / 0014) — agents, versioned prompts (the *published* version feeds live inference), safety policies (stored as real rows; runtime enforcement is still the coded checks — see §6), ranked full-text knowledge retrieval, and `ai_run_logs` with tokens/cost/latency on every call. The design described here — every aspect of AI behaviour **configured, not coded** — is what actually runs. Mentions of mock stores, templated playground responses and seeded analytics below are the Phase-3 state, corrected inline where load-bearing.
+> **Status (updated 2026-08-10):** written for Phase 3, when no inference ran and the services were backed by in-process stand-in stores. **Both of those are history**: the platform now runs **live Anthropic Claude inference** (default `claude-sonnet-5`), and the identical services read/write **real Supabase tables** (migrations 0009 / 0012 / 0014) — agents, versioned prompts (the *published* version feeds live inference), safety policies (stored as real rows; runtime enforcement is still the coded checks — see §6), ranked full-text knowledge retrieval, and `ai_run_logs` with tokens/cost/latency on every call. The design described here — every aspect of AI behaviour **configured, not coded** — is what actually runs. Mentions of stand-in stores, templated playground responses and seeded analytics below are the Phase-3 state, corrected inline where load-bearing.
 
 **Canonical sources referenced by this document**
 
@@ -232,7 +232,7 @@ The knowledge portal ([06 · Knowledge Architecture](./06-knowledge-architecture
 | Collection | [`knowledge_collections`](../../db/migrations/0014_ai_platform_management.sql#L95) (0014) | A *curated set* — e.g. an agent's reading list — independent of categories |
 | Membership | [`knowledge_collection_documents`](../../db/migrations/0014_ai_platform_management.sql#L109) (0014) | Ordered docs within a collection |
 
-Categories are the *taxonomy* (where a document belongs); collections are *curation* (which documents an agent is allowed to read). Collections read from real `knowledge_collections` rows (the earlier seeded demo collections are gone; the list is empty until collections are created).
+Categories are the *taxonomy* (where a document belongs); collections are *curation* (which documents an agent is allowed to read). Collections read from real `knowledge_collections` rows (the earlier fictional seeded collections are gone; the list is empty until collections are created).
 
 ### Source types
 
@@ -266,7 +266,7 @@ Transitions are driven from the admin by `transitionDocumentAction`. Sharing one
 
 ### Future vector search (deferred)
 
-Embeddings are **intentionally not built yet**. `KnowledgeEmbedding` is a placeholder until `pgvector` is enabled, gated behind the `knowledge.vector_search` feature flag (default off — "needs pgvector") in [`feature-flags.ts`](../../src/config/feature-flags.ts#L33). Until then retrieval is **ranked Postgres full-text search** (`ts_rank` via a SQL function locked to the service role) over real `knowledge_chunks` — the playground's "retrieved chunks" are genuine FTS results, not mocks; the seam is ready so vector retrieval can be switched on without reshaping the portal.
+Embeddings are **intentionally not built yet**. `KnowledgeEmbedding` is a placeholder until `pgvector` is enabled, gated behind the `knowledge.vector_search` feature flag (default off — "needs pgvector") in [`feature-flags.ts`](../../src/config/feature-flags.ts#L33). Until then retrieval is **ranked Postgres full-text search** (`ts_rank` via a SQL function locked to the service role) over real `knowledge_chunks` — the playground's "retrieved chunks" are genuine FTS results; the seam is ready so vector retrieval can be switched on without reshaping the portal.
 
 ---
 
@@ -353,13 +353,13 @@ The AI Analytics page (`/admin/ai/analytics`) renders these via the admin kit's 
 | Popular questions | `analytics.popularQuestions` | not built yet — returns an empty list (question clustering is future work) |
 | Knowledge usage (retrievals per document) | `analytics.knowledgeUsage` | retrieval counts |
 
-**Cost and token tracking are first‑class.** `cost_micros` and token counts live on the run log and flow through the playground's per‑run metrics — so the client can watch spend per agent and make model‑swap decisions (Opus → Sonnet → Haiku) as a configuration choice. Every figure on the analytics surface is computed from **real rows** (`ai_run_logs`, CRM leads, consultations, subscriptions) — the Phase-3 seeded mock generator is gone.
+**Cost and token tracking are first‑class.** `cost_micros` and token counts live on the run log and flow through the playground's per‑run metrics — so the client can watch spend per agent and make model‑swap decisions (Opus → Sonnet → Haiku) as a configuration choice. Every figure on the analytics surface is computed from **real rows** (`ai_run_logs`, CRM leads, consultations, subscriptions) — the Phase-3 synthetic seeded generator is gone.
 
 ---
 
-## 9. The prototype → production seam (now crossed)
+## 9. The pre-production → production seam (now crossed)
 
-The whole platform was written **production‑shaped and mock‑backed**, and the swap has since happened: every read service is `server-only`, returns a `Result<T>` ([`result.ts`](../../src/services/result.ts)), and hides its store behind an interface that did not change when the data source did. The in‑process mutable stores (whose mutations reset on restart — the old "prototype" tell) have been replaced by Supabase repositories; CRUD now persists.
+The whole platform was written **production‑shaped** on in-process stand-in stores, and the swap has since happened: every read service is `server-only`, returns a `Result<T>` ([`result.ts`](../../src/services/result.ts)), and hides its store behind an interface that did not change when the data source did. The in‑process mutable stores (whose mutations reset on restart — the old pre-production tell) have been replaced by Supabase repositories; CRUD now persists.
 
 ```mermaid
 flowchart LR
@@ -374,11 +374,11 @@ flowchart LR
 | Safety | `safety.ts` array | `ai_safety_policies`, `ai_agent_safety_policies` (0014) | none |
 | Knowledge | `knowledge.ts` seed docs/categories/collections | `knowledge_*` (0012 / 0014) | none |
 | Analytics | `analytics.ts` seeded generator | computed live from `ai_run_logs`, `message_feedback`, CRM + subscription rows (the 0014 `analytics_events`/`analytics_daily_rollup` tables exist unused as the scaling path) | none |
-| Run logs | `playground.ts` array | `ai_run_logs` (0014) | `run()` swapped mock → live inference |
+| Run logs | `playground.ts` array | `ai_run_logs` (0014) | `run()` swapped templated replies → live inference |
 | Feature flags | `feature-flags.ts` `Map` override | `feature_flags`, `feature_flag_overrides` (0013) | none |
 | Memory | `memory.ts` array | `ai_memory` (0011) | none |
 
-**What production added, and where it already fit.** RLS on all 0014 tables scopes reads/writes to the org and re‑enforces the RBAC gates the UI already respected — `prompts_write`/`safety_write` require admin or `agents.configure`; `analytics_*_read` require staff; `run_logs_read` allows an actor their own playground runs (see [04 · RLS](./04-rls-security-model.md), [02 · RBAC](./02-authorization-rbac.md)). The Server Actions in [`admin-actions.ts`](../../src/services/admin-actions.ts) carry zod validation and role assertions. Turning the prototype into product was exactly the promised **wiring change behind the service seam** — the stores were repointed at Supabase and `playground.run()` became real inference, with no rewrite. `knowledge.vector_search` remains the one switch still off. The management surface was built once; the client configures it forever.
+**What production added, and where it already fit.** RLS on all 0014 tables scopes reads/writes to the org and re‑enforces the RBAC gates the UI already respected — `prompts_write`/`safety_write` require admin or `agents.configure`; `analytics_*_read` require staff; `run_logs_read` allows an actor their own playground runs (see [04 · RLS](./04-rls-security-model.md), [02 · RBAC](./02-authorization-rbac.md)). The Server Actions in [`admin-actions.ts`](../../src/services/admin-actions.ts) carry zod validation and role assertions. Turning the pre-production build into product was exactly the promised **wiring change behind the service seam** — the stores were repointed at Supabase and `playground.run()` became real inference, with no rewrite. `knowledge.vector_search` remains the one switch still off. The management surface was built once; the client configures it forever.
 
 ---
 

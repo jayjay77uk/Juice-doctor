@@ -1,8 +1,8 @@
 # 04 · Row-Level Security Model
 
-> **Scope.** This document explains the **Row-Level Security (RLS)** posture of the Prototype AI platform: the governing principle, the `SECURITY DEFINER` helper functions that make policies both safe and terse, the small vocabulary of standard policy patterns, the append-only log discipline, and two fully worked examples. It closes with *why* the platform enforces access in two places at once — RBAC in the application **and** RLS in the database.
+> **Scope.** This document explains the **Row-Level Security (RLS)** posture of the Ask Juice Doctor AI platform: the governing principle, the `SECURITY DEFINER` helper functions that make policies both safe and terse, the small vocabulary of standard policy patterns, the append-only log discipline, and two fully worked examples. It closes with *why* the platform enforces access in two places at once — RBAC in the application **and** RLS in the database.
 >
-> **Status note.** The migrations under [`db/migrations/`](../../db/migrations/) are **applied to the live Supabase Postgres** — every policy quoted here is real, lives in the migration cited, and is enforced on live rows today. (When this document was first written, in Phase 2, the SQL was an unexecuted design and the app ran on mock providers; that stage is history.) Server-side writes that must bypass RLS run under the service-role key, which never leaves the server — see §4.
+> **Status note.** The migrations under [`db/migrations/`](../../db/migrations/) are **applied to the live Supabase Postgres** — every policy quoted here is real, lives in the migration cited, and is enforced on live rows today. (When this document was first written, in Phase 2, the SQL was an unexecuted design and the app ran on in-memory providers; that stage is history.) Server-side writes that must bypass RLS run under the service-role key, which never leaves the server — see §4.
 
 ---
 

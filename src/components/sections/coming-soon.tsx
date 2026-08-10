@@ -3,8 +3,8 @@ import { Sparkles } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
 /**
- * A designed "coming soon (prototype)" panel — a real branded moment for
- * high-intent features not built in Phase 1, never a greyed-out button.
+ * A designed "coming soon" panel — a real branded moment for high-intent
+ * features not yet built, never a greyed-out button.
  */
 export function ComingSoon({
   title,

@@ -162,7 +162,7 @@ export default async function CrmLeadsPage({
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Live data from the platform database — includes seeded demonstration leads. No payment provider is connected.
+        Live data from the platform database. No payment provider is connected.
       </p>
     </div>
   );

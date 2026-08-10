@@ -120,11 +120,11 @@ the user dashboard (`/dashboard/care-plan`).
 - All 15 referral rules loaded; 6 human-escalation pathways classified (unit tests).
 - Human escalation classifier tested against the matrix.
 
-## Prototype limitations / awaiting client
+## Current limitations / awaiting client
 
 - Contradiction detection is structural (shared plan + dedup + Makela reconciles),
   not semantic conflict analysis.
 - Consent on referrals is recorded as a field; wearable consent has its own managed,
   revocable surface (doc 17), but a unified consent-management surface is a follow-up.
-- Wearable summaries are now supplied by the wearable layer (doc 17); its data source
-  remains a mock Thryve adapter with deterministic fixtures.
+- Wearable summaries are supplied by the wearable layer (doc 17); no device
+  integration is connected yet, so wearable reads return honest empty states.

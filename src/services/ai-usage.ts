@@ -4,7 +4,7 @@ import { env } from '@/lib/env';
 import { runLogRepo } from './repositories/run-log-repo';
 
 /**
- * Prototype AI usage limits — durable per-user daily/monthly request caps (counted
+ * AI usage limits — durable per-user daily/monthly request caps (counted
  * from ai_run_logs) plus an in-process concurrent-request guard. Durable counts use
  * the DB so they survive restarts; the concurrency gate is per-instance (best-effort
  * back-pressure). All limits are configurable via env (AI_DAILY_USER_LIMIT, etc.).

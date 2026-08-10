@@ -6,14 +6,13 @@ import { escalationEngine } from '../referrals';
 import { carePlan } from '../care-plan';
 import { loadWearableCatalog, EXPECTED_METRIC_COUNT, wearableMetric } from './catalog';
 import { canSpecialistAccessMetric, permittedMetricsFor } from './access';
-import { normaliseMeasurement, isDuplicate, type RawMeasurement } from './normalise';
-import { computeTrend, mean } from './trends';
-import { createMockThryveAdapter } from './thryve-adapter';
 
 /**
- * DB-backed wearable service: catalogue ingestion, consent, mock-sync (normalise +
- * quality + trends), the AI context builder (permitted + minimised + logged) and
- * wearable-triggered escalation. Uses the mock Thryve adapter only.
+ * DB-backed wearable service: catalogue ingestion (system configuration),
+ * consent ledger, the AI context builder (permitted + minimised + logged) and
+ * wearable-triggered escalation. There is NO synchronisation path yet — no
+ * device provider is connected, so no measurements are written; reads return
+ * honest empty states until a real integration (e.g. Thryve) is wired.
  */
 
 const ORG = HERNE_ORG;
@@ -81,84 +80,6 @@ export const wearableConsent = {
   },
 };
 
-export async function syncWearables(userId: string): Promise<{ stored: number; duplicates: number; qualityFlags: number; trends: number }> {
-  const sb = createAdminClient();
-  if (!sb) return { stored: 0, duplicates: 0, qualityFlags: 0, trends: 0 };
-  const adapter = createMockThryveAdapter();
-  const consentGranted = await wearableConsent.isGranted(userId);
-  const consentStatus = consentGranted ? 'granted' : 'unknown';
-
-  const raw = await adapter.fetchMeasurements(userId);
-  const existing = await sb.from('wearable_measurements').select('metric_id, observed_at').eq('user_id', userId);
-  const seen = new Set((existing.data ?? []).map((r: Record<string, unknown>) => `${r.metric_id}|${r.observed_at ? new Date(String(r.observed_at)).toISOString() : ''}`));
-
-  const byMetric = new Map<string, RawMeasurement[]>();
-  for (const r of raw) byMetric.set(r.metricId, [...(byMetric.get(r.metricId) ?? []), r]);
-
-  const measurementRows: Record<string, unknown>[] = [];
-  const qualityRows: Record<string, unknown>[] = [];
-  const trendRows: Record<string, unknown>[] = [];
-  let duplicates = 0;
-
-  for (const [metricId, list] of byMetric) {
-    const baseline = mean(list.map((r) => r.value));
-    for (const r of list) {
-      if (isDuplicate(r, seen)) {
-        duplicates += 1;
-        continue;
-      }
-      const n = normaliseMeasurement(r, { baseline, consentStatus });
-      measurementRows.push({
-        organisation_id: ORG,
-        user_id: userId,
-        metric_id: n.metricId,
-        canonical_name: n.canonicalName,
-        value: n.value,
-        unit: n.unit,
-        source_provider: n.sourceProvider,
-        source_device: n.sourceDevice,
-        observed_at: n.observedAt,
-        timezone: n.timezone,
-        personal_baseline: n.personalBaseline,
-        deviation: n.deviation,
-        data_quality: n.dataQuality,
-        confidence: n.confidence,
-        raw_source_ref: n.rawSourceRef,
-        consent_status: n.consentStatus,
-        sensitivity: n.sensitivity,
-      });
-      for (const issue of n.issues) {
-        qualityRows.push({ organisation_id: ORG, user_id: userId, metric_id: metricId, issue: issue.code, detail: issue.detail, severity: issue.severity });
-      }
-    }
-    const trend = computeTrend(list.map((r) => ({ value: r.value, observedAt: r.observedAt ?? '' })), { window: 'weekly' });
-    trendRows.push({
-      organisation_id: ORG,
-      user_id: userId,
-      metric_id: metricId,
-      window: 'weekly',
-      average: trend.average,
-      baseline: trend.baseline,
-      deviation: trend.deviation,
-      direction: trend.direction,
-      confidence: trend.confidence,
-      coverage: trend.coverage,
-      missing_notice: trend.missingNotice,
-    });
-  }
-
-  if (measurementRows.length) await sb.from('wearable_measurements').insert(measurementRows);
-  if (qualityRows.length) await sb.from('wearable_data_quality_flags').insert(qualityRows);
-  if (trendRows.length) {
-    // Replace prior weekly trends for these metrics.
-    await sb.from('wearable_trend_summaries').delete().eq('user_id', userId).eq('window', 'weekly');
-    await sb.from('wearable_trend_summaries').insert(trendRows);
-  }
-  await sb.from('wearable_sync_jobs').insert({ organisation_id: ORG, user_id: userId, status: 'ok', metrics_synced: byMetric.size, finished_at: new Date().toISOString() });
-
-  return { stored: measurementRows.length, duplicates, qualityFlags: qualityRows.length, trends: trendRows.length };
-}
-
 export interface WearableContextItem {
   metricId: string;
   name: string;
@@ -224,7 +145,7 @@ export interface WearableDashboard {
   qualityFlags: number;
 }
 
-/** Read-model for the user's Connected Health dashboard (prototype fixtures via the mock adapter). */
+/** Read-model for the user's Connected Health dashboard — reads the live wearable tables; empty until a device integration is connected. */
 export async function wearableDashboard(userId: string): Promise<WearableDashboard> {
   const sb = createAdminClient();
   if (!sb) return { consent: false, categories: [], lastSyncAt: null, trends: [], qualityFlags: 0 };

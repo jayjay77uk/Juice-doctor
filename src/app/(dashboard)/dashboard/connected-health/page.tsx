@@ -4,10 +4,8 @@ import { AdminHeader } from '@/components/admin/admin-header';
 import { Panel } from '@/components/admin/panel';
 import { StatGrid, StatCard } from '@/components/admin/stat-card';
 import { EmptyState } from '@/components/admin/empty-state';
-import { Button } from '@/components/ui/button';
 import { getSession } from '@/services/auth';
 import { wearableDashboard } from '@/services/herne/wearable/store';
-import { connectWearableAction, disconnectWearableAction } from '@/services/herne/wearable/actions';
 
 export const metadata = createMetadata({ title: 'Connected health', path: '/dashboard/connected-health' });
 export const dynamic = 'force-dynamic';
@@ -27,22 +25,12 @@ export default async function ConnectedHealthPage() {
     <div className="mx-auto flex max-w-5xl flex-col gap-8">
       <AdminHeader
         title="Connected health"
-        description="Your wearable trends inform your HERNE team — with your consent, and only what each specialist is permitted to see."
-        actions={
-          data.consent ? (
-            <form action={disconnectWearableAction}>
-              <Button type="submit" intent="ghost" size="sm">Disconnect</Button>
-            </form>
-          ) : (
-            <form action={connectWearableAction}>
-              <Button type="submit" size="sm">Connect a device (sample data)</Button>
-            </form>
-          )
-        }
+        description="Your wearable trends will inform your HERNE team — with your consent, and only what each specialist is permitted to see."
       />
 
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        The live device connection is not active yet. Connecting loads sample data so you can see how this works — no real device is synchronised.
+      <div className="rounded-xl border border-border bg-surface-muted px-4 py-3 text-sm text-muted-foreground">
+        Wearable device connections are not available yet. When the device integration launches you will be able to
+        connect a device here, choose what to share, and see your trends inform your care plan.
       </div>
 
       <StatGrid>
@@ -57,8 +45,8 @@ export default async function ConnectedHealthPage() {
           <div className="p-5 sm:p-6">
             <EmptyState
               icon={Moon}
-              title={data.consent ? 'No trends yet' : 'Connect to see your trends'}
-              description={data.consent ? 'Trends appear here once data has synced.' : 'Grant consent to bring your wearable trends into your care plan.'}
+              title="No trends yet"
+              description="Once wearable connections launch and your device has synced, your trends will appear here."
             />
           </div>
         ) : (

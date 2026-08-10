@@ -1,9 +1,9 @@
 # 01 · Authentication & Authorisation Architecture
 
-> **Prototype AI — Phase 2 Enterprise Backend Foundation**
-> Status: **live**. Originally shipped as a production-shaped design on typed mock providers; the platform now runs real Supabase Auth (sign-in, registration, password reset), live data, and live AI inference.
+> **Ask Juice Doctor AI — Phase 2 Enterprise Backend Foundation**
+> Status: **live**. Originally shipped as a production-shaped design on typed in-memory providers; the platform now runs real Supabase Auth (sign-in, registration, password reset), live data, and live AI inference.
 
-This document describes how the platform decides **who a caller is** (authentication) and **what they may do** (authorisation). Phase 2 shipped the *shape* of a production identity system — the seams, the role model, the guards, and the database schema — before Supabase was connected. That production path is now the live one: `loadSession()` reads the Supabase auth cookie and loads the caller's profile. The canned personas remain only as a compatibility fallback for local development without Supabase keys.
+This document describes how the platform decides **who a caller is** (authentication) and **what they may do** (authorisation). Phase 2 shipped the *shape* of a production identity system — the seams, the role model, the guards, and the database schema — before Supabase was connected. That production path is now the only one: `loadSession()` reads the Supabase auth cookie and loads the caller's profile, and returns `null` (an honest signed-out state) when Supabase is not configured or no session exists. The placeholder development personas that existed during the pre-production build have been removed from the codebase.
 
 The guiding principle throughout is **defence in depth**: every rule is enforced twice — once in the application (RBAC engine + guards) and once in the database (Row-Level Security). The two are deliberately kept in lock-step so a mistake in one layer is caught by the other.
 
@@ -123,7 +123,7 @@ This buys us real-world flexibility without abandoning the model: a specific pra
 
 ## 4. Sessions: the `getSession` seam
 
-Everything authentication-related funnels through a **single server-only seam**: [`src/lib/auth/session.ts`](../../src/lib/auth/session.ts). The rest of the application depends only on the *shape* it returns, never on *how* the session was obtained. This is what makes the prototype→production swap a one-function change.
+Everything authentication-related funnels through a **single server-only seam**: [`src/lib/auth/session.ts`](../../src/lib/auth/session.ts). The rest of the application depends only on the *shape* it returns, never on *how* the session was obtained. This is what made the pre-production→production swap a one-function change.
 
 ### The contract
 
@@ -146,15 +146,15 @@ Key properties of the seam:
 - **Request-memoised.** `getSession` is wrapped in React's `cache()`, so within one request every guard, layout and component sees the same session with a single resolution.
 - **One `loadSession()` body.** That function is the *only* place that knows how a session is produced. Swapping its body is the entire migration.
 
-### Prototype vs production
+### How a session resolves
 
 ```mermaid
 flowchart TD
     Start([getSession · cached per request]) --> Load[loadSession]
     Load --> Mode{isSupabaseConfigured?}
 
-    Mode -->|no · local dev| Canned["Return CANNED&#91;roleHint&#93;<br/>e.g. Admin User = administrator"]
-    Mode -->|yes · live| Cookie["createServerClient&#40;cookies&#40;&#41;&#41;"]
+    Mode -->|no| Null0[return null → guest]
+    Mode -->|yes| Cookie["createServerClient&#40;cookies&#40;&#41;&#41;"]
 
     Cookie --> User["supabase.auth.getUser&#40;&#41;<br/>await token refresh"]
     User --> HasUser{user?}
@@ -162,16 +162,15 @@ flowchart TD
     HasUser -->|yes| Profile["loadProfile&#40;user.id&#41;<br/>role · org · overrides"]
     Profile --> Build["toSessionUser&#40;user, profile&#41;"]
 
-    Canned --> Ctx[toAuthContext → RBAC AuthContext]
-    Build --> Ctx
+    Build --> Ctx[toAuthContext → RBAC AuthContext]
+    Null0 --> Ctx
     Null --> Ctx
 
     style Mode fill:#1f2937,color:#fff
-    style Canned fill:#f59e0b,color:#000
     style Cookie fill:#10b981,color:#000
 ```
 
-**Local fallback (Supabase not configured).** `loadSession()` returns a canned persona from the `CANNED` map — one fully-formed `SessionUser` per role — so local development without Supabase keys still renders every shell. On the deployed platform this branch is never taken. **`roleHint` is a fallback-only affordance; the live path ignores it entirely** — the role comes from the authenticated profile, never from a caller-supplied hint. This is critical: it means the local convenience mechanism cannot become a production privilege-escalation vector.
+**Supabase not configured.** `loadSession()` returns `null` — the caller is a guest and protected surfaces redirect honestly. There is **no fictional persona fallback**: the role always comes from the authenticated profile, never from a caller-supplied hint. (A legacy role-hint argument on `getSession` is accepted and ignored for call-site compatibility.) This is critical: no convenience mechanism exists that could become a privilege-escalation vector.
 
 **Production (live).** `loadSession()`:
 1. Builds a Supabase server client bound to the request `cookies()`.
@@ -410,7 +409,7 @@ select
 | Role hierarchy | [`src/lib/auth/roles.ts`](../../src/lib/auth/roles.ts) | `APP_ROLES`, `ROLE_RANK`, `ROLE_META`, `hasMinRole`, staff/admin/super helpers |
 | Permission catalogue | [`src/config/permissions.ts`](../../src/config/permissions.ts) | `PERMISSIONS` (`resource.action`), `ROLE_BASE_PERMISSIONS`, `sensitive` flags |
 | RBAC engine | [`src/lib/auth/permissions.ts`](../../src/lib/auth/permissions.ts) | `ROLE_PERMISSIONS`, `hasPermission` (deny-wins), `AuthContext` |
-| Session seam | [`src/lib/auth/session.ts`](../../src/lib/auth/session.ts) | `getSession` (server-only, cached), `CANNED` personas, `toAuthContext` |
+| Session seam | [`src/lib/auth/session.ts`](../../src/lib/auth/session.ts) | `getSession` (server-only, cached), `loadSession`, `toAuthContext` |
 | Guards | [`src/lib/auth/authorize.ts`](../../src/lib/auth/authorize.ts) | `require*` / `assert*` / `can` |
 | Barrel | [`src/lib/auth/index.ts`](../../src/lib/auth/index.ts) | public import surface |
 | Back-compat | [`src/services/auth.ts`](../../src/services/auth.ts) | re-exports the seam for legacy imports |
@@ -418,7 +417,7 @@ select
 | CSRF utility | [`src/lib/security/csrf.ts`](../../src/lib/security/csrf.ts) | `isSameOrigin`, double-submit token, `safeEqual` |
 | Security headers | [`src/lib/security/headers.ts`](../../src/lib/security/headers.ts) | strict CSP + header baseline |
 | Typed errors | [`src/lib/security/errors.ts`](../../src/lib/security/errors.ts) | `AuthenticationError`, `AuthorizationError`, user-safe messages |
-| Mode seam | [`src/config/app.ts`](../../src/config/app.ts) | `config.isPrototype` — cosmetic banner flag only; auth/data gating is `isSupabaseConfigured()` |
+| App identity | [`src/config/app.ts`](../../src/config/app.ts) | `APP_NAME` + `STANDING_NOTICES` (no mode flag); auth/data gating is `isSupabaseConfigured()` |
 
 ### Database (schema)
 
@@ -439,4 +438,4 @@ See [`db/README.md`](../../db/README.md) for the full ERD (the applied migration
 
 ### Summary
 
-Authentication is a **single server-only seam** (`getSession`) whose one function resolves real Supabase sessions on the deployed platform (falling back to canned personas only in local dev without Supabase keys). Authorisation is a **linear, cumulative six-role hierarchy** — chosen because it mirrors the organisation's real chain of authority, makes inheritance correct by construction, and auto-grants new capabilities safely to the platform owner — refined by **deny-wins per-user overrides**. Every rule is enforced **twice**: by the application RBAC engine (fast, friendly) and by Postgres RLS (unbypassable), seeded from **one catalogue** and kept in lock-step. The `proxy.ts` middleware wraps it all with a CSRF Origin check, coarse route protection, and a strict security-header baseline — with the live code paths active in production and the canned personas retained only as a local-dev fallback.
+Authentication is a **single server-only seam** (`getSession`) whose one function resolves real Supabase sessions, returning `null` — an honest guest — when none exists. Authorisation is a **linear, cumulative six-role hierarchy** — chosen because it mirrors the organisation's real chain of authority, makes inheritance correct by construction, and auto-grants new capabilities safely to the platform owner — refined by **deny-wins per-user overrides**. Every rule is enforced **twice**: by the application RBAC engine (fast, friendly) and by Postgres RLS (unbypassable), seeded from **one catalogue** and kept in lock-step. The `proxy.ts` middleware wraps it all with a CSRF Origin check, coarse route protection, and a strict security-header baseline — with the live code paths active in production.

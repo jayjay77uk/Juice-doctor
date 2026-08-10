@@ -14,9 +14,9 @@ import { createAdminClient } from '@/lib/supabase/admin';
  * `getSession()` is async + server-only. With Supabase configured (the deployed
  * platform) it reads the Supabase auth cookie server-side, awaits token refresh,
  * loads the profile (role + org + overrides), and RLS enforces access
- * independently. Only when Supabase is NOT configured (local dev without keys)
- * does it fall back to a canned persona (optionally hinted to a role so the
- * member/admin shells can each still render).
+ * independently. Without Supabase configured, or without a signed-in user,
+ * there is no session — callers render their honest unauthenticated or
+ * unavailable states.
  */
 
 export interface SessionUser {
@@ -34,62 +34,17 @@ export interface Session {
   user: SessionUser;
 }
 
-// ── Canned personas (used ONLY when Supabase is not configured) ──────────────
-const PROTOTYPE_ORG_ID = '00000000-0000-0000-0000-000000000001';
-
-const CANNED: Record<AppRole, SessionUser> = {
-  guest: { id: 'guest', name: 'Guest', email: '', role: 'guest', organisationId: null },
-  member: {
-    id: 'usr_member',
-    name: 'Prototype User',
-    email: 'hello@example.com',
-    role: 'member',
-    organisationId: PROTOTYPE_ORG_ID,
-  },
-  practitioner: {
-    id: 'usr_practitioner',
-    name: 'Practitioner One',
-    email: 'practitioner@example.com',
-    role: 'practitioner',
-    organisationId: PROTOTYPE_ORG_ID,
-  },
-  staff: {
-    id: 'usr_staff',
-    name: 'Staff One',
-    email: 'staff@example.com',
-    role: 'staff',
-    organisationId: PROTOTYPE_ORG_ID,
-  },
-  administrator: {
-    id: 'usr_admin',
-    name: 'Admin User',
-    email: 'admin@example.com',
-    role: 'administrator',
-    organisationId: PROTOTYPE_ORG_ID,
-  },
-  super_administrator: {
-    id: 'usr_super',
-    name: 'Platform Owner',
-    email: 'owner@example.com',
-    role: 'super_administrator',
-    organisationId: null,
-  },
-};
-
 /**
  * The single place that knows how a session is obtained — the rest of the app
- * depends only on the shape returned here.
+ * depends only on the shape returned here. There is NO fictional fallback:
+ * without Supabase (or without a signed-in user) there is no session, and the
+ * caller renders its honest unauthenticated/unavailable state.
  */
-async function loadSession(roleHint: AppRole): Promise<Session | null> {
-  // Local dev without Supabase keys: fall back to the canned persona so the app
-  // still renders. On the deployed platform (Supabase configured) this branch is
-  // never taken — a real, verified session is loaded below.
-  if (!isSupabaseConfigured()) {
-    return { user: CANNED[roleHint] };
-  }
+async function loadSession(): Promise<Session | null> {
+  if (!isSupabaseConfigured()) return null;
 
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return { user: CANNED[roleHint] };
+  if (!supabase) return null;
 
   const {
     data: { user },
@@ -135,13 +90,12 @@ async function loadSession(roleHint: AppRole): Promise<Session | null> {
 }
 
 /**
- * The current session, memoised per request. `roleHint` only matters in the
- * unconfigured-Supabase local-dev fallback, where it picks the canned persona;
- * with Supabase configured it is ignored entirely (the role comes from the
- * authenticated profile).
+ * The current session, memoised per request. The role always comes from the
+ * authenticated profile; there is no persona fallback. (A legacy role-hint
+ * argument is accepted and ignored for call-site compatibility.)
  */
-export const getSession = cache(async (roleHint: AppRole = 'member'): Promise<Session | null> => {
-  return loadSession(roleHint);
+export const getSession = cache(async (_roleHint?: AppRole): Promise<Session | null> => {
+  return loadSession();
 });
 
 /** Convert a session into the RBAC AuthContext used by permission checks. */

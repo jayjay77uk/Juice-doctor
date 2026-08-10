@@ -4,7 +4,6 @@ import { site } from '@/content/site';
 import { signOut } from '@/services/actions';
 import { Logo } from './logo';
 import { SidebarNav, type NavVariant } from './sidebar-nav';
-import { PrototypeNotices } from './prototype-notices';
 import { MobileAppNav } from './mobile-app-nav';
 
 export type { NavVariant } from './sidebar-nav';
@@ -76,7 +75,10 @@ export function AppShell({
         </header>
         <main className="flex-1 overflow-x-hidden px-5 py-8 sm:px-8">{children}</main>
         <footer className="border-t border-border px-5 pb-8 pt-4 sm:px-8">
-          <PrototypeNotices className="mx-auto max-w-5xl" />
+          <p className="mx-auto max-w-5xl text-xs text-muted-foreground">
+            AI responses are not a substitute for professional medical advice. Not for emergencies — call your local
+            emergency services. <a href="/disclaimer" className="underline underline-offset-2">Full notices</a>
+          </p>
         </footer>
       </div>
     </div>

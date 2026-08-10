@@ -6,7 +6,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
  * Memory repository over ai_memory. Layers: user memory (persists across a
  * customer's specialists) and conversation memory (scoped to one thread). Writes
  * are best-effort and de-duplicated by (scope, user, agent, key). Ids that are
- * not real UUIDs (legacy mock ids) are stored as null so nothing crashes.
+ * not real UUIDs (legacy ids from the pre-production build) are stored as null
+ * so nothing crashes.
  */
 
 const ORG = '00000000-0000-0000-0000-000000000001';

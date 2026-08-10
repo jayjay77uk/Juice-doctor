@@ -1,15 +1,15 @@
 # 00 — Backend Architecture Overview
 
-> **Prototype AI** — Phase 2: the enterprise backend foundation.
-> **Current status (August 2026):** this document was written when Phase 2 shipped as production-*shaped* but not yet production-*wired*. The platform has since gone live: the migrations are applied to a real Supabase Postgres (the set now runs `0001`–`0030`), authentication is real Supabase Auth, `proxy.ts` route protection is active, the service layer reads and writes live data, and AI inference (Anthropic Claude) runs in production. It remains a client demonstration platform — no payment provider (subscription payments are manual records) and no email provider (the only email sent is Supabase Auth's password-reset message). Phase-2 descriptions below of mock providers and unexecuted SQL are historical.
+> **Ask Juice Doctor AI** — Phase 2: the enterprise backend foundation.
+> **Current status (August 2026):** this document was written when Phase 2 shipped as production-*shaped* but not yet production-*wired*. The platform has since gone live: the migrations are applied to a real Supabase Postgres (the set now runs `0001`–`0030`), authentication is real Supabase Auth, `proxy.ts` route protection is active, the service layer reads and writes live data, and AI inference (Anthropic Claude) runs in production. Two providers remain unconnected by design or pending client input: payments (subscription payments are manual records) and outbound email (the only email sent is Supabase Auth's password-reset message). Phase-2 descriptions below of in-memory providers and unexecuted SQL are historical.
 
-This is the entry point to the architecture set. It explains **what Phase 2 is**, the **prototype-vs-production philosophy** that governs every decision below it, the **three-layer architecture**, the **single seam** we swap to go live, the **phase boundaries** (what we deliberately did *not* build), and a **map** of where everything lives — ending with an index of every other document in this set.
+This is the entry point to the architecture set. It explains **what Phase 2 is**, the **pre-production-vs-production philosophy** that governs every decision below it, the **three-layer architecture**, the **single seam** we swap to go live, the **phase boundaries** (what we deliberately did *not* build), and a **map** of where everything lives — ending with an index of every other document in this set.
 
 ---
 
 ## 1. Purpose of Phase 2
 
-Phase 1 shipped the public marketing site, the design system, and mock services good enough to *look* real. It answered "does the brand experience work?"
+Phase 1 shipped the public marketing site, the design system, and stubbed services good enough to *look* real. It answered "does the brand experience work?"
 
 Phase 2 answers a harder question: **"is the thing behind the brand built like an enterprise platform?"** — without spending a single API call, storing a single row, or writing a single line of inference code.
 
@@ -21,23 +21,23 @@ The deliverable is a **production-grade backend *design*, expressed as running c
 - A **full database design** — ~55 tables across 13 migrations in `db/migrations/`, RLS on every table, designed exactly as production requires.
 - **Framework foundations** for the AI product to come: agents-as-data, a knowledge pipeline, a unified memory model, the consultation workflow, and platform/ops tables (audit, feature flags, notifications).
 
-At Phase 2 delivery, everything ran on **typed mock providers** and **paper SQL** (migrations that were authored, reviewed, and version-controlled but *not executed*). The point was that going live would be **configuration and a provider swap**, not a rewrite — and that is what happened: the migrations are now applied and the live providers are in place. See [§4, The Seam](#4-the-prototypeproduction-seam).
+At Phase 2 delivery, everything ran on **typed in-memory providers** and **paper SQL** (migrations that were authored, reviewed, and version-controlled but *not executed*). The point was that going live would be **configuration and a provider swap**, not a rewrite — and that is what happened: the migrations are now applied and the live providers are in place. See [§4, The Seam](#4-the-pre-productionproduction-seam).
 
 ### Why build it this way?
 
-A demo that is only a façade teaches the client nothing about feasibility, cost, or risk. A demo that is *architecturally complete but inert* de-risks the real build: the data model is settled, the security model is settled, the layering is settled, and the surface area every future feature plugs into already exists. Phase 3 becomes "fill in the bodies," not "design the platform."
+A build that is only a façade teaches the client nothing about feasibility, cost, or risk. A build that is *architecturally complete but inert* de-risks the real product: the data model is settled, the security model is settled, the layering is settled, and the surface area every future feature plugs into already exists. Phase 3 becomes "fill in the bodies," not "design the platform."
 
 ---
 
-## 2. The prototype-vs-production philosophy
+## 2. The pre-production-vs-production philosophy
 
 Three rules govern the whole codebase. Every design choice traces back to one of them.
 
 | # | Rule | Why | Where it shows up |
 |---|------|-----|-------------------|
-| 1 | **Production-shaped interfaces, mock bodies.** | The *signatures* are the contract. If getters are already `async`, paginated, and return a typed `Result` error union, nothing is retrofitted when the body starts hitting Postgres. | `src/services/index.ts` getters return `Promise<Result<Page<T>>>` even though the mock always succeeds. |
-| 2 | **The provider choice is server-only and centralised.** | A Supabase client tree-shaken into a client bundle would leak keys. Selecting the provider off a **non-public** env var, inside `server-only` modules, makes that structurally impossible. | `APP_MODE` (server) drives data; `NEXT_PUBLIC_APP_MODE` (client) is cosmetic only — see `src/config/app.ts`. |
-| 3 | **The platform must never *lie by omission*.** | A demo that silently pretends to send email or store health data is a liability. Writes validate and return honestly. | The forms that still have no live provider (contact / newsletter email, and the public booking form) say so plainly, e.g. *"(Prototype: no message was actually sent.)"* — while operational writes now persist to the live database. |
+| 1 | **Production-shaped interfaces, stub bodies (pre-production).** | The *signatures* are the contract. If getters are already `async`, paginated, and return a typed `Result` error union, nothing is retrofitted when the body starts hitting Postgres. | `src/services/index.ts` getters return `Promise<Result<Page<T>>>` even before the bodies hit Postgres. |
+| 2 | **The provider choice is server-only and centralised.** | A Supabase client tree-shaken into a client bundle would leak keys. Selecting the provider off a **non-public** env var, inside `server-only` modules, makes that structurally impossible. | `APP_MODE` (server, non-public) reserves the content-provider seam in `src/services/index.ts`. |
+| 3 | **The platform must never *lie by omission*.** | A platform that silently pretends to send email or store health data is a liability. Writes validate and return honestly. | The forms that still have no live provider (contact / newsletter email, and the public booking form) return an honest "not available yet" error instead of pretending — while operational writes persist to the live database. |
 
 The net effect: a reviewer can read the code and see **exactly** where production behaviour will slot in — it is always the *body* of a clearly-marked function, never a structural change.
 
@@ -67,7 +67,7 @@ flowchart TD
   end
 
   subgraph Providers["Data providers (selected off APP_MODE)"]
-    Mock["Mock: typed constants<br/>src/content/*, config registries"]
+    Content["Typed constants<br/>src/content/*, config registries"]
     Supa["Supabase (live today):<br/>Postgres + Auth + Storage"]
   end
 
@@ -81,8 +81,8 @@ flowchart TD
   Auth --> Security
   Reads --> Providers
   Writes --> Providers
-  Mock -. prototype .-> Reads
-  Supa -. production .-> DB
+  Content -. marketing copy .-> Reads
+  Supa -. operational data .-> DB
   DB -. RLS re-enforces RBAC .-> Auth
 
   classDef server fill:#dcedc8,stroke:#558b2f,color:#1b1b1b;
@@ -90,7 +90,7 @@ flowchart TD
   classDef data fill:#fff3e0,stroke:#e65100,color:#1b1b1b;
   class RSC,Reads,Writes,Auth,Security server;
   class Client client;
-  class Mock,Supa,DB data;
+  class Content,Supa,DB data;
 ```
 
 ### ① UI layer — `src/components`, `src/app`
@@ -111,38 +111,37 @@ Pure, framework-adjacent logic with **no knowledge of persistence**:
 The **only** layer that knows where data comes from. Every module starts with `import 'server-only'` so it can never enter a client bundle. It splits cleanly by intent:
 
 - **Reads = getters.** Plain async functions (`programmes.list`, `admin.metrics`, `agents.list`, `featureFlags.all`). They return `Result<T>`/`Result<Page<T>>` so callers handle `not_found`/`unavailable` uniformly and pagination exists from day one.
-- **Writes = Server Actions.** `'use server'` functions (`submitContact`, `signIn`, `submitBooking`, …). They validate with zod and return the standard `ActionResult` discriminated union (`idle` / `success` / `error` with `fieldErrors`). The operational bodies now write to the live database; the marketing-form actions (contact / newsletter / the public booking form `submitBooking`) remain declared mocks — no email provider is wired and the public form reserves nothing (member booking in the dashboard IS real) — and the client forms never changed.
+- **Writes = Server Actions.** `'use server'` functions (`submitContact`, `signIn`, `submitBooking`, …). They validate with zod and return the standard `ActionResult` discriminated union (`idle` / `success` / `error` with `fieldErrors`). The operational bodies write to the live database; the marketing-form actions (contact / newsletter / the public booking form `submitBooking`) return an honest "not available yet" error — no email provider is wired and the public form reserves nothing (member booking in the dashboard IS real) — and the client forms never changed.
 
 **Why the read/write split matters:** reads are cacheable, side-effect-free, and safe to fan out across a page; writes are transactional, guarded, and CSRF-protected. Encoding that difference in the *type* of function (getter vs. `'use server'`) makes the safe path the default path.
 
 ---
 
-## 4. The prototype→production seam
+## 4. The pre-production→production seam
 
-Going live touches **four coordinated points** — and nothing else in the app changes. *(That switch has since been made: the production side of each seam is the live path today. The prototype-side fallbacks — canned personas, open routes — survive only for local development without Supabase keys.)*
+Going live touched **a small set of coordinated points** — and nothing else in the app changed. *(That switch has since been made: the production side of each seam is the live path today, and the pre-production fallbacks — placeholder personas, open routes, the environment banner — have been removed outright rather than left dormant.)*
 
 ```mermaid
 flowchart LR
-  Env["Env vars"] --> A & B
-  A["NEXT_PUBLIC_APP_MODE<br/>(client, cosmetic)"] --> Banner["Prototype banner<br/>+ preview affordances"]
+  Env["Env vars"] --> B
   B["APP_MODE<br/>(server, non-public)"] --> Sel["Provider selection<br/>in src/services"]
-  Sel -->|prototype| Mock["Mock providers<br/>(typed constants)"]
-  Sel -->|production| Supa["*.supabase.ts providers"]
-  B --> Sess["Session seam<br/>src/lib/auth/session.ts"]
-  Sess -->|prototype| Canned["Canned personas"]
-  Sess -->|production| Cookie["Supabase auth cookie<br/>+ profile load"]
-  B --> Proxy["proxy.ts route protection<br/>(active when Supabase is configured)"]
+  Sel -->|marketing copy| Content["Typed constants<br/>(src/content/*)"]
+  Sel -->|operational data| Supa["Supabase repositories"]
+  Env --> Sess["Session seam<br/>src/lib/auth/session.ts"]
+  Sess -->|signed in| Cookie["Supabase auth cookie<br/>+ profile load"]
+  Sess -->|not configured / signed out| Null["null session<br/>(honest redirect)"]
+  Env --> Proxy["proxy.ts route protection"]
 ```
 
-1. **`config.isPrototype`** (`src/config/app.ts`) — the single cosmetic seam. Drives the "Prototype Environment — For Demonstration Purposes Only" banner and preview affordances. Derived from `NEXT_PUBLIC_APP_MODE`, which is safe to expose because it changes *nothing* about data.
+1. **App identity & standing notices** (`src/config/app.ts`) — exports `APP_NAME` ("Ask Juice Doctor AI") and `STANDING_NOTICES`, the single source of truth for the safety/status statements shown on the disclaimer surface. The earlier cosmetic environment banner and its `NEXT_PUBLIC_APP_MODE` flag have been removed — there is no display mode; what renders is what the platform really does.
 
-2. **`APP_MODE`** (non-public, read in `src/services/index.ts`) — the real switch. `isProductionData = APP_MODE === 'production'`. Because it is read only inside `server-only` modules, the Supabase client can never leak client-side. This is intentionally *separate* from the public banner var so cosmetic and data concerns can never be conflated.
+2. **`APP_MODE`** (non-public, read in `src/services/index.ts`) — the content-provider seam. `isProductionData = APP_MODE === 'production'`. Because it is read only inside `server-only` modules, the Supabase client can never leak client-side.
 
-3. **The provider swap.** At Phase 2 each service read typed constants (`src/content/*`, config registries). The operational services now read and write live Supabase data through `src/services/repositories/*`; the neutral marketing-content getters still read typed constants (with the `APP_MODE` seam reserved in `src/services/index.ts`). **Components never changed** — they already consumed the async, paginated, `Result`-typed shapes.
+3. **The provider swap.** At Phase 2 each service read typed constants (`src/content/*`, config registries). The operational services now read and write live Supabase data through `src/services/repositories/*`; the neutral marketing-content getters still read typed constants (pending client-supplied copy, with the `APP_MODE` seam reserved in `src/services/index.ts`). **Components never changed** — they already consumed the async, paginated, `Result`-typed shapes.
 
-4. **The session seam** (`src/lib/auth/session.ts`). `loadSession()` returns canned personas only when Supabase is not configured (a local-dev fallback, with a `roleHint` so each shell can demo a persona); on the deployed platform it reads the Supabase auth cookie, refreshes the token, and loads the profile (role + org). Only this one function body distinguishes the two; every guard and RLS policy depends only on the returned *shape*. In parallel, `proxy.ts` route protection is active whenever Supabase is configured and degrades to open only in local dev without keys.
+4. **The session seam** (`src/lib/auth/session.ts`). `loadSession()` reads the Supabase auth cookie, refreshes the token, and loads the profile (role + org). If Supabase is not configured or no session exists, it returns `null` and guards redirect honestly — there is no persona fallback of any kind. Every guard and RLS policy depends only on the returned *shape*. In parallel, `proxy.ts` route protection is active on the deployed platform.
 
-**Design principle:** there is exactly **one** place to change per concern. Reviewers can point to the four functions above and say "these bodies are the entire prototype-to-live delta."
+**Design principle:** there is exactly **one** place to change per concern. Reviewers can point to the functions above and say "these bodies are the entire pre-production-to-live delta."
 
 ---
 
@@ -165,13 +164,13 @@ Explicit scope is a feature. Phase 2 builds the *foundation*; several capabiliti
 | Excluded | Status in Phase 2 | Deferred to |
 |----------|-------------------|-------------|
 | **AI inference** | Agents, knowledge, and memory are modelled as **data**; no model is ever called. | Phase 3 |
-| **Live data** | No Supabase connection; mocks + paper SQL only. Nothing is stored. | Phase 3 |
-| **Real authentication** | Canned personas; `proxy.ts` protection bypassed. No accounts exist. | Phase 3 |
+| **Live data** | No Supabase connection; typed in-memory providers + paper SQL only. Nothing was stored. | Phase 3 |
+| **Real authentication** | Placeholder development personas; `proxy.ts` protection bypassed. No accounts existed. (Both since removed — auth is real and personas no longer exist in the codebase.) | Phase 3 |
 | **Payments** | `plans` / `subscriptions` / `payments` / `invoices` are designed (provider-agnostic) but no processor is wired. | Phase 3 |
 | **Vector search** | `knowledge_chunks` + `knowledge_embeddings` model the pipeline; the `embedding vector(N)` column awaits `pgvector`. | Phase 3 |
 | **Destructive admin logic** | The admin console reads; it does not mutate business data. | Phase 3 |
 
-**Why draw the line here?** These excluded items are the ones that cost money, carry compliance weight (health data, payments), or require external services. Modelling them as inert data proved the shape was right *before* incurring their cost — and kept Phase 2 a safe, shareable demonstration.
+**Why draw the line here?** These excluded items are the ones that cost money, carry compliance weight (health data, payments), or require external services. Modelling them as inert data proved the shape was right *before* incurring their cost — and kept Phase 2 a safe, shareable review build.
 
 > **Since delivered:** AI inference, live data, and real authentication are now in production (see `13-ai-platform.md` and `21-herne-live-ai.md`), and the admin console performs real mutations. Still true today: payments remain manual records by design (no processor wired), and vector search remains unimplemented — live knowledge retrieval is ranked Postgres full-text search.
 
@@ -186,7 +185,7 @@ src/
 ├── app/                     UI · route groups: (marketing) (auth) (dashboard) (admin)
 ├── components/              UI · layout / sections / ui primitives (Radix + Tailwind v4)
 ├── config/                  DOMAIN · catalogues mirrored by the DB
-│   ├── app.ts               ← the cosmetic seam: config.isPrototype, APP_MODE docs
+│   ├── app.ts               ← APP_NAME + STANDING_NOTICES (single source for /disclaimer)
 │   ├── permissions.ts       ← permission catalogue (resource.action) + role base map
 │   ├── ai-agents.ts         ← the agent roster as data (Receptionist AI; the 8 HERNE specialists seed via services/herne/seed.ts)
 │   ├── feature-flags.ts     ← flag registry (targeting-aware)
@@ -196,7 +195,7 @@ src/
 │   │   ├── roles.ts         ← 6-role hierarchy, ROLE_RANK, hasMinRole (mirrors app_role enum)
 │   │   ├── permissions.ts   ← pure RBAC engine (cumulative perms, deny-wins overrides)
 │   │   ├── authorize.ts     ← guards: require* (redirect) / assert* (throw) / can (boolean)
-│   │   ├── session.ts       ← THE SESSION SEAM (canned ↔ Supabase cookie)
+│   │   ├── session.ts       ← THE SESSION SEAM (Supabase cookie → profile; null when signed out)
 │   │   └── index.ts         ← barrel (server-only members clearly marked)
 │   └── security/            DOMAIN · security posture
 │       ├── headers.ts       ← strict CSP + header baseline (dev relaxes script-src)
@@ -250,7 +249,7 @@ This overview is the map; the following documents drill into each territory.
 
 | # | Document | Covers |
 |---|----------|--------|
-| 00 | **`00-overview.md`** *(this doc)* | Phase 2 purpose, prototype↔production philosophy, three-layer architecture, the seam, phase boundaries, directory map |
+| 00 | **`00-overview.md`** *(this doc)* | Phase 2 purpose, pre-production↔production philosophy, three-layer architecture, the seam, phase boundaries, directory map |
 | 01 | `01-authentication.md` | The session seam, Supabase auth cookie flow, OAuth/API-key/auth-event surfaces, `proxy.ts` route protection |
 | 02 | `02-authorization-rbac.md` | Role hierarchy, permission catalogue, the deny-wins engine, guards, and the DB RBAC mirror |
 | 03 | `03-database.md` | The foundational migrations, conventions, `app.*` helpers, multi-tenancy, the TypeScript projection |

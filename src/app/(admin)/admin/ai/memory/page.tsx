@@ -1,124 +1,61 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { Brain } from 'lucide-react';
+import { Brain, Users, MessageSquare } from 'lucide-react';
 import { createMetadata } from '@/config/metadata';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { AdminHeader } from '@/components/admin/admin-header';
 import { Panel } from '@/components/admin/panel';
-import { StatusBadge } from '@/components/admin/status-badge';
-import { Button } from '@/components/ui/button';
+import { StatGrid, StatCard } from '@/components/admin/stat-card';
 
 export const metadata: Metadata = createMetadata({ title: 'Memory Centre' });
+export const dynamic = 'force-dynamic';
 
-interface Scope {
-  scope: string;
-  label: string;
-  key: string;
-  access: string;
-  desc: string;
+/** Live counts over the real ai_memory table. */
+async function memoryStats(): Promise<{ total: number; users: number; conversations: number }> {
+  const sb = createAdminClient();
+  if (!sb) return { total: 0, users: 0, conversations: 0 };
+  const { data, count } = await sb
+    .from('ai_memory')
+    .select('user_id, conversation_id', { count: 'exact' })
+    .limit(2000);
+  const rows = data ?? [];
+  return {
+    total: count ?? rows.length,
+    users: new Set(rows.map((r) => r.user_id).filter(Boolean)).size,
+    conversations: new Set(rows.map((r) => r.conversation_id).filter(Boolean)).size,
+  };
 }
 
-// illustrative static list — the six configurable memory scopes (no service query needed).
-const SCOPES: Scope[] = [
-  {
-    scope: 'session',
-    label: 'Session Memory',
-    key: 'session_id + user_id',
-    access: 'The signed-in user',
-    desc: 'Ephemeral scratchpad for one browser session.',
-  },
-  {
-    scope: 'user',
-    label: 'User Memory',
-    key: 'user_id',
-    access: 'The user; staff may read',
-    desc: 'Durable facts and preferences about a member.',
-  },
-  {
-    scope: 'conversation',
-    label: 'Conversation Memory',
-    key: 'conversation_id',
-    access: 'The conversation owner',
-    desc: 'A running summary bound to one conversation thread.',
-  },
-  {
-    scope: 'agent',
-    label: 'Agent Memory',
-    key: 'agent_id',
-    access: 'Org admins write; staff read',
-    desc: 'An agent’s own operating instructions and learned notes.',
-  },
-  {
-    scope: 'organisation',
-    label: 'Organisation Memory',
-    key: 'organisation_id',
-    access: 'Org staff read; admins write',
-    desc: 'Tenant-wide shared knowledge.',
-  },
-  {
-    scope: 'global',
-    label: 'Global Knowledge',
-    key: '(platform-wide)',
-    access: 'Everyone reads; super-admin writes',
-    desc: 'Platform-wide facts available to all.',
-  },
-];
-
 export default async function MemoryCentrePage() {
+  const stats = await memoryStats();
+
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <AdminHeader
-        title="Memory Centre (coming soon)"
-        description="Coming soon — this admin view of the six memory scopes is illustrative. Real member memory is live (members manage it in their own Settings)."
+        title="Memory Centre"
+        description="What the platform remembers for members — live counts from the memory store."
         breadcrumbs={[{ label: 'AI', href: '/admin/ai' }, { label: 'Memory' }]}
       />
 
-      <Panel
-        title="How memory is wired"
-        actions={
-          <span className="grid size-9 place-items-center rounded-full bg-teal-100 text-primary">
-            <Brain className="size-4.5" />
-          </span>
-        }
-      >
-        <p className="text-sm text-muted-foreground">
-          Each agent&apos;s Memory Configuration — which of the six scopes it may read — is set
-          per-agent in Agent Management. The scopes below are isolated by their identifying keys, so
-          data written into one scope is never visible from another.
-        </p>
-        <div className="mt-4">
-          <Button asChild size="sm">
-            <Link href="/admin/ai/agents">Configure per-agent memory</Link>
-          </Button>
-        </div>
-        <p className="mt-4 text-sm text-muted-foreground">
-          This admin overview is illustrative and coming soon. Real member memory is live in the platform database; AI replies run on the live model and are not clinically reviewed.
-        </p>
-      </Panel>
+      <StatGrid>
+        <StatCard label="Stored memories" value={stats.total.toLocaleString('en-GB')} icon={Brain} />
+        <StatCard label="Members with memory" value={stats.users.toLocaleString('en-GB')} icon={Users} />
+        <StatCard label="Conversation memories" value={stats.conversations.toLocaleString('en-GB')} icon={MessageSquare} />
+      </StatGrid>
 
-      <div className="grid gap-6 sm:grid-cols-2">
-        {SCOPES.map((s) => (
-          <Panel
-            key={s.scope}
-            title={s.label}
-            actions={<StatusBadge status="active" />}
-          >
-            <p className="text-sm text-muted-foreground">{s.desc}</p>
-            <dl className="mt-4 flex flex-col gap-2 text-sm">
-              <div className="flex flex-wrap items-baseline gap-x-2">
-                <dt className="flex items-center gap-1.5 font-medium text-foreground">
-                  <Brain className="size-3.5 text-primary" aria-hidden />
-                  Identifying key
-                </dt>
-                <dd className="font-mono text-muted-foreground">{s.key}</dd>
-              </div>
-              <div className="flex flex-wrap items-baseline gap-x-2">
-                <dt className="font-medium text-foreground">Access</dt>
-                <dd className="text-muted-foreground">{s.access}</dd>
-              </div>
-            </dl>
-          </Panel>
-        ))}
-      </div>
+      <Panel title="How memory works">
+        <div className="flex flex-col gap-3 text-sm text-muted-foreground">
+          <p>
+            When a member states a durable preference in conversation (for example a dietary requirement), it is saved
+            to the memory store and recalled into every future specialist reply — so the member never repeats
+            themselves. Members control this from their own settings: they can view, delete individual memories, clear
+            everything, or turn memory off entirely.
+          </p>
+          <p>
+            Admin-side browsing and editing of individual memories is not built yet — member privacy controls live in
+            each member&rsquo;s own Settings page.
+          </p>
+        </div>
+      </Panel>
     </div>
   );
 }

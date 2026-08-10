@@ -19,7 +19,7 @@ export interface HerneLanguage {
   rtl: boolean;
   /**
    * Illustrative regional varieties — offered as a preference, NOT a guarantee of
-   * separately verified dialect coverage (dialect fidelity is prototype/planned).
+   * separately verified dialect coverage (dialect fidelity is planned, not yet verified).
    */
   dialects: string[];
 }

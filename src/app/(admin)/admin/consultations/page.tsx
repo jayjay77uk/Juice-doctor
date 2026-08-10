@@ -95,7 +95,7 @@ export default async function ConsultationsPage() {
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Live data. Demo cases are fictional and clearly marked in their AI review.
+        Live data from the platform database.
       </p>
     </div>
   );

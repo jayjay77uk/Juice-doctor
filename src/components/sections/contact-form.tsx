@@ -59,7 +59,7 @@ export function ContactForm() {
       <div className="flex items-center gap-4">
         <SubmitButton />
         <p className="text-xs text-muted-foreground">
-          Prototype — your message isn’t actually sent.
+          Email isn’t connected yet — messages from this form can’t be sent.
         </p>
       </div>
     </form>

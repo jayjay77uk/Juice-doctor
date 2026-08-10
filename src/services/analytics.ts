@@ -75,22 +75,17 @@ export const analytics = {
     });
   },
 
-  /** Real per-day AI activity. Empty when the platform has no traffic. */
+  /** Real per-day AI activity, measured from ai_run_logs. Empty with no traffic. */
   async daily(days = 30): Promise<Result<AnalyticsDailyPoint[]>> {
     const real = await runLogRepo.dailySeries(days);
     return ok(
       real.map((p) => ({
         day: p.day,
         conversations: p.conversations,
-        // One run = one user + one assistant message.
-        messages: p.conversations * 2,
-        activeUsers: 0,
-        escalations: 0,
         tokensInput: p.tokensInput,
         tokensOutput: p.tokensOutput,
         costMicros: p.costMicros,
         avgLatencyMs: p.avgLatencyMs,
-        satisfaction: null,
       })),
     );
   },

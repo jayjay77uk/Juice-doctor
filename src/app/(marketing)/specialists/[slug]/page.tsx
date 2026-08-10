@@ -146,7 +146,7 @@ export default async function SpecialistDetailPage({ params }: { params: Promise
             <Button asChild size="lg" intent="ghost"><Link href="/specialists">Meet the whole team <ArrowRight className="ml-1 size-4" /></Link></Button>
           </div>
           <p className="mt-8 text-xs text-muted-foreground">
-            Prototype — general wellbeing support only, not diagnosis. {p.name} escalates to a human practitioner when clinical review is needed.
+            General wellbeing support only, not diagnosis. {p.name} escalates to a human practitioner when clinical review is needed.
           </p>
         </div>
       </section>

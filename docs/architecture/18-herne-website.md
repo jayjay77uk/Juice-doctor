@@ -8,7 +8,7 @@ chatbots. Does not touch the intelligence, referral, care-plan or wearable layer
 
 | Route | Purpose |
 |---|---|
-| `/specialists` | Premium institute page: hero, multilingual/voice statement, shared DNA, coordinated-care explanation, eight cards, collaboration journey, CTAs, prototype notice. |
+| `/specialists` | Premium institute page: hero, multilingual/voice statement, shared DNA, coordinated-care explanation, eight cards, collaboration journey, CTAs, safety notice. |
 | `/specialists/[slug]` | Per-specialist page (8, statically generated): portrait hero, opening, "How I can help", can/cannot do, team collaboration, HERNE priorities, wearable summary, closing, CTAs. |
 | homepage | Brief Makela-first specialist section (all eight, "View all", "Ask Makela"). |
 | `/dashboard/specialists` | "My Specialists": concierge, contributing specialists, latest interaction, referral status, links to the shared care plan. |
@@ -46,9 +46,11 @@ follow-up → human practitioner when required.
 ## Multilingual + voice readiness
 
 The approved statement is shown near the top of the experience, with "voice or
-text", "multiple languages" and "regional dialect support" — labelled
-**prototype/planned** (voice + full language support are not live). The
-language-preference model + future hooks are preserved.
+text", "multiple languages" and "regional dialect support" — labelled honestly:
+text conversations and language support are live (language replies are
+AI-generated, not human-reviewed; English is the reference version), while voice
+is **planned**, not live. The language-preference model + future hooks are
+preserved.
 
 ## Design direction
 
@@ -61,9 +63,10 @@ matching the client's supplied cards.
 Semantic headings, portrait alt text (name + title), keyboard-navigable links,
 visible focus rings (`focus-visible:ring`), responsive grids, sufficient contrast.
 
-## Prototype limitations / awaiting client
+## Current limitations / awaiting client
 
 - Six specialist portraits are pending — monogram placeholders, flagged.
-- Voice + full language support are prototype/planned, not live.
+- Voice is planned, not live; language replies are AI-generated and not
+  human-reviewed for clinical accuracy (English is the reference version).
 - Sage/Luca/Felix/Optimus greetings and Makela's philosophy remain draft
   (awaiting client approval), surfaced with a visible label.

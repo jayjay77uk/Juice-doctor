@@ -59,8 +59,8 @@ export default function TheBookPage() {
               </ul>
             </div>
             <ComingSoon
-              title="Checkout coming in the full platform"
-              body="In production, you’ll be able to buy the book securely here with signed-copy and digital options. Payments are not connected in this prototype."
+              title="Checkout coming soon"
+              body="You’ll be able to buy the book securely here with signed-copy and digital options once a payment provider is connected. Online payment is not yet available."
               className="mt-2 text-left"
             />
             <Button size="lg" disabled className="w-fit">

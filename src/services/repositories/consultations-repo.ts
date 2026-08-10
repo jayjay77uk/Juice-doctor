@@ -7,7 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
  * Real consultation workflow over consultations + consultation_events (migration
  * 0007). The admin pages read cases, timelines and notes from here; notes append
  * as immutable events; approve / request-changes are guarded status transitions.
- * Fictional demo cases seed idempotently onto the demo accounts.
+ * No automatic seeding of any kind — an empty table renders an empty state.
  */
 
 const ORG = '00000000-0000-0000-0000-000000000001';
@@ -37,8 +37,6 @@ export interface ConsultationEvent {
   createdAt: string;
 }
 
-let seeded = false;
-
 async function names(sb: SupabaseClient, ids: string[]): Promise<Map<string, string>> {
   const map = new Map<string, string>();
   const unique = [...new Set(ids.filter(Boolean))];
@@ -48,45 +46,10 @@ async function names(sb: SupabaseClient, ids: string[]): Promise<Map<string, str
   return map;
 }
 
-/** Seed three fictional demo cases (idempotent — only when the table is empty). */
-async function ensureSeed(sb: SupabaseClient): Promise<void> {
-  if (seeded) return;
-  const { count, error } = await sb.from('consultations').select('id', { count: 'exact', head: true }).eq('organisation_id', ORG);
-  if (error) return;
-  if ((count ?? 0) === 0) {
-    const { data: users } = await sb.from('profiles').select('id, email, role').in('role', ['member', 'practitioner']);
-    const members = (users ?? []).filter((u) => u.role === 'member').slice(0, 2);
-    const practitioner = (users ?? []).find((u) => u.role === 'practitioner');
-    for (const [i, m] of members.entries()) {
-      const { data: c } = await sb
-        .from('consultations')
-        .insert({
-          organisation_id: ORG,
-          member_id: m.id,
-          practitioner_id: i === 0 ? practitioner?.id ?? null : null,
-          status: i === 0 ? 'awaiting_review' : 'in_progress',
-          reason: i === 0 ? 'Wellbeing review requested after intake' : 'General enquiry from intake',
-          ai_review: 'AI summary drafted from the intake conversation. (Fictional demonstration data.)',
-          started_at: new Date(Date.now() - (i + 1) * 86_400_000).toISOString(),
-        })
-        .select('id')
-        .single();
-      if (c?.id) {
-        await sb.from('consultation_events').insert([
-          { consultation_id: c.id, stage: 'intake', title: 'Intake completed', data: {} },
-          { consultation_id: c.id, stage: 'ai_review', title: 'AI review drafted', data: {} },
-        ]);
-      }
-    }
-  }
-  seeded = true;
-}
-
 export const consultationsRepo = {
   async list(): Promise<ConsultationCase[]> {
     const sb = createAdminClient();
     if (!sb) return [];
-    await ensureSeed(sb);
     const { data } = await sb
       .from('consultations')
       .select('*')

@@ -22,8 +22,8 @@ export function LegalPage({
       <PageHero eyebrow="Legal" title={title} lede={intro} />
       <Section tone="default" spacing="lg" containerSize="narrow">
         <div className="rounded-xl border border-dashed border-border-strong bg-surface-muted px-5 py-4 text-sm text-muted-foreground">
-          Prototype placeholder — final, legally reviewed wording is supplied by the client before
-          launch. This page demonstrates structure and reading experience only.
+          Placeholder copy — the final, legally reviewed wording is pending from the client and
+          will replace the text below.
         </div>
         <div className="mt-10 flex flex-col gap-8">
           {sections.map((section, i) => (

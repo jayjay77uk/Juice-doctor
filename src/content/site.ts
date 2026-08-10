@@ -1,12 +1,9 @@
 import { ph } from './placeholder';
 
 /**
- * Brand identity — CONTENT REMOVED.
- *
- * The previous website's wording (brand, tagline, founder biography, press
- * references, etc.) has been removed. These are neutral, development-only
- * placeholders that hold the approved layout only; real client-approved content
- * is supplied later. No wording from the old website is retained.
+ * Brand identity. The product name is Ask Juice Doctor AI; the remaining
+ * marketing copy (taglines, founder biography, press references, etc.) stays
+ * neutral until the client supplies approved wording — nothing is invented.
  */
 
 export interface SocialLink {
@@ -17,8 +14,8 @@ export interface SocialLink {
 }
 
 export const site = {
-  name: ph.brand,
-  brandline: ph.brand,
+  name: 'Ask Juice Doctor AI',
+  brandline: 'Ask Juice Doctor AI',
   tagline: ph.subheading,
   shortDescription: ph.metaDescription,
   belief: ph.subheading,

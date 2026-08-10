@@ -1,10 +1,10 @@
-# Client Demo Script
+# Client Walkthrough Script
 
-A suggested running order for demonstrating the prototype. The whole demo takes ~20–25 minutes.
+A suggested running order for presenting the platform. The whole walkthrough takes ~20–25 minutes.
 Run it on the live deployment: **`https://prototypeai-rose.vercel.app`**.
 
 > **Before you start:** open the site on a desktop browser for the fullest experience (the site is
-> also fully mobile-responsive). Sign-in details are in the **Demo Login Guide**. Live AI replies
+> also fully mobile-responsive). Sign-in details are in the **Access Guide**. Live AI replies
 > take a few seconds to stream in — this is normal.
 
 ---
@@ -18,16 +18,18 @@ Run it on the live deployment: **`https://prototypeai-rose.vercel.app`**.
    "how your team works together" journey.
 3. Open any specialist (e.g. **Serena**) to show the premium per-specialist profile.
 
-## Part B — Sign in and the member dashboard (2 min)
+## Part B — Register and the member dashboard (2–3 min)
 
-4. Sign in as the **member** account (see the Demo Login Guide).
+4. Register a fresh member account via **Sign up** (see the Access Guide — the former fictional
+   walkthrough accounts have been deleted), then sign in with it.
 5. Walk the dashboard: overview, **My care plan**, **My specialists**, **Connected health**
-   (simulated wearable), **Settings** (language & voice preference, memory controls).
+   (wearable integration not yet connected — an honest empty state), **Settings** (language & voice
+   preference, memory controls).
 
-## Part C — The six demonstration journeys (12–15 min)
+## Part C — The six guided journeys (12–15 min)
 
-These are the heart of the demo. Start each from **My specialists → New conversation** (Makela first),
-or open an existing conversation.
+These are the heart of the walkthrough. Start each from **My specialists → New conversation**
+(Makela first), or open an existing conversation.
 
 ### Journey 1 — Makela intake → Serena referral → grounded response → care-plan proposal
 - Message Makela: *"I've been feeling exhausted and low, and my cycle has been irregular."*
@@ -39,10 +41,11 @@ or open an existing conversation.
 - Atlas brings in **Aqua** for hydration support; return to **Makela** for follow-up. Show that
   context carries across every handoff (the person never repeats themselves).
 
-### Journey 3 — Optimus uses mock wearable trends
-- With the member's **Connected health** consent on, ask **Optimus** about recovery/performance.
-- Optimus references **simulated wearable trends** (sleep, HRV, resting heart rate) and clearly
-  **explains the limitations** — trends only, with consent, never a diagnosis.
+### Journey 3 — Connected health honesty + Optimus on recovery
+- Open **Connected health**: no wearable device is connected yet, and the page says so honestly —
+  the permission/consent architecture is ready for when the live connection is enabled.
+- Ask **Optimus** about recovery/performance: the reply is grounded in the evidence base; no
+  wearable data is referenced, because none is connected — the platform never invents readings.
 
 ### Journey 4 — Felix: supplement + medication → human review
 - Ask **Felix**: *"Should I take a magnesium supplement? I'm also on blood pressure medication."*
@@ -61,7 +64,7 @@ or open an existing conversation.
 
 ## Part D — The admin portal (5 min)
 
-6. Sign out and sign in as the **administrator** account.
+6. Sign out and sign in as the **administrator** account (see the Access Guide).
 7. Show, in order:
    - **HERNE → Overview**: exactly **8 specialists**, shared evidence, referral rules, care plans,
      wearable metrics, AI-access logs — all read live from the database.
@@ -74,6 +77,7 @@ or open an existing conversation.
 
 ## Closing
 
-Re-state the boundaries clearly: this is a **prototype** on fictional data; wearable data is
-simulated; voice is planned; language replies are AI-generated and not clinically reviewed; the
-emergency wording is interim and awaits the client's approved clinical copy.
+Re-state the boundaries clearly: wearable device integration is not yet connected; voice is
+planned; language replies are AI-generated and not clinically reviewed; the emergency wording is
+interim and awaits the client's approved clinical copy; and the platform is not for emergency use
+and does not replace a healthcare professional.

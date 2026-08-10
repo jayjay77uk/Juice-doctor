@@ -2,7 +2,7 @@
 
 Lets a person choose the language their specialists speak with them, register a
 regional-variety preference, and register interest in voice — while being **honest**
-about what is live today versus prototype/planned. One shared evidence base and one
+about what is live today versus planned. One shared evidence base and one
 care plan are unchanged; only the language of the conversation changes.
 
 ## Honest capability split
@@ -14,13 +14,14 @@ there, so the UI can never drift from reality.
 | Capability | Status | What it means |
 |---|---|---|
 | Text conversations | **live** | Chat with any specialist by text works now. |
-| Preferred language | **prototype** | Specialists reply in the chosen language via the AI. Replies are AI-generated, **not** human-reviewed for clinical accuracy; English is the reference version. |
+| Preferred language | **live** | Specialists reply in the chosen language via the AI. Replies are AI-generated, **not** human-reviewed for clinical accuracy; English is the reference version. |
 | Regional dialects | **planned** | A dialect preference can be expressed; separately verified dialect coverage is not live. |
 | Voice conversations | **planned** | Voice input/output is not connected. The settings toggle is disabled and labelled *Planned*. |
 
-Voice + full language support are **never** presented as final — they are labelled
-prototype/planned wherever they appear (`/specialists` hero, the languages band, the
-settings card).
+Voice + verified dialect coverage are **never** presented as final — they are
+labelled planned wherever they appear (`/specialists` hero, the languages band,
+the settings card), and language replies always carry the AI-generated /
+not-human-reviewed note.
 
 ## Model (pure, unit-tested)
 
@@ -69,7 +70,7 @@ rather than guessing — no fabricated terminology.
   languages, and a disabled *Planned* voice toggle. Saves via the server action.
 - **Public** (`/specialists`) — an "In your language" band lists the catalogue's
   native names (RTL-aware) with the honest AI-generated / voice-planned note. The hero
-  keeps the approved multilingual statement + prototype/planned label.
+  keeps the approved multilingual statement + honest live/planned labelling.
 
 ## Verification
 
@@ -82,5 +83,5 @@ the chosen language vs English.
 
 - Language replies are AI-generated, not clinically human-reviewed; English is the
   reference version.
-- Regional-dialect fidelity and voice input/output are prototype/planned, not live.
+- Regional-dialect fidelity and voice input/output are planned, not live.
 - No live speech-to-text / text-to-speech provider is connected.

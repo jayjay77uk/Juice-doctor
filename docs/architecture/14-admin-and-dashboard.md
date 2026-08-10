@@ -1,6 +1,6 @@
 # 14 · Admin Portal & User Dashboard
 
-> **Written in Phase 3; status updated 2026-08-10.** This document explains the two authenticated shells the platform ships — the operator-facing **admin portal** (`(admin)`) and the member-facing **user dashboard** (`(dashboard)`) — and *why* they are built the way they are. When first written, no AI ran and the services mutated in-process mock stores. Today both shells are **live**: real Supabase Auth gates them, the services read and write real Supabase Postgres rows, live Anthropic Claude inference powers member conversations and the admin playground, and member surfaces show each user's own data. Payments remain manual records (no payment provider), and AI replies are AI-generated and not clinically reviewed. Every surface is still a **React Server Component that `await`s a server-only service** — the pages did not change when the data went live.
+> **Written in Phase 3; status updated 2026-08-10.** This document explains the two authenticated shells the platform ships — the operator-facing **admin portal** (`(admin)`) and the member-facing **user dashboard** (`(dashboard)`) — and *why* they are built the way they are. When first written, no AI ran and the services mutated in-process stand-in stores. Today both shells are **live**: real Supabase Auth gates them, the services read and write real Supabase Postgres rows, live Anthropic Claude inference powers member conversations and the admin playground, and member surfaces show each user's own data. Payments remain manual records (no payment provider), and AI replies are AI-generated and not clinically reviewed. Every surface is still a **React Server Component that `await`s a server-only service** — the pages did not change when the data went live.
 
 The governing principle of Phase 3 is **"build once, configure forever"**: nothing about AI behaviour is hardcoded. Prompts, personalities, temperatures, models, safety rules, knowledge and feature flags are all *data* managed through the admin portal documented here. The two shells are the human interface onto that data.
 
@@ -125,7 +125,7 @@ Access control is enforced in **two independent places**, and this redundancy is
 1. **RBAC gates the surface (app layer).** The permission catalogue in `src/config/permissions.ts` defines fine-grained `resource.action` capabilities and which roles hold them cumulatively. In production a guard (`assertPermission('agents.configure')`) runs before a page renders or an action mutates; a member — who holds *no* catalogue permissions — never sees `/admin` at all. The mutation-heavy AI surfaces sit behind the `agents.*`, `knowledge.*`, `feature_flags.manage` and `audit.read` permissions the `administrator` role adds.
 2. **RLS re-enforces at the data layer (DB).** Every table from `0014` (and `0009`/`0012`) has row-level security on. Even if an app-level bug rendered the wrong page, the database refuses to return a row the caller's role/tenant may not see. The admin portal is *a lens, not a back door* — it can only display what the service, and beneath it RLS, hands it.
 
-The gate is **live**: on the deployed platform the `(admin)` layout enforces `requireRole('administrator')` against real Supabase Auth sessions, and every privileged Server Action asserts the role/session at its top. Only keyless local development (no Supabase configured) falls back to a permissive canned admin so the portal still renders.
+The gate is **live**: on the deployed platform the `(admin)` layout enforces `requireRole('administrator')` against real Supabase Auth sessions, and every privileged Server Action asserts the role/session at its top. There is no fictional fallback: without Supabase configured, or without a signed-in user, there is no session and callers render their honest unauthenticated/unavailable states.
 
 ---
 
@@ -224,7 +224,7 @@ The **Conversations** surface lists the member's real AI chats from `member.save
 
 ## 6. Runtime behaviour today
 
-The Phase-3 prototype seam (in-process mock stores, mutations lost on restart, canned data) has been **crossed** — understanding today's behaviour prevents surprise:
+The Phase-3 pre-production seam (in-process stand-in stores, mutations lost on restart, fictional seed data) has been **crossed** — understanding today's behaviour prevents surprise:
 
 - **Real persistence.** The admin services (`agents`, `prompts`, `knowledge`, `featureFlags`, `playground`) read and write Supabase Postgres rows (`0009` / `0012` / `0014` tables) through server-only repositories, idempotently seeded from the config registries and the HERNE pack. CRUD survives restarts and applies across instances.
 - **Real AI.** The playground and member conversations run live Anthropic Claude inference; every call is logged to `ai_run_logs` with tokens, cost and latency.
