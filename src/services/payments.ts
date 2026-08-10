@@ -136,22 +136,25 @@ export const payments = {
    * only a verified `payment_succeeded` may mark a pending payment succeeded.
    */
   async processProviderEvent(providerKey: string, event: PaymentEvent): Promise<{ processed: boolean; reason: string }> {
-    const recorded = await paymentsRepo.webhookEvents.recordOnce({
+    // Idempotency store: only a PROCESSED prior delivery may short-circuit a
+    // replay. A row left 'received'/'failed' by a crash or transient error is
+    // reclaimed so the event is retried, never silently dropped.
+    const recorded = await paymentsRepo.webhookEvents.recordOnceReclaimable({
       provider: providerKey,
       externalEventId: event.externalEventId,
       eventType: event.type,
       payload: { providerPaymentId: event.providerPaymentId, amountMinor: event.amountMinor, currency: event.currency, reference: event.reference },
     });
     if (!recorded.available) return { processed: false, reason: 'event_store_unavailable' };
-    if (recorded.duplicate) return { processed: false, reason: 'duplicate_event' };
+    if (recorded.alreadyProcessed) return { processed: true, reason: 'duplicate_event' };
+    if (!recorded.id) return { processed: false, reason: 'event_store_unavailable' };
+    const eventId = recorded.id;
 
     const finish = async (outcome: { processed: boolean; reason: string }): Promise<{ processed: boolean; reason: string }> => {
-      if (recorded.id) {
-        await paymentsRepo.webhookEvents.markProcessed(recorded.id, {
-          status: outcome.processed ? 'processed' : 'failed',
-          error: outcome.processed ? null : outcome.reason,
-        });
-      }
+      await paymentsRepo.webhookEvents.markProcessed(eventId, {
+        status: outcome.processed ? 'processed' : 'failed',
+        error: outcome.processed ? null : outcome.reason,
+      });
       return outcome;
     };
 
@@ -160,21 +163,26 @@ export const payments = {
 
     if (event.type === 'payment_succeeded') {
       if (existing.status === 'succeeded') return finish({ processed: true, reason: 'already_succeeded' });
-      if (event.amountMinor != null && event.amountMinor !== existing.amountMinor) {
+      // A succeeded event must carry a matching amount AND currency, and may
+      // only advance a PENDING payment — never resurrect a refunded/failed one.
+      if (event.amountMinor == null || event.amountMinor !== existing.amountMinor) {
         return finish({ processed: false, reason: 'amount_mismatch' });
       }
-      await paymentsRepo.setStatus(existing.id, 'succeeded');
-      return finish({ processed: true, reason: 'marked_succeeded' });
+      if (event.currency != null && event.currency.toUpperCase() !== existing.currency.toUpperCase()) {
+        return finish({ processed: false, reason: 'currency_mismatch' });
+      }
+      // Compare-and-set pending → succeeded; a lost race or non-pending state
+      // is reported honestly, never forced.
+      const moved = await paymentsRepo.transition(existing.id, 'pending', 'succeeded');
+      return finish(moved ? { processed: true, reason: 'marked_succeeded' } : { processed: false, reason: 'not_pending' });
     }
     if (event.type === 'payment_failed') {
-      if (existing.status !== 'pending') return finish({ processed: true, reason: 'ignored_terminal_state' });
-      await paymentsRepo.setStatus(existing.id, 'failed');
-      return finish({ processed: true, reason: 'marked_failed' });
+      const moved = await paymentsRepo.transition(existing.id, 'pending', 'failed');
+      return finish({ processed: true, reason: moved ? 'marked_failed' : 'ignored_terminal_state' });
     }
-    // payment_refunded
-    if (existing.status !== 'succeeded') return finish({ processed: false, reason: 'refund_for_non_succeeded' });
-    await paymentsRepo.setStatus(existing.id, 'refunded');
-    return finish({ processed: true, reason: 'marked_refunded' });
+    // payment_refunded — only a succeeded payment can be refunded.
+    const moved = await paymentsRepo.transition(existing.id, 'succeeded', 'refunded');
+    return finish(moved ? { processed: true, reason: 'marked_refunded' } : { processed: false, reason: 'refund_for_non_succeeded' });
   },
 
   /** Real configuration + ledger state for the admin integration centre. */

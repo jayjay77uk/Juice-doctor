@@ -20,15 +20,19 @@ or interim. This document lists every material limitation so nothing is over-cla
 
 ## Wearables
 - **No wearable device integration is connected.** The live **Thryve** connection is **not**
-  enabled, and no data source of any kind is attached — wearable surfaces show honest empty
-  states. The architecture (metric catalogue, per-specialist permissions, consents, AI-access
-  log) is ready for the live connection.
+  enabled, and no data source of any kind is attached — wearable surfaces show honest
+  "not connected" states. The application side is **development-complete** (connection
+  lifecycle, authorisation callback, consent-checked idempotent ingest, staff resync,
+  disconnect-with-deletion, scheduled sync); only the Thryve credentials and the
+  contract-specific field mapping remain (see `docs/integrations/thryve.md`).
 - When connected, specialists will only ever see **permitted, minimised trend summaries** — never
   raw history, and never presented as a diagnosis.
 
 ## Voice & language
-- **Voice conversations are planned, not connected.** Voice input/output is labelled "planned"
-  throughout; no speech provider is integrated.
+- **Voice is built but not connected.** Microphone capture, transcription and read-aloud are
+  fully implemented application-side (Deepgram + ElevenLabs adapters, per-specialist voice
+  configuration); the controls show an honest "not available yet" state until the two provider
+  keys are supplied.
 - **Multilingual replies are AI-generated.** A person can choose a language and specialists reply in
   it, but these translations are not human-reviewed. **English is the reference version.**
 - **Regional dialect fidelity is planned.** A dialect preference can be expressed but is not
@@ -42,22 +46,35 @@ or interim. This document lists every material limitation so nothing is over-cla
 - Marketing copy across the public site uses neutral placeholder wording where the client has not yet
   supplied final approved text.
 
-## Functional scope (not yet implemented)
-- **No email provider.** The public contact, newsletter and marketing booking forms return an
-  honest "not available yet" message; no verification email is sent at registration; the only
-  email the platform sends is the password-reset message.
-- **No payments provider.** Subscription payments are recorded manually; no online payment is
-  taken through the platform. Member bookings are stored as real records, but no confirmation
-  email is sent.
+## Functional scope
+- **Email is built but no provider is connected.** Every email workflow (contact copy,
+  newsletter welcome, account welcome, invitations, appointment lifecycle + reminders,
+  follow-up alerts, escalation alerts, subscription changes, payment receipts) composes and
+  records into a mail outbox; nothing sends — and nothing claims to have sent — until Resend is
+  connected. The public contact/newsletter forms additionally need database migration 0031
+  before they store submissions; until then they show an honest "not available yet" notice.
+- **No payments provider.** The payment ledger, refund states and instalment-schedule
+  architecture are live application-side, but every payment is an admin-recorded manual entry;
+  no online payment is taken and nothing is ever marked paid automatically. Instalment
+  schedules require database migration 0031.
+- **Database migration 0031 is written but not applied** (a fresh Supabase management token is
+  needed). Until applied: mail outbox, contact/newsletter storage, instalment schedules,
+  webhook-event storage and job-run history degrade honestly as described above.
 - **Remote Selfie Scan is not yet available** — the page says so honestly.
-- **Knowledge ingestion is pasted text only.** File-upload ingestion, vector embeddings and
-  question clustering are not implemented (retrieval runs on ranked full-text search).
-- **Some admin capabilities are pending**: memory browsing (the admin memory page shows real
-  counts only) and user invitations are not implemented and are labelled accordingly.
+- **Knowledge ingestion is pasted text only.** File-upload ingestion and vector embeddings are
+  not implemented (retrieval runs on ranked full-text search). Popular-question clustering is
+  live (deterministic clustering over real usage).
+- **Admin memory browsing** remains counts-only. User invitations ARE now available (account +
+  one-time password-setup link; the invitation email queues until Resend is connected).
 - File attachments in chat are not supported (nothing is uploaded/stored).
 - A dedicated **practitioner console** is not built; practitioner-facing review happens through
   the roadmap's later phases.
-- **Error/product monitoring (Sentry/PostHog) is not connected.**
+- **Error/product monitoring (Sentry/PostHog) is built but not connected** — the capture layer
+  and content-free event taxonomy are in place; without keys, errors log server-side only.
+- **Background jobs** (reminders, outbox delivery, scheduled sync) are implemented with a daily
+  Vercel cron declared; the runner stays honestly unavailable until `CRON_SECRET` is set.
+- The **/admin/integrations** page shows the real connection state of every provider and exactly
+  what each needs.
 - Usage limits and concurrency guards exist but are tuned conservatively, not yet for full
   production scale.
 

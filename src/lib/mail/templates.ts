@@ -33,7 +33,7 @@ export interface MailTemplateParams {
   'contact.staff_copy': { name: string; email: string; subject: string; message: string };
   'newsletter.welcome': Record<string, never>;
   'account.welcome': { name: string };
-  'account.invitation': { role: string; setupUrl: string };
+  'account.invitation': { role: string };
   'appointment.requested': { service: string; startIso: string; location: string };
   'appointment.confirmed': { service: string; startIso: string; location: string };
   'appointment.cancelled': { service: string; startIso: string };
@@ -82,8 +82,8 @@ const renderers: Renderers = {
     subject: `You've been invited to ${APP_NAME}`,
     ...layout(`Your ${APP_NAME} account`, [
       `An administrator has created a ${p.role} account for you.`,
-      `Set your password using this secure link (it expires):`,
-      p.setupUrl,
+      `To set your password, go to the sign-in page and choose "Forgot password" — a secure, single-use link will be emailed to you.`,
+      `Sign in: ${env.siteUrl}/login`,
     ]),
   }),
   'appointment.requested': (p) => ({

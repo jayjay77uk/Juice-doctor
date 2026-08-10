@@ -61,6 +61,13 @@ export async function sendTemplateMail<K extends MailTemplateKey>(input: {
     dedupeKey: input.dedupeKey ?? null,
   });
   if (record.duplicate) return { delivered: false, recorded: true, reason: 'duplicate' };
+  // Idempotency fails CLOSED: if the caller asked for dedupe but we could not
+  // create a durable outbox record (store unavailable / migration 0031 not yet
+  // applied), do NOT send — a later rerun would otherwise re-send with no
+  // dedupe. The caller sees an honest not-recorded result.
+  if (input.dedupeKey && !record.persisted) {
+    return { delivered: false, recorded: false, reason: 'not_configured' };
+  }
 
   const result = await provider.send({
     to: input.to,

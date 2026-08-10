@@ -10,9 +10,11 @@ import { sendTemplateMail } from './mail';
 /**
  * User invitations (admin). Creates the real account, sets its role, and
  * generates a one-time password-setup link (Supabase recovery link — no
- * password ever passes through an admin's hands). The link is shown ONCE to
- * the admin to share; the invitation email is queued in the outbox and only
- * sends once the email provider is connected — the UI says exactly that.
+ * password ever passes through an admin's hands). The link is returned to the
+ * admin to share directly and is shown ONCE; it is NEVER persisted (it would
+ * be an account-takeover token at rest, and it expires). The queued invitation
+ * email is generic — it tells the invitee to use "Forgot password" — so
+ * nothing secret is stored in the outbox or delivered stale.
  */
 
 const INVITABLE_ROLES = ['member', 'practitioner', 'staff', 'administrator'] as const;
@@ -72,19 +74,20 @@ export async function inviteUserAction(_prev: InviteResult, formData: FormData):
     after: { role: parsed.data.role },
   });
 
+  // The queued email is GENERIC — it never carries the recovery token (which
+  // would sit in the outbox as an account-takeover credential and expire before
+  // any deferred delivery). The one-time link is returned to the admin only.
   let emailQueued = false;
-  if (setupUrl) {
-    try {
-      const delivery = await sendTemplateMail({
-        to: email,
-        template: 'account.invitation',
-        params: { role: parsed.data.role, setupUrl },
-        dedupeKey: `invite:${created.user.id}`,
-      });
-      emailQueued = delivery.delivered || delivery.recorded;
-    } catch {
-      emailQueued = false;
-    }
+  try {
+    const delivery = await sendTemplateMail({
+      to: email,
+      template: 'account.invitation',
+      params: { role: parsed.data.role },
+      dedupeKey: `invite:${created.user.id}`,
+    });
+    emailQueued = delivery.delivered || delivery.recorded;
+  } catch {
+    emailQueued = false;
   }
 
   revalidatePath('/admin/users');

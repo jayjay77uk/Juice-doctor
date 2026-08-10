@@ -23,11 +23,12 @@ engineering team, never in client-facing documents.
 - [ ] Prompt versions reviewed and published; shared DNA finalised
 
 ## Wearables (Thryve)
-- [ ] Thryve API credentials provisioned
+- [ ] Thryve API credentials provisioned (`THRYVE_API_KEY`, `THRYVE_APP_ID`, `THRYVE_WEBHOOK_SECRET`)
 - [ ] Thryve commercial agreement signed
-- [ ] Live Thryve adapter connected behind the existing data model
+- [ ] Contract-specific field mapping implemented in the provider adapter
+      (everything else — lifecycle, callback, ingest, resync, deletion — is built;
+      see `docs/integrations/thryve.md`)
 - [ ] Consent, data-quality and permission model validated against live data
-- [ ] Wearable empty states replaced by live data once the connection is enabled
 
 ## Identity, accounts & access
 - [ ] Production authentication (email verification, optional MFA — password reset already works)
@@ -51,10 +52,19 @@ engineering team, never in client-facing documents.
 - [ ] Dependency and infrastructure hardening
 
 ## Commerce & communications
-- [ ] Live subscriptions/payments provider connected (no live payments today)
-- [ ] Transactional email/notifications connected
-- [ ] Booking confirmations/notifications connected (booking records are already stored in the
-      platform database)
+- [ ] Payment provider selected by the client; adapter implemented behind the existing
+      provider seam (ledger, refund states, instalments and the webhook pipeline are built;
+      payments stay manual admin records until then)
+- [ ] Resend connected (`RESEND_API_KEY` + from/reply-to addresses) — every email workflow is
+      built and queues into the outbox already
+- [ ] Zoho mailboxes created on the final domain; the four business addresses set via env
+- [ ] Database migration **0031** applied (mail outbox, contact/newsletter storage, instalment
+      schedules, webhook events, job runs) — needs a fresh Supabase management token
+- [ ] `CRON_SECRET` set so the daily background-job run (reminders, outbox delivery, syncs)
+      activates
+- [ ] Voice keys supplied if voice is wanted at launch (`DEEPGRAM_API_KEY`,
+      `ELEVENLABS_API_KEY`, `ELEVENLABS_DEFAULT_VOICE_ID`; per-specialist voices are set on
+      /admin/integrations)
 
 ## Content & localisation
 - [ ] Final approved marketing copy applied across the public site

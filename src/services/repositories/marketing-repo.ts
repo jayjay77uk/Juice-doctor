@@ -65,13 +65,18 @@ export const marketingRepo = {
     return !error && Boolean(data);
   },
 
-  /** Idempotent subscribe — re-subscribing an existing address is a no-op success. */
+  /**
+   * Idempotent subscribe — re-subscribing an existing address is a genuine
+   * no-op success. `ignoreDuplicates` means an existing row is LEFT UNCHANGED,
+   * so a public submission can never silently flip a recorded 'unsubscribed'
+   * opt-out back to 'subscribed' (reversing that requires a real re-opt-in).
+   */
   async subscribeNewsletter(email: string): Promise<{ available: boolean; subscribed: boolean }> {
     const sb = createAdminClient();
     if (!sb) return { available: false, subscribed: false };
     const { error } = await sb
       .from('newsletter_subscribers')
-      .upsert({ email: email.toLowerCase(), status: 'subscribed' }, { onConflict: 'email' });
+      .upsert({ email: email.toLowerCase(), status: 'subscribed' }, { onConflict: 'email', ignoreDuplicates: true });
     if (error) return { available: false, subscribed: false };
     return { available: true, subscribed: true };
   },

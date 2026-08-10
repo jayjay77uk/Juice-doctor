@@ -22,12 +22,21 @@ async function queueStateMail(sub: CustomerSubscription): Promise<void> {
   }
 }
 
-/** A member may only act on their OWN subscription; staff/admin use admin actions. */
-async function assertOwnSubscription(id: string, userId: string): Promise<Res | null> {
+/** Subscription states a member may still self-manage (change plan / cancel). */
+const MEMBER_LIVE_STATES: SubscriptionState[] = ['active', 'trialing'];
+
+/**
+ * A member may only act on their OWN, still-LIVE subscription. A canceled,
+ * past-due or suspended subscription can only be changed by an admin (via
+ * recordPayment/setState) — a member cannot self-resurrect revoked paid access.
+ */
+async function assertOwnLiveSubscription(id: string, userId: string): Promise<{ ok: true } | Res> {
   const sub = await subscriptionsService.byId(id);
-  if (!sub.ok) return { ok: false, error: 'Subscription not found.' };
-  if (sub.data.memberId !== userId) return { ok: false, error: 'Subscription not found.' };
-  return null;
+  if (!sub.ok || sub.data.memberId !== userId) return { ok: false, error: 'Subscription not found.' };
+  if (!MEMBER_LIVE_STATES.includes(sub.data.state)) {
+    return { ok: false, error: 'This subscription is not active — please contact the team to reactivate it.' };
+  }
+  return { ok: true };
 }
 
 /**
@@ -98,8 +107,8 @@ export async function recordPaymentAction(id: string, note: string): Promise<Res
 export async function customerCancelAction(id: string): Promise<Res> {
   let userId: string;
   try { userId = (await assertSession()).user.id; } catch { return { ok: false, error: 'Please sign in.' }; }
-  const denied = await assertOwnSubscription(id, userId);
-  if (denied) return denied;
+  const gate = await assertOwnLiveSubscription(id, userId);
+  if (!gate.ok) return gate;
   const r = await subscriptionsService.cancel(id);
   if (r.ok) await queueStateMail(r.data);
   revalidateAll();
@@ -109,8 +118,12 @@ export async function customerCancelAction(id: string): Promise<Res> {
 export async function customerChangePlanAction(id: string, planId: string): Promise<Res> {
   let userId: string;
   try { userId = (await assertSession()).user.id; } catch { return { ok: false, error: 'Please sign in.' }; }
-  const denied = await assertOwnSubscription(id, userId);
-  if (denied) return denied;
+  const gate = await assertOwnLiveSubscription(id, userId);
+  if (!gate.ok) return gate;
+  // A member may only switch to an ACTIVE plan — archived/draft plans are not
+  // valid self-serve targets.
+  const plan = await subscriptionsService.plans.byId(planId);
+  if (!plan.ok || plan.data.status !== 'active') return { ok: false, error: 'That plan is not available.' };
   const r = await subscriptionsService.changePlan(id, planId);
   if (r.ok) await queueStateMail(r.data);
   revalidateAll();

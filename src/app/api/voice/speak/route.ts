@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSession } from '@/services/auth';
-import { getTtsProvider } from '@/lib/voice/tts';
+import { getTtsProvider, TTS_MAX_CHARS } from '@/lib/voice/tts';
 import { voiceForSpecialist } from '@/services/voice';
 import { conversationsRepo } from '@/services/repositories/conversations-repo';
 import { agents } from '@/services/agents';
@@ -64,7 +64,10 @@ export async function POST(request: NextRequest) {
   if (!result.ok) {
     return NextResponse.json({ error: 'Speech could not be generated — please try again.' }, { status: result.error === 'timeout' ? 504 : 502 });
   }
+  // Long replies are spoken up to the provider limit; signal partial audio
+  // honestly rather than presenting truncated speech as the whole reply.
+  const truncated = message.data.content.length > TTS_MAX_CHARS;
   return new Response(result.audio, {
-    headers: { 'Content-Type': result.contentType, 'Cache-Control': 'no-store' },
+    headers: { 'Content-Type': result.contentType, 'Cache-Control': 'no-store', 'X-Audio-Truncated': truncated ? 'true' : 'false' },
   });
 }

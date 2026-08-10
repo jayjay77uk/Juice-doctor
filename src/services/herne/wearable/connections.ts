@@ -54,15 +54,29 @@ export async function connectWearable(userId: string): Promise<{ ok: boolean; au
   }
   const sb = createAdminClient();
   if (!sb) return { ok: false, error: 'Not available right now.' };
+  // Already connected? Nothing to do — never stack rows.
+  const existing = await getConnection(userId);
+  if (existing?.status === 'active') return { ok: false, error: 'A device is already connected.' };
   const result = await provider.createConnection(userId);
-  await wearableConsent.grant(userId, provider.key);
-  await sb.from('user_wearable_connections').insert({
-    organisation_id: ORG,
-    user_id: userId,
-    provider_key: provider.key,
-    status: 'pending',
-    external_connection_id: result.externalConnectionId,
-  });
+  // Reuse a stale pending row (abandoned/re-started flow) instead of inserting
+  // a second — duplicate pending rows would break activation. Consent is NOT
+  // granted here: it is granted only when the connection actually activates
+  // (see markConnectionActive), so an abandoned flow leaves no standing consent.
+  if (existing?.status === 'pending') {
+    await sb
+      .from('user_wearable_connections')
+      .update({ external_connection_id: result.externalConnectionId, provider_key: provider.key })
+      .eq('user_id', userId)
+      .eq('status', 'pending');
+  } else {
+    await sb.from('user_wearable_connections').insert({
+      organisation_id: ORG,
+      user_id: userId,
+      provider_key: provider.key,
+      status: 'pending',
+      external_connection_id: result.externalConnectionId,
+    });
+  }
   return { ok: true, ...(result.authorisationUrl ? { authorisationUrl: result.authorisationUrl } : {}) };
 }
 
@@ -139,22 +153,27 @@ export function verifyConnectState(state: string): string | null {
   return userId;
 }
 
-/** Mark the member's pending connection active (authorisation callback). */
+/**
+ * Mark the member's pending connection active (authorisation callback) and
+ * grant sharing consent at this point — not at initiation — so an abandoned
+ * flow never leaves standing consent. Resilient to more than one pending row
+ * (updates them all rather than erroring on a non-singular result), so a stale
+ * duplicate can never brick activation.
+ */
 export async function markConnectionActive(userId: string): Promise<boolean> {
   const sb = createAdminClient();
   if (!sb) return false;
+  const provider = getWearableProvider();
   const { data, error } = await sb
     .from('user_wearable_connections')
     .update({ status: 'active', connected_at: new Date().toISOString() })
     .eq('user_id', userId)
     .eq('status', 'pending')
-    .select('id')
-    .maybeSingle();
-  if (!error && data) {
-    await auditRepo.log({ actorId: userId, action: 'wearable.connected', entityType: 'user_wearable_connections', entityId: String(data.id) });
-    return true;
-  }
-  return false;
+    .select('id, provider_key');
+  if (error || !data || data.length === 0) return false;
+  await wearableConsent.grant(userId, String(data[0]?.provider_key ?? provider?.key ?? 'thryve'));
+  await auditRepo.log({ actorId: userId, action: 'wearable.connected', entityType: 'user_wearable_connections', entityId: String(data[0]?.id) });
+  return true;
 }
 
 /**

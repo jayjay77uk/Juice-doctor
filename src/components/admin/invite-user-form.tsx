@@ -32,8 +32,8 @@ export function InviteUserForm() {
           <p className="text-sm font-medium text-secondary" role="status">
             Account created.{' '}
             {state.emailQueued
-              ? 'The invitation email is in the outbox and sends once email is connected — until then, share this link yourself:'
-              : 'Share this one-time password-setup link with them:'}
+              ? 'A generic invitation email is queued (it sends once email is connected and tells them to use “Forgot password”). To get them in now, share this one-time link directly:'
+              : 'Share this one-time password-setup link with them directly:'}
           </p>
           <code className="break-all rounded-lg bg-surface-muted px-3 py-2 text-xs text-foreground">{state.setupUrl}</code>
           <div className="flex items-center gap-2">

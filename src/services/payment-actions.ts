@@ -131,8 +131,14 @@ export async function markInstalmentPaidAction(instalmentId: string, planId: str
     description: `Instalment ${instalment.sequence} — ${plan.description}`,
   });
   if (!payment) return { ok: false, error: 'Could not record the payment.' };
+  // Atomically claim the instalment (compare-and-set pending→paid). If a
+  // concurrent request already claimed it, COMPENSATE by deleting the ledger
+  // row we just wrote so no orphan succeeded payment corrupts the ledger.
   const marked = await paymentsRepo.instalments.markPaid(instalmentId, payment.id);
-  if (!marked) return { ok: false, error: 'The payment was recorded but the instalment could not be updated — reconcile manually.' };
+  if (!marked) {
+    await paymentsRepo.instalments._deletePayment(payment.id);
+    return { ok: false, error: 'This instalment was already being paid — no duplicate payment was recorded.' };
+  }
   await auditRepo.log({ actorId, action: 'payment.instalment_paid', entityType: 'payment_instalments', entityId: instalmentId, after: { paymentId: payment.id } });
   revalidate();
   return { ok: true };

@@ -105,15 +105,23 @@ export const mailRepo = {
       .eq('id', id);
   },
 
-  /** Blocked/queued mail eligible for (re)delivery once a provider exists. */
-  async deliverable(limit = 50): Promise<{ available: boolean; rows: (OutboxRow & { bodyText: string; bodyHtml: string | null })[] }> {
+  /**
+   * Blocked/queued mail eligible for (re)delivery once a provider exists.
+   * AGE-BOUND: rows older than `maxAgeHours` (default 72h) are NOT delivered —
+   * time-sensitive mail (appointment reminders/confirmations, receipts, invite
+   * notices) must never flush stale days/weeks later when email is first
+   * connected. Stale rows are left for the admin to review, never mass-sent.
+   */
+  async deliverable(limit = 50, maxAgeHours = 72): Promise<{ available: boolean; rows: (OutboxRow & { bodyText: string; bodyHtml: string | null })[] }> {
     const sb = createAdminClient();
     if (!sb) return { available: false, rows: [] };
+    const cutoff = new Date(Date.now() - maxAgeHours * 3_600_000).toISOString();
     const { data, error } = await sb
       .from('mail_outbox')
       .select('*')
       .in('status', ['queued', 'blocked'])
       .lt('attempts', 3)
+      .gte('created_at', cutoff)
       .order('created_at', { ascending: true })
       .limit(limit);
     if (error) return { available: !tableMissing(error), rows: [] };

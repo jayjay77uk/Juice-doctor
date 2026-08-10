@@ -28,8 +28,13 @@ export interface PaymentEvent {
 export interface PaymentProviderAdapter {
   /** Stable identifier recorded on ledger rows and webhook events. */
   readonly key: string;
-  /** Verify a webhook's authenticity (signature/HMAC per provider contract). */
-  verifyWebhook(signature: string, payload: string): boolean;
+  /**
+   * Verify a webhook's authenticity. Receives the raw body plus a
+   * case-insensitive header getter so each provider reads ITS OWN signature
+   * header (Stripe `Stripe-Signature`, Paystack `x-paystack-signature`,
+   * Flutterwave `verif-hash`, …) — the route does not guess header names.
+   */
+  verifyWebhook(payload: string, header: (name: string) => string | null): boolean;
   /** Parse a VERIFIED webhook payload into normalised events. */
   parseWebhook(payload: string): PaymentEvent[];
   /** Request a provider-side refund for a provider payment id. */

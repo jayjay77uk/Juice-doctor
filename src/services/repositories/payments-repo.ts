@@ -137,6 +137,24 @@ export const paymentsRepo = {
     return !error && data ? rowToPayment(data) : null;
   },
 
+  /**
+   * Compare-and-set a payment's status: update ONLY if it is currently `from`.
+   * Returns true when the row moved — the sole guard against out-of-order or
+   * replayed provider events resurrecting a terminal (refunded/failed) payment.
+   */
+  async transition(id: string, from: PaymentStatus, to: PaymentStatus): Promise<boolean> {
+    const sb = createAdminClient();
+    if (!sb) return false;
+    const { data, error } = await sb
+      .from('payments')
+      .update({ status: to })
+      .eq('id', id)
+      .eq('status', from)
+      .select('id')
+      .maybeSingle();
+    return !error && Boolean(data);
+  },
+
   /** A member's own payment history, newest first. */
   async forMember(memberId: string, limit = 50): Promise<PaymentRecord[]> {
     const sb = createAdminClient();
@@ -260,6 +278,13 @@ export const paymentsRepo = {
       return { available: true, plans };
     },
 
+    /** Delete a ledger payment (compensation for a lost instalment-claim race only). */
+    async _deletePayment(paymentId: string): Promise<void> {
+      const sb = createAdminClient();
+      if (!sb) return;
+      await sb.from('payments').delete().eq('id', paymentId);
+    },
+
     /** Mark one instalment paid, linked to a real ledger payment. Never automatic. */
     async markPaid(instalmentId: string, paidPaymentId: string): Promise<boolean> {
       const sb = createAdminClient();
@@ -285,10 +310,16 @@ export const paymentsRepo = {
 
   // ── Provider webhook events (migration 0031 — idempotency store) ───────────
   webhookEvents: {
-    /** Insert-once by (provider, external id). `duplicate: true` = already processed. */
-    async recordOnce(input: { provider: string; externalEventId: string; eventType: string; payload: unknown }): Promise<{ available: boolean; duplicate: boolean; id: string | null }> {
+    /**
+     * Insert-or-reclaim by (provider, external id). Only a row whose prior
+     * delivery reached `processed` short-circuits (`alreadyProcessed: true`);
+     * a row stuck at 'received' or left 'failed' by a crash/transient error is
+     * reclaimed (its id returned) so the event is retried — an event is never
+     * silently dropped on the strength of an unfinished first attempt.
+     */
+    async recordOnceReclaimable(input: { provider: string; externalEventId: string; eventType: string; payload: unknown }): Promise<{ available: boolean; alreadyProcessed: boolean; id: string | null }> {
       const sb = createAdminClient();
-      if (!sb) return { available: false, duplicate: false, id: null };
+      if (!sb) return { available: false, alreadyProcessed: false, id: null };
       const { data, error } = await sb
         .from('provider_webhook_events')
         .insert({
@@ -300,11 +331,20 @@ export const paymentsRepo = {
         })
         .select('id')
         .single();
-      if (error) {
-        if (error.code === '23505') return { available: true, duplicate: true, id: null };
-        return { available: false, duplicate: false, id: null };
-      }
-      return { available: true, duplicate: false, id: String(data.id) };
+      if (!error && data) return { available: true, alreadyProcessed: false, id: String(data.id) };
+      if (error?.code !== '23505') return { available: false, alreadyProcessed: false, id: null };
+      // A row already exists — reclaim it unless it is already processed.
+      const { data: existing } = await sb
+        .from('provider_webhook_events')
+        .select('id, status')
+        .eq('provider', input.provider)
+        .eq('external_event_id', input.externalEventId)
+        .maybeSingle();
+      if (!existing) return { available: false, alreadyProcessed: false, id: null };
+      if (String(existing.status) === 'processed') return { available: true, alreadyProcessed: true, id: null };
+      // Reclaim: reset to 'received' for a fresh processing attempt.
+      await sb.from('provider_webhook_events').update({ status: 'received', error: null }).eq('id', String(existing.id));
+      return { available: true, alreadyProcessed: false, id: String(existing.id) };
     },
 
     async markProcessed(id: string, outcome: { status: 'processed' | 'failed'; error?: string | null }): Promise<void> {

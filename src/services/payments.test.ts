@@ -75,3 +75,19 @@ describe('provider event pipeline honesty', () => {
     expect(result.reason).toBe('event_store_unavailable');
   });
 });
+
+describe('payment webhook signature routing', () => {
+  it('lets the adapter read its own signature header rather than the route guessing', () => {
+    // verifyWebhook receives a case-insensitive header getter, so each provider
+    // reads ITS OWN signature header (Stripe-Signature, x-paystack-signature…).
+    const stripeStyle = {
+      key: 'stripe',
+      verifyWebhook: (_payload: string, get: (n: string) => string | null) => get('Stripe-Signature') === 'sig_123',
+      parseWebhook: () => [],
+      refund: async () => ({ ok: true }),
+    };
+    const header = (name: string) => (name.toLowerCase() === 'stripe-signature' ? 'sig_123' : null);
+    expect(stripeStyle.verifyWebhook('{}', header)).toBe(true);
+    expect(stripeStyle.verifyWebhook('{}', () => null)).toBe(false);
+  });
+});
