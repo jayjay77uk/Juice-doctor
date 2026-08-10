@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Send, LifeBuoy, ThumbsUp, ThumbsDown, Square, FileText, AlertTriangle, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { requestSupportAction, messageFeedbackAction } from '@/services/conversation-actions';
+import { VoiceInputButton, SpeakButton } from '@/components/dashboard/voice-controls';
 import type { Message, MessageCitation } from '@/types/conversation';
 
 const now = () => new Date().toISOString();
@@ -38,12 +39,15 @@ export function SpecialistChat({
   agentTitle,
   initialMessages,
   remembered,
+  voice = { sttConfigured: false, ttsConfigured: false },
 }: {
   conversationId: string;
   agentName: string;
   agentTitle?: string;
   initialMessages: Message[];
   remembered: string[];
+  /** Real server-side voice configuration — controls stay honest when unset. */
+  voice?: { sttConfigured: boolean; ttsConfigured: boolean };
 }) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [streaming, setStreaming] = React.useState<string | null>(null);
@@ -184,13 +188,14 @@ export function SpecialistChat({
               </div>
             )}
             {msg.role === 'assistant' && !msg.id.startsWith('local_') && !msg.id.startsWith('stopped_') && (
-              <div className="flex gap-1 pl-1">
+              <div className="flex items-center gap-1 pl-1">
                 <button type="button" aria-label="Helpful" onClick={() => rate(msg.id, 'up')} className={`rounded p-1 ${rated[msg.id] === 'up' ? 'text-secondary' : 'text-muted-foreground hover:text-foreground'}`}>
                   <ThumbsUp className="size-3.5" />
                 </button>
                 <button type="button" aria-label="Not helpful" onClick={() => rate(msg.id, 'down')} className={`rounded p-1 ${rated[msg.id] === 'down' ? 'text-danger' : 'text-muted-foreground hover:text-foreground'}`}>
                   <ThumbsDown className="size-3.5" />
                 </button>
+                {voice.ttsConfigured && <SpeakButton messageId={msg.id} />}
               </div>
             )}
           </div>
@@ -216,6 +221,11 @@ export function SpecialistChat({
             aria-label="Your message"
             className="min-h-[2.75rem] flex-1 resize-none rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus-visible:border-primary"
           />
+          <VoiceInputButton
+            enabled={voice.sttConfigured}
+            disabled={busy}
+            onTranscript={(text) => setInput((current) => (current ? `${current} ${text}` : text))}
+          />
           {busy ? (
             <Button type="button" intent="outline" size="sm" onClick={stop} aria-label="Stop generating">
               <Square className="size-4" /> Stop
@@ -231,6 +241,7 @@ export function SpecialistChat({
             <LifeBuoy className="size-4" /> Request human support
           </Button>
           <p className="text-right text-xs text-muted-foreground">
+            {!voice.sttConfigured && 'Voice is not connected yet — the microphone activates once the speech service is configured. '}
             AI-generated, not clinically reviewed. Not for emergencies — call your local emergency services.
           </p>
         </div>

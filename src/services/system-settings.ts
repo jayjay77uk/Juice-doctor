@@ -26,6 +26,25 @@ function previewOf(value: unknown): string {
 }
 
 export const systemSettings = {
+  /** Raw value of one setting, or null when unset/unavailable. Server-only. */
+  async getValue(key: string): Promise<unknown> {
+    const sb = createAdminClient();
+    if (!sb) return null;
+    const { data, error } = await sb.from('system_settings').select('value').eq('key', key).maybeSingle();
+    if (error || !data) return null;
+    return data.value;
+  },
+
+  /** Upsert one setting (server-side, caller must have authorised). */
+  async setValue(key: string, value: unknown, opts?: { isPublic?: boolean }): Promise<boolean> {
+    const sb = createAdminClient();
+    if (!sb) return false;
+    const { error } = await sb
+      .from('system_settings')
+      .upsert({ key, value, is_public: opts?.isPublic ?? false, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    return !error;
+  },
+
   async all(): Promise<SystemSettingRow[]> {
     const sb = createAdminClient();
     if (!sb) return [];

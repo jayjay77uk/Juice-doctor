@@ -6,6 +6,7 @@ import { ConversationToolbar } from '@/components/dashboard/conversation-toolbar
 import { conversations_service } from '@/services/conversations';
 import { agents } from '@/services/agents';
 import { getSession } from '@/services/auth';
+import { voiceStatus } from '@/services/voice';
 
 export const metadata = createMetadata({ title: 'Conversation' });
 export const dynamic = 'force-dynamic';
@@ -47,6 +48,7 @@ export default async function ConversationThreadPage({ params }: { params: Promi
         {...(agentTitle ? { agentTitle } : {})}
         initialMessages={messagesResult.ok ? messagesResult.data : []}
         remembered={rememberedResult.ok ? rememberedResult.data : []}
+        voice={voiceStatus()}
       />
     </div>
   );

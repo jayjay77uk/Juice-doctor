@@ -113,6 +113,27 @@ export const conversationsRepo = {
     return ok((data ?? []).reverse().map(rowToMessage));
   },
 
+  /**
+   * One ASSISTANT message, ownership-checked through its conversation — used
+   * by the voice read-aloud endpoint so speech can only ever be generated from
+   * a stored reply in the caller's own conversation.
+   */
+  async assistantMessageForUser(userId: string, messageId: string): Promise<Result<{ content: string; agentId: string | null }>> {
+    const sb = createAdminClient();
+    if (!sb) return err({ code: 'unavailable', message: 'Conversation store unavailable.' });
+    const { data: msg } = await sb.from('messages').select('conversation_id, role, content').eq('id', messageId).maybeSingle();
+    if (!msg || msg.role !== 'assistant') return err({ code: 'not_found', message: 'Message not found.' });
+    const { data: conv } = await sb
+      .from('conversations')
+      .select('user_id, agent_id, status')
+      .eq('id', String(msg.conversation_id))
+      .maybeSingle();
+    if (!conv || String(conv.user_id) !== userId || conv.status === 'deleted') {
+      return err({ code: 'not_found', message: 'Message not found.' });
+    }
+    return ok({ content: String(msg.content), agentId: conv.agent_id ? String(conv.agent_id) : null });
+  },
+
   async create(input: { userId: string; agentId: string; title?: string }): Promise<Result<Conversation>> {
     const sb = createAdminClient();
     if (!sb) return err({ code: 'unavailable', message: 'Conversation store unavailable.' });
