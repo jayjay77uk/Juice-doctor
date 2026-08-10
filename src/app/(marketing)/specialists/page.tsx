@@ -9,7 +9,7 @@ import { HERNE_LANGUAGES } from '@/data/herne/languages';
 
 export const metadata = createMetadata({
   title: 'Your Wellbeing Institute — Meet Your Specialist Team',
-  description: 'A coordinated team of wellbeing specialists, one shared care plan, and evidence-informed guidance — by voice or text, in your language.',
+  description: 'A coordinated team of wellbeing specialists, one shared care plan, and evidence-informed guidance — by text, in your language (voice is planned).',
   path: '/specialists',
 });
 
