@@ -1,10 +1,9 @@
-import { Pencil } from 'lucide-react';
 import { createMetadata } from '@/config/metadata';
 import { AdminHeader } from '@/components/admin/admin-header';
 import { Panel } from '@/components/admin/panel';
 import { Tabs } from '@/components/admin/tabs';
-import { Button } from '@/components/ui/button';
 import { member } from '@/services/member';
+import { HealthBasicsForm } from '@/components/dashboard/profile-forms';
 import type { HealthProfile, FitnessProfile, NutritionProfile } from '@/types/health';
 
 export const metadata = createMetadata({ title: 'Health profile', path: '/dashboard/profile' });
@@ -136,17 +135,20 @@ export default async function HealthProfilePage() {
         title="Health profile"
         description="The information stored on this profile."
         actions={
-          <Button disabled title="Profile editing is coming soon">
-            <Pencil className="size-4" />
-            Edit profile
-          </Button>
+          <HealthBasicsForm
+            dateOfBirth={health.dateOfBirth}
+            biologicalSex={health.biologicalSex}
+            heightCm={health.heightCm}
+            weightKg={health.weightKg}
+          />
         }
       />
 
       <Tabs tabs={tabs} defaultValue="health" />
 
       <p className="text-sm text-muted-foreground">
-        Profile editing isn&apos;t available yet — contact the team if anything here needs updating.
+        You can edit your basics above. For conditions, allergies or medication changes, please speak with the team so
+        they are recorded correctly.
       </p>
 
       <p className="text-sm text-muted-foreground">

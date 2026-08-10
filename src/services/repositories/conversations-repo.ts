@@ -102,9 +102,15 @@ export const conversationsRepo = {
   async messages(conversationId: string): Promise<Result<Message[]>> {
     const sb = createAdminClient();
     if (!sb) return err({ code: 'unavailable', message: 'Conversation store unavailable.' });
-    const { data, error } = await sb.from('messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true });
+    // Bounded window: the most recent 200 turns, returned oldest-first.
+    const { data, error } = await sb
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: false })
+      .limit(200);
     if (error) return err({ code: 'unavailable', message: error.message });
-    return ok((data ?? []).map(rowToMessage));
+    return ok((data ?? []).reverse().map(rowToMessage));
   },
 
   async create(input: { userId: string; agentId: string; title?: string }): Promise<Result<Conversation>> {

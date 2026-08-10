@@ -9,6 +9,9 @@ import { StatusBadge } from '@/components/admin/status-badge';
 import { LeadReviewActions } from '@/components/admin/lead-review-actions';
 import { crm } from '@/services/crm';
 import { specialists } from '@/services/specialists';
+import { conversationsRepo } from '@/services/repositories/conversations-repo';
+import { memberRepo } from '@/services/repositories/member-repo';
+import { carePlan } from '@/services/herne/care-plan';
 
 export const metadata = createMetadata({ title: 'CRM lead' });
 
@@ -31,6 +34,16 @@ export default async function CrmLeadDetailPage({
   const leadResult = await crm.byId(id);
   if (!leadResult.ok) notFound();
   const lead = leadResult.data;
+
+  // When the lead is linked to a member account, show their real journey
+  // relationships (conversations, appointments, care plan) alongside the lead.
+  const linked = lead.userId
+    ? await Promise.all([
+        conversationsRepo.list(lead.userId),
+        memberRepo.upcomingAppointments(lead.userId),
+        carePlan.get(lead.userId),
+      ])
+    : null;
 
   const [eventsResult, specialistsResult] = await Promise.all([
     crm.events(lead.id),
@@ -102,6 +115,28 @@ export default async function CrmLeadDetailPage({
               </div>
             )}
           </Panel>
+
+          {linked && (
+            <Panel
+              title="Linked member"
+              description="This lead belongs to a registered member — their real journey relationships."
+            >
+              <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-3">
+                <div className="flex flex-col gap-1">
+                  <dt className="text-sm text-muted-foreground">Conversations</dt>
+                  <dd className="font-medium text-foreground">{linked[0].ok ? linked[0].data.length : 0}</dd>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <dt className="text-sm text-muted-foreground">Upcoming appointments</dt>
+                  <dd className="font-medium text-foreground">{linked[1].length}</dd>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <dt className="text-sm text-muted-foreground">Care plan</dt>
+                  <dd className="font-medium text-foreground">{linked[2] ? `Yes — ${linked[2].assignedSpecialists.length} specialist(s)` : 'Not started'}</dd>
+                </div>
+              </dl>
+            </Panel>
+          )}
 
           <Panel title="Activity timeline" padded={false}>
             {events.length === 0 ? (

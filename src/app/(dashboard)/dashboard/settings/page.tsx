@@ -8,6 +8,7 @@ import { LanguageVoiceCard } from '@/components/settings/language-voice-card';
 import { getLanguagePreference } from '@/services/herne/language-store';
 import { MemoryCard } from '@/components/settings/memory-card';
 import { NotificationPrefsCard } from '@/components/settings/notification-prefs-card';
+import { DisplayNameForm } from '@/components/dashboard/profile-forms';
 import { getNotificationPrefs } from '@/services/notification-prefs';
 import { getMemoryEnabled } from '@/services/memory-prefs';
 import { memoryRepo } from '@/services/repositories/memory-repo';
@@ -38,6 +39,7 @@ export default async function SettingsPage() {
       <Panel
         title="Profile"
         description="The basics we use to personalise your experience."
+        actions={<DisplayNameForm current={session?.user.name ?? ''} />}
       >
         <dl className="divide-y divide-border">
           {profileRows.map((row) => (
