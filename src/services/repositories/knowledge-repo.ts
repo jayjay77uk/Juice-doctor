@@ -140,8 +140,9 @@ export const knowledgeRepo = {
     if (!sb || !query.trim()) return [];
 
     // OR-match the query's significant terms (a single chunk rarely contains
-    // every word of a natural-language question).
-    const terms = [...new Set(query.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [])];
+    // every word of a natural-language question). Capped so a very long pasted
+    // message cannot blow up the tsquery.
+    const terms = [...new Set(query.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [])].slice(0, 24);
     if (!terms.length) return [];
     const tsquery = terms.join(' | ');
 
@@ -300,8 +301,16 @@ export const knowledgeRepo = {
     return knowledgeRepo.getDocument(id);
   },
 
-  /** Pause/resume a document in the specialist's brain without archiving. */
+  /**
+   * Pause/resume a document in the specialist's brain without archiving.
+   * Only toggles between indexed ⇄ available — a document still moving
+   * through the pipeline (uploaded/processing/failed) or archived must not
+   * jump straight to available.
+   */
   async setActive(id: string, active: boolean): Promise<KnowledgeDocument | null> {
+    const doc = await knowledgeRepo.getDocument(id);
+    if (!doc) return null;
+    if (doc.indexState !== 'indexed' && doc.indexState !== 'available') return doc;
     return knowledgeRepo.setIndexState(id, active ? 'available' : 'indexed');
   },
 

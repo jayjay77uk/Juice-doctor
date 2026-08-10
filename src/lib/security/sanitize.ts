@@ -12,10 +12,12 @@
  * space; `_` is kept (emails contain it) but escaped for LIKE.
  */
 export function sanitizeIlikeTerm(raw: string): string {
+  // Slice BEFORE escaping so truncation can never split a `\_` escape pair and
+  // strand a dangling backslash (which would corrupt the appended % wildcard).
   return raw
     .replace(/[^a-zA-Z0-9@.+_' -]/g, ' ')
-    .replace(/_/g, '\\_')
     .replace(/\s+/g, ' ')
     .trim()
-    .slice(0, 100);
+    .slice(0, 100)
+    .replace(/_/g, '\\_');
 }

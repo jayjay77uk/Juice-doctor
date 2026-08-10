@@ -35,10 +35,19 @@ export interface RateLimitConfig {
 export function createInMemoryRateLimiter(config: RateLimitConfig): RateLimiter {
   const buckets = new Map<string, { count: number; resetAt: number }>();
   const now = config.now ?? (() => Date.now());
+  // Keys are attacker-influenced (e.g. spoofable forwarded-for headers), so the
+  // map must not grow without bound: sweep expired buckets once it gets large.
+  const SWEEP_THRESHOLD = 5_000;
 
   return {
-    async check(key: string): Promise<RateLimitResult> {
+    async check(rawKey: string): Promise<RateLimitResult> {
+      const key = rawKey.slice(0, 128); // bound per-entry memory
       const ts = now();
+      if (buckets.size > SWEEP_THRESHOLD) {
+        for (const [k, b] of buckets) {
+          if (ts >= b.resetAt) buckets.delete(k);
+        }
+      }
       const bucket = buckets.get(key);
       if (!bucket || ts >= bucket.resetAt) {
         const resetAt = ts + config.windowMs;

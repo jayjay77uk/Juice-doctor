@@ -286,10 +286,17 @@ async function prepareTurn(agent: AiAgent, history: ChatMessage[], query: string
 
 interface RawResult { text: string; usage: AiUsage | null; model: string | null; costUsd: number; latencyMs: number; traceId: string | null; stopReason: string | null }
 
+/** Handoff-intent language that must accompany a colleague's name. */
+const REFERRAL_INTENT =
+  /\b(introduc\w*|recommend\w*|connect(?:ing)? you|speak (?:with|to)|talk (?:with|to)|chat (?:with|to)|hand(?:ing)? (?:you )?(?:over|off)|refer\w*|colleague|bring in|loop in|pass you|better placed|right person|reach out to)\b/i;
+
 /**
  * Detect a colleague handoff in the reply: a referral-matrix rule from this
- * specialist whose named target is mentioned in the answer text. Deterministic
- * and conservative — wildcard targets and human escalations are excluded
+ * specialist whose named target is introduced WITH handoff intent. Deliberately
+ * strict — the reply text is model output, so a bare name mention must never
+ * trigger a database write: the CAPITALISED display name (several names are
+ * common nouns — "sage advice" must not match) and an intent phrase must occur
+ * in the SAME sentence. Wildcard targets and human escalations are excluded
  * (humans are handled by the escalation engine).
  */
 function detectColleagueReferral(
@@ -297,14 +304,15 @@ function detectColleagueReferral(
   text: string,
   rules: ReferralRule[],
 ): { toSlug: string; toName: string; rule: ReferralRule } | null {
-  const lower = text.toLowerCase();
+  const sentences = text.split(/(?<=[.!?])\s+|\n+/);
   for (const rule of rules) {
     if (rule.isHumanEscalation || isWildcardRef(rule.toSpecialist)) continue;
     if (!(isWildcardRef(rule.fromSpecialist) || normalizeSpecialistRef(rule.fromSpecialist) === slug)) continue;
     const toSlug = normalizeSpecialistRef(rule.toSpecialist);
     const toProfile = herneProfile(toSlug);
     if (!toProfile || toSlug === slug) continue;
-    if (new RegExp(`\\b${toProfile.name.toLowerCase()}\\b`).test(lower)) {
+    const nameRe = new RegExp(`\\b${toProfile.name}\\b`); // case-sensitive
+    if (sentences.some((s) => nameRe.test(s) && REFERRAL_INTENT.test(s))) {
       return { toSlug, toName: toProfile.name, rule };
     }
   }
@@ -362,6 +370,9 @@ async function finalizeTurn(t: PreparedTurn, agent: AiAgent, query: string, ctx:
           trigger: detected.rule.trigger,
           reason: `${specialistName} recommended ${detected.toName} during a conversation.`,
           ...(detected.rule.urgency ? { urgency: detected.rule.urgency } : {}),
+          // Model-detected handoffs record the referral + timeline but never
+          // reassign the care plan — that stays a reviewed/explicit action.
+          assignPlan: false,
         });
         referralSuggestion = { toRole: detected.toName, reason: detected.rule.trigger, urgency: detected.rule.urgency ?? 'Routine' };
       } catch {

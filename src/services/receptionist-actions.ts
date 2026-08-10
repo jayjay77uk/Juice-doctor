@@ -43,6 +43,44 @@ const assessSchema = z.object({
   answers: z.array(answerSchema).max(12),
 });
 
+/**
+ * Clamp untrusted console input to the schema bounds BEFORE validating, so an
+ * oversized turn degrades gracefully (truncated) instead of permanently
+ * failing the visitor's consultation. Only whitelisted fields survive — the
+ * clamped output (never the raw input) is what gets assessed and persisted,
+ * so oversized or extra properties can never reach the database.
+ */
+function clampAssessInput(input: { conversation: ConversationTurn[]; answers: ConsultAnswer[] }): {
+  conversation: ConversationTurn[];
+  answers: ConsultAnswer[];
+} {
+  const conversation = (Array.isArray(input.conversation) ? input.conversation : [])
+    .slice(-30)
+    .map((t) => ({
+      role: t?.role === 'receptionist' ? ('receptionist' as const) : ('visitor' as const),
+      text: String(t?.text ?? '').slice(0, 2000),
+      at: String(t?.at ?? '').slice(0, 64),
+    }));
+  const answers = (Array.isArray(input.answers) ? input.answers : [])
+    .slice(0, 12)
+    .map((a) => ({
+      id: String(a?.id ?? '').slice(0, 64),
+      prompt: String(a?.prompt ?? '').slice(0, 500),
+      answer: String(a?.answer ?? '').slice(0, 1000),
+    }));
+  return { conversation, answers };
+}
+
+const recommendationSchema = z.object({
+  specialistSlug: z.string().max(64),
+  specialistName: z.string().max(120),
+  confidence: z.number().min(0).max(1),
+  reasoning: z.string().max(2000),
+  escalate: z.boolean(),
+  alternativeSlug: z.string().max(64).nullable(),
+  alternatives: z.array(z.object({ slug: z.string().max(64), name: z.string().max(120) })).max(8),
+});
+
 export async function receptionistAssessAction(input: {
   conversation: ConversationTurn[];
   answers: ConsultAnswer[];
@@ -50,8 +88,9 @@ export async function receptionistAssessAction(input: {
   | { ok: true; summary: string; recommendation: ReceptionistRecommendation }
   | { ok: false; error: string }
 > {
-  const parsed = assessSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'The conversation is too long to assess. Please start a fresh consultation.' };
+  const clamped = clampAssessInput(input);
+  const parsed = assessSchema.safeParse(clamped);
+  if (!parsed.success) return { ok: false, error: 'The conversation could not be assessed. Please start a fresh consultation.' };
   try {
     await enforceRateLimit(assessVisitorLimiter, `assess:${await visitorKey()}`);
     await enforceRateLimit(assessInstanceLimiter, 'assess:instance');
@@ -86,17 +125,23 @@ export async function receptionistLeadAction(input: {
   if (!parsed.success) {
     return { ok: false, error: 'Please check your details.', fieldErrors: parsed.error.flatten().fieldErrors };
   }
-  const conversationOk = assessSchema.safeParse({ conversation: input.conversation, answers: input.answers });
+  // Persist ONLY the clamped/validated shapes — never the raw input objects
+  // (zod strips unknown keys from its OUTPUT; the original object could smuggle
+  // arbitrary-size extra properties into the stored lead JSON).
+  const clamped = clampAssessInput({ conversation: input.conversation, answers: input.answers });
+  const conversationOk = assessSchema.safeParse(clamped);
   if (!conversationOk.success) return { ok: false, error: 'Please check your details.' };
+  const recOk = recommendationSchema.safeParse(input.recommendation);
+  if (!recOk.success) return { ok: false, error: 'Please check your details.' };
   try {
     await enforceRateLimit(leadLimiter, `lead:${await visitorKey()}`);
   } catch (e) {
     if (e instanceof RateLimitError) return { ok: false, error: BUSY_MESSAGE };
     throw e;
   }
-  const rec = input.recommendation;
+  const rec = recOk.data;
   const assessment: Record<string, string> = {};
-  for (const a of input.answers) {
+  for (const a of conversationOk.data.answers) {
     if (a.answer.trim()) assessment[a.prompt] = a.answer.trim();
   }
 
@@ -104,7 +149,7 @@ export async function receptionistLeadAction(input: {
     name: parsed.data.name,
     email: parsed.data.email,
     whatsapp: parsed.data.whatsapp || null,
-    conversation: input.conversation,
+    conversation: conversationOk.data.conversation,
     assessmentSummary: String(input.summary ?? '').slice(0, 4000),
     assessment,
     recommendedSpecialistSlug: rec.escalate ? null : rec.specialistSlug,

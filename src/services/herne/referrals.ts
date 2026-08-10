@@ -82,7 +82,12 @@ export interface ReferralResult {
 }
 
 export const referralEngine = {
-  /** Refer a user from one specialist to another (or to a human), preserving full context. */
+  /**
+   * Refer a user from one specialist to another (or to a human), preserving
+   * full context. `assignPlan: false` records the referral + timeline without
+   * reassigning the shared care plan (used for model-detected handoffs, where
+   * plan changes must stay a reviewed action).
+   */
   async refer(input: {
     userId: string;
     fromSpecialist: string;
@@ -91,6 +96,7 @@ export const referralEngine = {
     reason?: string;
     urgency?: string;
     context?: ReferralContext;
+    assignPlan?: boolean;
   }): Promise<ReferralResult> {
     const sb = createAdminClient();
     if (!sb) return { referralId: null, matchedRule: false, context: {} };
@@ -113,15 +119,18 @@ export const referralEngine = {
       return fromOk && toOk;
     });
 
-    // Dedupe: a still-open referral for the same from→to pair is returned, not
-    // re-inserted (the live conversation path may detect the same handoff on
-    // consecutive turns).
+    // Dedupe: an open referral for the same from→to pair created in the last
+    // 24h is returned, not re-inserted (the live conversation path may detect
+    // the same handoff on consecutive turns). Older repeats are genuinely new
+    // referral events and still write, so recurring needs stay visible.
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const dupQuery = sb
       .from('herne_referrals')
       .select('id')
       .eq('user_id', input.userId)
       .eq('from_specialist', input.fromSpecialist)
       .eq('status', 'open')
+      .gte('created_at', since)
       .limit(1);
     const { data: existing } = await (human ? dupQuery.eq('to_human_role', input.toSpecialist) : dupQuery.eq('to_specialist', input.toSpecialist));
     if (existing?.length) return { referralId: String(existing[0]!.id), matchedRule, context: {} };
@@ -163,7 +172,7 @@ export const referralEngine = {
       .single();
 
     // Update the shared plan + timeline so the journey is continuous.
-    if (plan && !human) await carePlan.assignSpecialist(plan.id, input.toSpecialist);
+    if (plan && !human && input.assignPlan !== false) await carePlan.assignSpecialist(plan.id, input.toSpecialist);
     await timeline.add(input.userId, {
       type: 'referral',
       title: human ? `Escalated to ${toName}` : `Handed over from ${fromName} to ${toName}`,

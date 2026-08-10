@@ -3,6 +3,7 @@ import 'server-only';
 import type { AiAgent } from '@/types/ai';
 import type { ChatMessage } from '@/lib/ai';
 import { getAiProvider } from '@/lib/ai';
+import { windowHistory } from '@/lib/ai/history';
 import { knowledgeRepo } from './repositories/knowledge-repo';
 import { runLogRepo } from './repositories/run-log-repo';
 import { memoryRepo, extractMemory, type MemoryItem } from './repositories/memory-repo';
@@ -81,7 +82,9 @@ export async function specialistReply(
     : '';
 
   try {
-    const messages: ChatMessage[] = [...history.slice(-8), { role: 'user', content: userText }];
+    // windowHistory trims a leading assistant turn (e.g. the welcome message) —
+    // the API rejects an assistant-first messages array.
+    const messages: ChatMessage[] = [...windowHistory(history, 8), { role: 'user', content: userText }];
     const res = await provider.chat({
       system: buildSystemPrompt(agent, knowledgeBlock, memory, languageDirective(pref)),
       messages,

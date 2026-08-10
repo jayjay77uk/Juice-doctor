@@ -26,5 +26,13 @@ describe('sanitizeIlikeTerm', () => {
 
   it('returns an empty string for input that is only unsafe characters', () => {
     expect(sanitizeIlikeTerm('();,%*')).toBe('');
+    expect(sanitizeIlikeTerm('русский поиск')).toBe('');
+  });
+
+  it('truncation never strands a dangling backslash from a split escape pair', () => {
+    const out = sanitizeIlikeTerm('a'.repeat(99) + '_tail');
+    expect(out.endsWith('\\')).toBe(false);
+    // The underscore that survives the cut is still escaped as a pair.
+    expect(out.includes('_') ? out.includes('\\_') : true).toBe(true);
   });
 });

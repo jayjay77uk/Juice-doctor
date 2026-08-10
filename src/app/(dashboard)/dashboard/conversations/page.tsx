@@ -25,18 +25,22 @@ function formatUpdated(iso: string | null): string {
 
 export default async function ConversationsPage() {
   const session = await getSession();
-  const [convosResult, agentsResult] = await Promise.all([
+  const [convosResult, agentsResult, accessibleResult] = await Promise.all([
     member.myConversations(session?.user.id),
     agents.list(),
+    member.mySpecialists(),
   ]);
   const conversations = convosResult.ok ? convosResult.data : [];
   const agentList = agentsResult.ok ? agentsResult.data : [];
   const agentName = (id: string | null) => agentList.find((a) => a.id === id)?.name ?? 'Specialist AI';
 
-  // HERNE specialists, concierge (Makela) first, for the new-conversation picker.
+  // Accessible HERNE specialists only (subscription + the Makela concierge),
+  // concierge first — the picker must never offer a specialist the start
+  // action would then reject.
+  const accessible = new Set((accessibleResult.ok ? accessibleResult.data : []).map((a) => a.slug));
   const order = HERNE_ORDER as readonly string[];
   const specialists = agentList
-    .filter((a) => order.includes(a.slug))
+    .filter((a) => order.includes(a.slug) && accessible.has(a.slug))
     .sort((a, b) => order.indexOf(a.slug) - order.indexOf(b.slug))
     .map((a) => ({ id: a.id, name: a.name, concierge: a.slug === 'makela' }));
 

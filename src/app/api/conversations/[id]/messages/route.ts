@@ -28,7 +28,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { id } = await params;
 
   const conv = await conversationsRepo.byId(id);
-  if (!conv.ok || conv.data.userId !== userId) return NextResponse.json({ error: 'Conversation not found.' }, { status: 404 });
+  if (!conv.ok || conv.data.userId !== userId || conv.data.status === 'deleted') {
+    // Soft-deleted threads are gone from the member's perspective — 404, not 409.
+    return NextResponse.json({ error: 'Conversation not found.' }, { status: 404 });
+  }
   if (conv.data.status !== 'active') {
     return NextResponse.json({ error: 'This conversation is archived. Start a new conversation to continue.' }, { status: 409 });
   }
@@ -51,22 +54,34 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const agent = agentResult.ok ? agentResult.data : null;
 
   // Subscription access: chatting with a specialist requires an active
-  // subscription that covers it — enforced here as well as at creation.
+  // subscription that covers it — enforced here as well as at creation. A
+  // store failure is reported honestly, never as a billing problem.
   if (agent && agent.kind === 'specialist') {
     const access = await subscriptionsService.memberAccess(userId);
-    if (!access.ok || !access.data.includes(agent.slug)) {
+    if (!access.ok) {
+      return NextResponse.json({ error: 'We could not check your subscription just now. Please try again shortly.' }, { status: 503 });
+    }
+    if (!access.data.includes(agent.slug)) {
       return NextResponse.json({ error: 'Your plan does not include this specialist. Please review your subscription.' }, { status: 403 });
     }
   }
 
-  const history = await conversationsRepo.historyFor(id);
-  await conversationsRepo.insertUserMessage(id, content);
-
-  // Per-user concurrency guard: closes the check-then-proceed window on the
-  // usage limit above and bounds parallel AI spend. Released when the stream
-  // finishes (the response outlives this handler).
+  // Per-user concurrency guard, acquired BEFORE the user turn is persisted so
+  // a denial never leaves an orphaned message. It closes the
+  // check-then-proceed window on the usage limit above and bounds parallel AI
+  // spend; released when the stream finishes (the response outlives this
+  // handler) or on any failure before the stream is returned.
   if (!acquireSlot(userId)) {
     return NextResponse.json({ error: 'Please wait for your current reply to finish.' }, { status: 429 });
+  }
+
+  let history;
+  try {
+    history = await conversationsRepo.historyFor(id);
+    await conversationsRepo.insertUserMessage(id, content);
+  } catch (e) {
+    releaseSlot(userId);
+    throw e;
   }
 
   const stream = new ReadableStream<Uint8Array>({

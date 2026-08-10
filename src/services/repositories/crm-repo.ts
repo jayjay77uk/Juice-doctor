@@ -114,11 +114,14 @@ export const crmRepo = {
     if (filter?.status) q = q.eq('status', filter.status);
     if (filter?.followUp) q = q.eq('follow_up_status', filter.followUp);
     if (filter?.assigned) q = q.eq('responsible_admin_name', filter.assigned);
-    if (filter?.search) {
+    if (filter?.search?.trim()) {
       // Whitelist-sanitised: raw input could otherwise inject into the
-      // PostgREST .or() expression (runs on the service-role client).
+      // PostgREST .or() expression (runs on the service-role client). A term
+      // that sanitises to nothing (e.g. entirely non-Latin) can match nothing —
+      // return no leads rather than silently returning ALL of them.
       const s = sanitizeIlikeTerm(filter.search);
-      if (s) q = q.or(`name.ilike.%${s}%,email.ilike.%${s}%,assessment_summary.ilike.%${s}%`);
+      if (!s) return ok([]);
+      q = q.or(`name.ilike.%${s}%,email.ilike.%${s}%,assessment_summary.ilike.%${s}%`);
     }
     const { data, error } = await q;
     if (error) return err({ code: 'unavailable', message: 'Could not load leads.' });

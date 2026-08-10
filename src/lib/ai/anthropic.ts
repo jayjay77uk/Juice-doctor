@@ -101,6 +101,8 @@ export function withTimeout(signal: AbortSignal | undefined, ms: number): { sign
   let timerFired = false;
   const onAbort = () => controller.abort((signal as AbortSignal | undefined)?.reason);
   const timer = setTimeout(() => {
+    // If the caller already aborted, this is not a timeout — don't claim it.
+    if (controller.signal.aborted) return;
     timerFired = true;
     controller.abort(new DOMException('Request timed out', 'TimeoutError'));
   }, ms);

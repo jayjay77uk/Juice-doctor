@@ -161,7 +161,10 @@ export const subscriptionsRepo = {
       .select('scope, specialist_slugs, state')
       .eq('member_id', memberId)
       .in('state', ['active', 'trialing']);
-    const slugs = new Set<string>();
+    // Makela is the wellbeing CONCIERGE — the entry point every signed-in
+    // member may always talk to, subscription or not; paid access applies to
+    // the other seven specialists.
+    const slugs = new Set<string>(['makela']);
     for (const row of data ?? []) {
       const resolved = await resolveAccess((row.scope as SubscriptionScope) ?? 'single', Array.isArray(row.specialist_slugs) ? (row.specialist_slugs as string[]) : []);
       resolved.forEach((s) => slugs.add(s));

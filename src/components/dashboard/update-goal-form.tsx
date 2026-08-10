@@ -47,11 +47,13 @@ export function UpdateGoalForm({
     e.preventDefault();
     setBusy(true);
     setError(null);
+    // Send only what changed: an empty progress field must not coerce to 0,
+    // and leaving status untouched lets the server auto-mark 100% as achieved.
     const res = await updateGoalAction({
       goalId,
-      progress: Number(form.progress),
-      status: form.status,
-      currentValue: form.currentValue,
+      ...(form.progress.trim() !== '' && Number(form.progress) !== progress ? { progress: Number(form.progress) } : {}),
+      ...(form.status !== status ? { status: form.status } : {}),
+      ...(form.currentValue !== (currentValue == null ? '' : String(currentValue)) ? { currentValue: form.currentValue } : {}),
     });
     setBusy(false);
     if (res.ok) {

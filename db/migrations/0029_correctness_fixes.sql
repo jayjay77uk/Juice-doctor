@@ -16,7 +16,8 @@
 --
 -- Safe + idempotent: ALTER ... SET DEFAULT rewrites no rows; CREATE OR REPLACE
 -- is repeatable. No destructive statements.
--- Depends on: 0012 (knowledge tables), 0018 (content_tsv), 0021, 0025.
+-- Depends on: 0009 (ai_agent_knowledge_sources), 0012 (knowledge tables),
+-- 0018 (content_tsv), 0021, 0025. Execution grants tightened in 0030.
 -- ============================================================================
 
 alter table public.herne_care_plan_actions alter column status set default 'proposed';
