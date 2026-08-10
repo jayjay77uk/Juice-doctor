@@ -5,6 +5,7 @@ import { assertSession } from '@/lib/auth/authorize';
 import { isSupabaseAdminConfigured } from '@/lib/env';
 import { memberRepo } from './repositories/member-repo';
 import { sendTemplateMail } from './mail';
+import { track } from '@/lib/monitoring/events';
 import { consultations } from '@/content/programmes';
 
 /**
@@ -100,6 +101,7 @@ export async function bookAppointmentAction(input: {
         location: LOCATION_LABELS[input.locationType] ?? input.locationType,
       });
     }
+    await track('appointment.booked', { serviceSlug: input.serviceSlug, locationType: input.locationType }, userId);
     revalidatePath('/dashboard/bookings');
     revalidatePath('/dashboard');
   }

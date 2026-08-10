@@ -18,6 +18,7 @@ import { RateLimitError } from '@/lib/security/errors';
 import { businessAddresses } from '@/config/addresses';
 import { marketingRepo } from './repositories/marketing-repo';
 import { sendTemplateMail } from './mail';
+import { track } from '@/lib/monitoring/events';
 import type { ActionResult } from './result';
 
 /** Post-auth landing resolver path (see src/app/continue/route.ts). */
@@ -149,8 +150,9 @@ export async function signIn(_prev: ActionResult, formData: FormData): Promise<A
   }
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { status: 'error', message: 'Sign-in is currently unavailable. Please try again later.' };
-  const { error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
+  const { data: signedIn, error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
   if (error) return { status: 'error', message: 'Incorrect email or password.' };
+  if (signedIn.user) await track('member.signed_in', {}, signedIn.user.id);
 
   // The session cookie is set on THIS response; resolve the role-based landing on
   // the next request via /continue (administrators → /admin, others → /dashboard),
@@ -197,6 +199,7 @@ export async function register(_prev: ActionResult, formData: FormData): Promise
   } catch {
     // never block registration on mail
   }
+  await track('member.registered', {}, created.user.id);
   // Sign the new user in to establish a session, then resolve their landing on
   // the next request via /continue (a fresh member lands on /dashboard).
   await supabase.auth.signInWithPassword({ email, password });

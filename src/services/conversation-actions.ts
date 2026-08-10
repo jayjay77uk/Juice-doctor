@@ -5,6 +5,7 @@ import { conversations_service } from './conversations';
 import { agents } from './agents';
 import { subscriptionsService } from './subscriptions';
 import { assertSession } from '@/lib/auth/authorize';
+import { track } from '@/lib/monitoring/events';
 import type { Message, FeedbackRating } from '@/types/conversation';
 
 const MSG_RES = 'Please sign in.';
@@ -92,6 +93,7 @@ export async function startConversationAction(
   }
   const result = await conversations_service.create({ agentId, userId });
   if (!result.ok) return { ok: false, error: result.error.message };
+  await track('conversation.started', { specialistSlug: agent?.slug ?? 'unknown' }, userId);
   return { ok: true, conversationId: result.data.id };
 }
 

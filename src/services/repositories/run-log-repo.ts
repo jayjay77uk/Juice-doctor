@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { track } from '@/lib/monitoring/events';
 
 /**
  * Run-log repository — records every real AI call to ai_run_logs (the substrate
@@ -55,6 +56,12 @@ export const runLogRepo = {
       });
     } catch {
       // best-effort — never surface a logging failure to the caller
+    }
+    // Operational event only — status + model, never prompt/response content.
+    // 'blocked' is the safety system working, not a failure.
+    const status = input.status ?? 'ok';
+    if (status !== 'ok' && status !== 'blocked') {
+      await track('ai.failure', { status, model: input.model ?? 'unknown' }, input.actorId ?? null);
     }
   },
 

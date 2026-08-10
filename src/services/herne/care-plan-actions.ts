@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { assertSession } from '@/lib/auth/authorize';
+import { track } from '@/lib/monitoring/events';
 import { carePlan } from './care-plan';
 
 /**
@@ -26,7 +27,11 @@ export async function acceptCarePlanActionAction(actionId: string): Promise<{ ok
   const auth = await authorise(actionId);
   if (!auth.ok) return { ok: false, error: auth.error };
   const ok = await carePlan.acceptAction(actionId, auth.userId);
-  if (ok) { await carePlan.activateAction(actionId, auth.userId); revalidatePath('/dashboard/care-plan'); }
+  if (ok) {
+    await carePlan.activateAction(actionId, auth.userId);
+    await track('care_plan.action', { transition: 'accepted' }, auth.userId);
+    revalidatePath('/dashboard/care-plan');
+  }
   return { ok };
 }
 
@@ -34,7 +39,10 @@ export async function declineCarePlanActionAction(actionId: string, reason?: str
   const auth = await authorise(actionId);
   if (!auth.ok) return { ok: false, error: auth.error };
   const ok = await carePlan.declineAction(actionId, reason, auth.userId);
-  if (ok) revalidatePath('/dashboard/care-plan');
+  if (ok) {
+    await track('care_plan.action', { transition: 'declined' }, auth.userId);
+    revalidatePath('/dashboard/care-plan');
+  }
   return { ok };
 }
 
@@ -42,6 +50,9 @@ export async function completeCarePlanActionAction(actionId: string): Promise<{ 
   const auth = await authorise(actionId);
   if (!auth.ok) return { ok: false, error: auth.error };
   const ok = await carePlan.completeAction(actionId, auth.userId);
-  if (ok) revalidatePath('/dashboard/care-plan');
+  if (ok) {
+    await track('care_plan.action', { transition: 'completed' }, auth.userId);
+    revalidatePath('/dashboard/care-plan');
+  }
   return { ok };
 }

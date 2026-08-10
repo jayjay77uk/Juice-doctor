@@ -8,6 +8,7 @@ import { loadReferralMatrix, isHumanEscalation, normalizeSpecialistRef, isWildca
 import { crmRepo } from '../repositories/crm-repo';
 import { businessAddresses } from '@/config/addresses';
 import { sendTemplateMail } from '../mail';
+import { track } from '@/lib/monitoring/events';
 
 export { isHumanEscalation } from './referral-matrix';
 
@@ -184,6 +185,7 @@ export const referralEngine = {
       ...(plan ? { carePlanId: plan.id } : {}),
     });
 
+    if (data) await track('referral.suggested', { matchedRule }, input.userId);
     return { referralId: data ? String(data.id) : null, matchedRule, context };
   },
 
@@ -285,6 +287,7 @@ export const escalationEngine = {
         }
       }
     }
+    if (data) await track('escalation.raised', { trigger: input.trigger, specialist: input.specialist ?? 'system' }, input.userId ?? null);
     return { escalationId: data ? String(data.id) : null };
   },
 

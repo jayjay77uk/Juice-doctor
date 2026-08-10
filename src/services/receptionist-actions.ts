@@ -7,6 +7,7 @@ import { crm } from './crm';
 import { getSession } from './auth';
 import { createInMemoryRateLimiter, enforceRateLimit, RATE_LIMIT_POLICIES } from '@/lib/security/rate-limit';
 import { RateLimitError } from '@/lib/security/errors';
+import { track } from '@/lib/monitoring/events';
 import type { ReceptionistRecommendation, ConsultAnswer, ConversationTurn } from '@/types/crm';
 
 /**
@@ -99,8 +100,14 @@ export async function receptionistAssessAction(input: {
     if (e instanceof RateLimitError) return { ok: false, error: BUSY_MESSAGE };
     throw e;
   }
+  await track('receptionist.assessment_started', { turns: parsed.data.conversation.length });
   const result = await receptionist.assess({ conversation: parsed.data.conversation, answers: parsed.data.answers });
   if (!result.ok) return { ok: false, error: result.error.message };
+  await track('receptionist.assessment_completed', {
+    recommendedSlug: result.data.recommendation.specialistSlug || 'none',
+    confidence: result.data.recommendation.confidence,
+    escalate: result.data.recommendation.escalate,
+  });
   return { ok: true, summary: result.data.summary, recommendation: result.data.recommendation };
 }
 

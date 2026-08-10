@@ -11,6 +11,7 @@ import { featureFlags } from './feature-flags';
 import { playground } from './playground';
 import { assertRole } from '@/lib/auth/authorize';
 import { auditRepo } from './repositories/audit-repo';
+import { track } from '@/lib/monitoring/events';
 import type { ActionResult } from './result';
 import type { AgentVisibility } from '@/types/ai';
 import type { PublishStatus } from '@/types/knowledge';
@@ -265,6 +266,7 @@ export async function uploadDocumentAction(_prev: ActionResult, formData: FormDa
         sourceType: parsed.data.sourceType === 'url' ? 'url' : 'manual',
       });
       if (!ingested.ok) return { status: 'error', message: ingested.error.message };
+      await track('knowledge.ingested', { chunks: ingested.data.chunks, mode: 'new' });
       revalidatePath('/admin/knowledge');
       revalidatePath(`/admin/specialists/${parsed.data.assignedSpecialistSlug}`);
       return { status: 'success', message: `Indexed “${parsed.data.title}” into ${ingested.data.chunks} searchable chunk(s), assigned to ${agent.data.name}.` };
@@ -306,6 +308,7 @@ export async function replaceDocumentContentAction(_prev: ActionResult, formData
   const result = await knowledge.documents.reingest(parsed.data.id, parsed.data.content.trim(), parsed.data.changeNote || null);
   if (!result.ok) return { status: 'error', message: result.error.message };
   await auditRepo.log({ actorId, action: 'knowledge.reingested', entityType: 'knowledge_documents', entityId: parsed.data.id, after: { label: `Version ${result.data.version} (${result.data.chunks} chunks)` } });
+  await track('knowledge.ingested', { chunks: result.data.chunks, mode: 'replacement' });
   revalidatePath('/admin/knowledge');
   revalidatePath(`/admin/knowledge/${parsed.data.id}`);
   return { status: 'success', message: `Replaced as version ${result.data.version} — ${result.data.chunks} searchable chunk(s). Previous versions keep their content.` };

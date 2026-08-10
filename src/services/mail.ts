@@ -4,6 +4,7 @@ import { businessAddresses } from '@/config/addresses';
 import { isMailConfigured } from '@/lib/env';
 import { getMailProvider } from '@/lib/mail/provider';
 import { renderMailTemplate, type MailTemplateKey, type MailTemplateParams } from '@/lib/mail/templates';
+import { track } from '@/lib/monitoring/events';
 import { mailRepo } from './repositories/mail-repo';
 
 /**
@@ -77,6 +78,7 @@ export async function sendTemplateMail<K extends MailTemplateKey>(input: {
       attempts: 1,
     });
   }
+  if (!result.sent) await track('provider.failure', { provider: provider.key, surface: 'mail', retryable: result.retryable });
   return result.sent
     ? { delivered: true, recorded: record.persisted, reason: 'sent' }
     : { delivered: false, recorded: record.persisted, reason: 'failed' };
