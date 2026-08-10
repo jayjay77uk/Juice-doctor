@@ -2,9 +2,33 @@
 
 import { revalidatePath } from 'next/cache';
 import { subscriptionsService } from './subscriptions';
+import { sendTemplateMail } from './mail';
 import type { ActionResult } from './result';
-import type { SubscriptionScope, SubscriptionState } from '@/types/crm';
+import type { CustomerSubscription, SubscriptionScope, SubscriptionState } from '@/types/crm';
 import { assertRole, assertSession } from '@/lib/auth/authorize';
+
+/** Queue the member's state-change email — outbox-recorded, best-effort. */
+async function queueStateMail(sub: CustomerSubscription): Promise<void> {
+  if (!sub.customerEmail) return;
+  try {
+    await sendTemplateMail({
+      to: sub.customerEmail,
+      template: 'subscription.state_changed',
+      params: { planName: sub.planName, state: sub.state },
+      dedupeKey: `sub-state:${sub.id}:${sub.state}:${sub.updatedAt}`,
+    });
+  } catch {
+    // mail must never block the subscription change
+  }
+}
+
+/** A member may only act on their OWN subscription; staff/admin use admin actions. */
+async function assertOwnSubscription(id: string, userId: string): Promise<Res | null> {
+  const sub = await subscriptionsService.byId(id);
+  if (!sub.ok) return { ok: false, error: 'Subscription not found.' };
+  if (sub.data.memberId !== userId) return { ok: false, error: 'Subscription not found.' };
+  return null;
+}
 
 /**
  * Server Actions for subscription management — admin (plans, customer
@@ -58,6 +82,7 @@ export async function changePlanAction(id: string, planId: string): Promise<Res>
 export async function setSubStateAction(id: string, state: SubscriptionState): Promise<Res> {
   try { await assertRole('administrator'); } catch { return { ok: false, error: 'Not authorised.' }; }
   const r = await subscriptionsService.setState(id, state);
+  if (r.ok) await queueStateMail(r.data);
   revalidateAll();
   return r.ok ? { ok: true } : { ok: false, error: r.error.message };
 }
@@ -71,15 +96,23 @@ export async function recordPaymentAction(id: string, note: string): Promise<Res
 
 // ── Customer: manage own access (no payment step) ────────────────────────────
 export async function customerCancelAction(id: string): Promise<Res> {
-  try { await assertSession(); } catch { return { ok: false, error: 'Please sign in.' }; }
+  let userId: string;
+  try { userId = (await assertSession()).user.id; } catch { return { ok: false, error: 'Please sign in.' }; }
+  const denied = await assertOwnSubscription(id, userId);
+  if (denied) return denied;
   const r = await subscriptionsService.cancel(id);
+  if (r.ok) await queueStateMail(r.data);
   revalidateAll();
   return r.ok ? { ok: true } : { ok: false, error: r.error.message };
 }
 
 export async function customerChangePlanAction(id: string, planId: string): Promise<Res> {
-  try { await assertSession(); } catch { return { ok: false, error: 'Please sign in.' }; }
+  let userId: string;
+  try { userId = (await assertSession()).user.id; } catch { return { ok: false, error: 'Please sign in.' }; }
+  const denied = await assertOwnSubscription(id, userId);
+  if (denied) return denied;
   const r = await subscriptionsService.changePlan(id, planId);
+  if (r.ok) await queueStateMail(r.data);
   revalidateAll();
   return r.ok ? { ok: true } : { ok: false, error: r.error.message };
 }

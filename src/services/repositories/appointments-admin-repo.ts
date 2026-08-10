@@ -61,4 +61,25 @@ export const appointmentsAdminRepo = {
       .maybeSingle();
     return !error && Boolean(data);
   },
+
+  /** Facts needed to email the member about an appointment. Null when unknown. */
+  async mailFacts(appointmentId: string): Promise<{ memberEmail: string; serviceSlug: string; scheduledStart: string; locationType: string } | null> {
+    const sb = createAdminClient();
+    if (!sb) return null;
+    const { data } = await sb
+      .from('appointments')
+      .select('member_id, service_slug, scheduled_start, location_type')
+      .eq('id', appointmentId)
+      .maybeSingle();
+    if (!data) return null;
+    const { data: profile } = await sb.from('profiles').select('email').eq('id', String(data.member_id)).maybeSingle();
+    const email = (profile?.email as string | null) ?? '';
+    if (!email) return null;
+    return {
+      memberEmail: email,
+      serviceSlug: String(data.service_slug ?? 'consultation'),
+      scheduledStart: String(data.scheduled_start),
+      locationType: String(data.location_type ?? 'video'),
+    };
+  },
 };

@@ -32,6 +32,8 @@ import {
   LifeBuoy,
   GitBranch,
   Watch,
+  Inbox,
+  Plug,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -75,7 +77,7 @@ const NAV: Record<NavVariant, ShellNavSection[]> = {
         { label: 'Shared DNA', href: '/admin/herne/dna', icon: ShieldCheck },
       ],
     },
-    { title: 'CRM', items: [{ label: 'Leads', href: '/admin/crm', icon: ContactRound }, { label: 'Appointments', href: '/admin/appointments', icon: CalendarDays }] },
+    { title: 'CRM', items: [{ label: 'Leads', href: '/admin/crm', icon: ContactRound }, { label: 'Appointments', href: '/admin/appointments', icon: CalendarDays }, { label: 'Messages', href: '/admin/messages', icon: Inbox }] },
     {
       title: 'Administration',
       items: [
@@ -88,6 +90,7 @@ const NAV: Record<NavVariant, ShellNavSection[]> = {
         { label: 'Agent config', href: '/admin/ai/agents', icon: Wrench },
         { label: 'Consultations', href: '/admin/consultations', icon: Stethoscope },
         { label: 'Users', href: '/admin/users', icon: Users },
+        { label: 'Integrations', href: '/admin/integrations', icon: Plug },
         { label: 'Configuration', href: '/admin/config', icon: Settings2 },
         { label: 'Audit Logs', href: '/admin/audit', icon: ScrollText },
       ],

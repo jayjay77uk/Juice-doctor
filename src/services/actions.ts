@@ -15,6 +15,9 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createInMemoryRateLimiter, enforceRateLimit, RATE_LIMIT_POLICIES } from '@/lib/security/rate-limit';
 import { RateLimitError } from '@/lib/security/errors';
+import { businessAddresses } from '@/config/addresses';
+import { marketingRepo } from './repositories/marketing-repo';
+import { sendTemplateMail } from './mail';
 import type { ActionResult } from './result';
 
 /** Post-auth landing resolver path (see src/app/continue/route.ts). */
@@ -69,11 +72,34 @@ export async function submitContact(
       fieldErrors: fieldErrorsFrom(parsed.error),
     };
   }
-  // No email provider is connected yet — never pretend a message was sent.
-  return {
-    status: 'error',
-    message: 'The contact form is not available yet — messaging is being connected. Please check back soon.',
-  };
+  if (await authRateLimited('contact')) {
+    return { status: 'error', message: 'Too many messages. Please wait a minute and try again.' };
+  }
+  // The message is stored for the team (admin → Messages). Email copies are
+  // recorded in the outbox and deliver once the email provider is connected —
+  // we never claim an email was sent.
+  const stored = await marketingRepo.createContactMessage({
+    name: parsed.data.name,
+    email: parsed.data.email,
+    subject: parsed.data.subject || '',
+    message: parsed.data.message,
+  });
+  if (!stored.available) {
+    return {
+      status: 'error',
+      message: 'The contact form is not available yet — messaging is being connected. Please check back soon.',
+    };
+  }
+  const { contactInbox } = businessAddresses();
+  if (contactInbox) {
+    await sendTemplateMail({
+      to: contactInbox,
+      template: 'contact.staff_copy',
+      params: { name: parsed.data.name, email: parsed.data.email, subject: parsed.data.subject || '', message: parsed.data.message },
+      ...(stored.id ? { dedupeKey: `contact:${stored.id}` } : {}),
+    });
+  }
+  return { status: 'success', message: 'Thank you — your message has been received and the team will get back to you.' };
 }
 
 export async function subscribeNewsletter(
@@ -88,11 +114,21 @@ export async function subscribeNewsletter(
       fieldErrors: fieldErrorsFrom(parsed.error),
     };
   }
-  // No email provider is connected yet — never pretend a subscription exists.
-  return {
-    status: 'error',
-    message: 'Newsletter sign-up is not available yet. Please check back soon.',
-  };
+  if (await authRateLimited('newsletter')) {
+    return { status: 'error', message: 'Too many attempts. Please wait a minute and try again.' };
+  }
+  const result = await marketingRepo.subscribeNewsletter(parsed.data.email);
+  if (!result.available) {
+    return { status: 'error', message: 'Newsletter sign-up is not available yet. Please check back soon.' };
+  }
+  // Welcome email is queued in the outbox; it delivers once email is connected.
+  await sendTemplateMail({
+    to: parsed.data.email.toLowerCase(),
+    template: 'newsletter.welcome',
+    params: {},
+    dedupeKey: `newsletter-welcome:${parsed.data.email.toLowerCase()}`,
+  });
+  return { status: 'success', message: "You're subscribed — thank you." };
 }
 
 export async function signIn(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
@@ -147,6 +183,19 @@ export async function register(_prev: ActionResult, formData: FormData): Promise
   const { data: created, error: createErr } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
   if (createErr || !created.user) {
     return { status: 'error', message: createErr?.message?.includes('already') ? 'An account with that email already exists.' : 'Could not create the account. Please try again.' };
+  }
+  // Welcome email goes to the outbox (delivers once email is connected); the
+  // redirect below throws, so this must run first. Best-effort — a mail
+  // problem never blocks registration.
+  try {
+    await sendTemplateMail({
+      to: email,
+      template: 'account.welcome',
+      params: { name: parsed.data.name },
+      dedupeKey: `welcome:${created.user.id}`,
+    });
+  } catch {
+    // never block registration on mail
   }
   // Sign the new user in to establish a session, then resolve their landing on
   // the next request via /continue (a fresh member lands on /dashboard).

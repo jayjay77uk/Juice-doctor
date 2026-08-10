@@ -6,6 +6,8 @@ import { carePlan, timeline } from './care-plan';
 import { herneProfile } from '@/data/herne/specialist-profiles';
 import { loadReferralMatrix, isHumanEscalation, normalizeSpecialistRef, isWildcardRef } from './referral-matrix';
 import { crmRepo } from '../repositories/crm-repo';
+import { businessAddresses } from '@/config/addresses';
+import { sendTemplateMail } from '../mail';
 
 export { isHumanEscalation } from './referral-matrix';
 
@@ -236,17 +238,19 @@ export const escalationEngine = {
       // queue (assignment, notes, statuses, audit trail all live there). The
       // member's open lead is flagged, or a lead is created if none exists.
       // Best-effort — never blocks the escalation record itself.
+      let alertLeadId: string | null = null;
       try {
         const { data: profile } = await sb.from('profiles').select('email, full_name, display_name').eq('id', input.userId).maybeSingle();
         const email = (profile?.email as string | null) ?? null;
         const name = (profile?.display_name as string | null) ?? (profile?.full_name as string | null) ?? email ?? 'Member';
         const open = await crmRepo.findOpenForMember(input.userId, email);
         if (open.ok && open.data) {
+          alertLeadId = open.data.id;
           if (!open.data.escalated || open.data.reviewClosed) {
             await crmRepo.escalateLead(open.data.id, input.reason, input.specialist ?? null);
           }
         } else if (email) {
-          await crmRepo.create({
+          const created = await crmRepo.create({
             name,
             email,
             assessmentSummary: `Specialist escalation — ${input.reason}`,
@@ -258,9 +262,27 @@ export const escalationEngine = {
             source: 'referral',
             userId: input.userId,
           });
+          if (created.ok) alertLeadId = created.data.id;
         }
       } catch {
         // best-effort
+      }
+
+      // Staff alert email — outbox-recorded (deduped per escalation), delivers
+      // once email is connected. Deliberately contains NO member or
+      // conversation content, only where to look in the admin area.
+      const { staffAlerts } = businessAddresses();
+      if (staffAlerts && data) {
+        try {
+          await sendTemplateMail({
+            to: staffAlerts,
+            template: 'escalation.staff_alert',
+            params: { specialist: input.specialist ?? 'system', leadId: alertLeadId },
+            dedupeKey: `escalation-alert:${String(data.id)}`,
+          });
+        } catch {
+          // best-effort
+        }
       }
     }
     return { escalationId: data ? String(data.id) : null };

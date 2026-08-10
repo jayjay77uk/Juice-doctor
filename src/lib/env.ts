@@ -36,6 +36,28 @@ export const env = {
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3011',
 } as const;
 
+// Provider-gating checks read process.env PER CALL (matching thryveConfig in
+// the wearable provider) so behaviour follows the live environment and tests
+// can stub credentials without stale module-load captures.
+
+/** True when a real email provider credential AND a from-address are present. */
+export const isMailConfigured = (): boolean => Boolean(process.env.RESEND_API_KEY && process.env.MAIL_FROM_ADDRESS);
+
+/** True when speech-to-text (Deepgram) is credentialed. */
+export const isSttConfigured = (): boolean => Boolean(process.env.DEEPGRAM_API_KEY);
+
+/** True when text-to-speech (ElevenLabs) is credentialed. */
+export const isTtsConfigured = (): boolean => Boolean(process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_DEFAULT_VOICE_ID);
+
+/** True when server error capture (Sentry) is credentialed. */
+export const isSentryConfigured = (): boolean => Boolean(process.env.SENTRY_DSN);
+
+/** True when product analytics (PostHog) is credentialed. */
+export const isPosthogConfigured = (): boolean => Boolean(process.env.POSTHOG_API_KEY);
+
+/** True when the background-job runner can authenticate scheduler calls. */
+export const isCronConfigured = (): boolean => Boolean(process.env.CRON_SECRET);
+
 /** True when the app can talk to Supabase as the (RLS-scoped) user. */
 export const isSupabaseConfigured = (): boolean => Boolean(env.supabaseUrl && env.supabaseAnonKey);
 
