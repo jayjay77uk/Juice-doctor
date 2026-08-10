@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { MessagesSquare, Users, Bot, TrendingUp, Clock, Smile, Coins, Banknote, PhoneCall, CheckCircle2, CircleAlert, LifeBuoy, Lightbulb, CreditCard, UserCheck, ListChecks } from 'lucide-react';
 import { createMetadata } from '@/config/metadata';
 import { analytics } from '@/services/analytics';
+import { runLogRepo } from '@/services/repositories/run-log-repo';
 import { AdminHeader } from '@/components/admin/admin-header';
 import { StatGrid, StatCard } from '@/components/admin/stat-card';
 import { Panel } from '@/components/admin/panel';
@@ -14,12 +15,14 @@ function gbp(micros: number): string {
 }
 
 export default async function AnalyticsPage() {
-  const [summaryResult, dailyResult, questionsResult, usageResult, operationalResult] = await Promise.all([
+  const [summaryResult, dailyResult, questionsResult, usageResult, operationalResult, statusBreakdown, recentFailures] = await Promise.all([
     analytics.summary(),
     analytics.daily(30),
     analytics.popularQuestions(),
     analytics.knowledgeUsage(),
     analytics.operational(),
+    runLogRepo.statusBreakdown(30),
+    runLogRepo.recentFailures(10),
   ]);
   const s = summaryResult.ok ? summaryResult.data : null;
   const daily = dailyResult.ok ? dailyResult.data : [];
@@ -91,6 +94,38 @@ export default async function AnalyticsPage() {
               </li>
             ))}
           </ul>
+        </Panel>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel title="Inference reliability (30d)" description="Real run counts per outcome — ok, blocked (safety), flagged, error.">
+          {statusBreakdown.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No AI runs in the last 30 days.</p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {statusBreakdown.map((s) => (
+                <li key={s.status} className="flex items-center justify-between text-sm">
+                  <span className="font-mono text-foreground">{s.status}</span>
+                  <span className="tabular-nums text-muted-foreground">{s.count}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+        <Panel title="Recent non-ok runs" description="Metadata only — trace ids for correlation, never content." padded={false}>
+          {recentFailures.length === 0 ? (
+            <p className="px-6 py-6 text-sm text-muted-foreground">No failed, blocked or flagged runs recorded.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {recentFailures.map((f) => (
+                <li key={f.id} className="flex items-center justify-between gap-3 px-6 py-3 text-sm">
+                  <span className="font-mono text-xs text-muted-foreground">{f.traceId ?? f.id.slice(0, 8)}</span>
+                  <span className="font-medium text-foreground">{f.status}</span>
+                  <span className="tabular-nums text-muted-foreground">{new Date(f.createdAt).toLocaleString('en-GB')}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </Panel>
       </div>
 

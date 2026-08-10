@@ -163,4 +163,39 @@ export const runLogRepo = {
     const costMicros = rows.reduce((a, r) => a + (Number(r.cost_micros) || 0), 0);
     return { total, errors, avgLatencyMs, tokensIn, tokensOut, costMicros };
   },
+
+  /** Inference reliability over a window: real counts per run status. */
+  async statusBreakdown(sinceDays = 30): Promise<{ status: string; count: number }[]> {
+    const sb = createAdminClient();
+    if (!sb) return [];
+    const since = new Date(Date.now() - sinceDays * 86_400_000).toISOString();
+    const { data } = await sb.from('ai_run_logs').select('status').eq('organisation_id', ORG).gte('created_at', since).limit(5000);
+    const counts = new Map<string, number>();
+    for (const r of data ?? []) {
+      const s = String(r.status ?? 'unknown');
+      counts.set(s, (counts.get(s) ?? 0) + 1);
+    }
+    return [...counts.entries()].map(([status, count]) => ({ status, count })).sort((a, b) => b.count - a.count);
+  },
+
+  /** Most recent non-ok runs (metadata only — never prompt/response content). */
+  async recentFailures(limit = 10): Promise<{ id: string; agentId: string | null; status: string; latencyMs: number | null; traceId: string | null; createdAt: string }[]> {
+    const sb = createAdminClient();
+    if (!sb) return [];
+    const { data } = await sb
+      .from('ai_run_logs')
+      .select('id, agent_id, status, latency_ms, trace_id, created_at')
+      .eq('organisation_id', ORG)
+      .neq('status', 'ok')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    return (data ?? []).map((r) => ({
+      id: String(r.id),
+      agentId: (r.agent_id as string | null) ?? null,
+      status: String(r.status),
+      latencyMs: r.latency_ms != null ? Number(r.latency_ms) : null,
+      traceId: (r.trace_id as string | null) ?? null,
+      createdAt: String(r.created_at),
+    }));
+  },
 };
