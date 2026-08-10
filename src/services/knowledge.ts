@@ -54,24 +54,30 @@ export const knowledge = {
   },
 
   collections: {
+    /** Real collections — counts and timestamps come from the rows, nothing invented. */
     async list(): Promise<Result<KnowledgeCollection[]>> {
       const rows = await knowledgeRepo.collections();
       return ok(
         rows.map((r) => ({
           id: r.id,
-          organisationId: '00000000-0000-0000-0000-000000000001',
-          slug: r.id,
+          organisationId: r.organisationId,
+          slug: r.slug,
           name: r.name,
           description: r.description,
-          documentCount: 0,
-          status: 'active' as const,
-          updatedAt: new Date().toISOString(),
+          documentCount: r.documentCount,
+          status: (r.status as KnowledgeCollection['status']) ?? 'active',
+          updatedAt: r.updatedAt,
         })),
       );
     },
   },
 
   documents: {
+    /** Replace a document's content as a NEW version (history preserved). */
+    async reingest(documentId: string, text: string, changeNote?: string | null): Promise<Result<{ version: number; chunks: number }>> {
+      return knowledgeRepo.reingestText(documentId, { text, ...(changeNote ? { changeNote } : {}) });
+    },
+
     async list(
       q: ListQuery & { status?: PublishStatus; categoryId?: string; specialistSlug?: string } = {},
     ): Promise<Result<Page<KnowledgeDocument>>> {

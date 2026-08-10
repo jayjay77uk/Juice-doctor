@@ -289,6 +289,28 @@ function revalidateKnowledge(id: string): void {
   revalidatePath(`/admin/knowledge/${id}`);
 }
 
+const reingestSchema = z.object({
+  id: z.string().uuid(),
+  content: z.string().min(20, 'Paste the replacement content (at least 20 characters).'),
+  changeNote: z.string().max(300).optional().or(z.literal('')),
+});
+
+/** Replace a document's content as a new version — old versions keep their content. */
+export async function replaceDocumentContentAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  let actorId: string | null = null;
+  try { actorId = (await assertRole('administrator')).user.id; } catch { return { status: 'error', message: 'You do not have permission to do this.' }; }
+  const parsed = reingestSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { status: 'error', message: parsed.error.issues[0]?.message ?? 'Please check the fields.' };
+  }
+  const result = await knowledge.documents.reingest(parsed.data.id, parsed.data.content.trim(), parsed.data.changeNote || null);
+  if (!result.ok) return { status: 'error', message: result.error.message };
+  await auditRepo.log({ actorId, action: 'knowledge.reingested', entityType: 'knowledge_documents', entityId: parsed.data.id, after: { label: `Version ${result.data.version} (${result.data.chunks} chunks)` } });
+  revalidatePath('/admin/knowledge');
+  revalidatePath(`/admin/knowledge/${parsed.data.id}`);
+  return { status: 'success', message: `Replaced as version ${result.data.version} — ${result.data.chunks} searchable chunk(s). Previous versions keep their content.` };
+}
+
 export async function advanceIndexAction(formData: FormData): Promise<void> {
   await assertRole('administrator');
   const id = String(formData.get('id') ?? '');

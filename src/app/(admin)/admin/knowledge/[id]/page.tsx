@@ -7,6 +7,7 @@ import { AdminHeader } from '@/components/admin/admin-header';
 import { Panel } from '@/components/admin/panel';
 import { StatusBadge } from '@/components/admin/status-badge';
 import { knowledge, PUBLISH_TRANSITIONS } from '@/services/knowledge';
+import { ReplaceContentForm } from '@/components/admin/replace-content-form';
 import {
   advanceIndexAction,
   archiveDocAction,
@@ -241,13 +242,11 @@ export default async function KnowledgeDocumentPage({
         </dl>
       </Panel>
 
-      <Panel title="Preview" description="Rendered content preview.">
-        <div className="rounded-lg border border-dashed border-border-strong bg-surface-muted/40 px-6 py-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            No rendered preview yet. Only pasted text is ingested and retrievable
-            — uploaded files are not stored.
-          </p>
-        </div>
+      <Panel title="Content" description="Replace the document's content as a new version — previous versions keep their full text.">
+        <ReplaceContentForm documentId={doc.id} />
+        <p className="mt-3 text-sm text-muted-foreground">
+          Only pasted text is ingested and retrievable — uploaded files are not stored.
+        </p>
       </Panel>
 
       <Panel

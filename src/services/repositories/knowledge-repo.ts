@@ -115,8 +115,56 @@ export const knowledgeRepo = {
     const { error: chunkErr } = await sb.from('knowledge_chunks').insert(rows);
     if (chunkErr) return err({ code: 'unavailable', message: chunkErr.message });
 
+    // Version 1 is a real history row from the start, so later replacements
+    // never orphan the original content.
+    await sb.from('knowledge_document_versions').insert({
+      document_id: documentId,
+      version: 1,
+      title: input.title,
+      content: input.text,
+      created_by: owner,
+    });
+
     await sb.from('ai_agent_knowledge_sources').insert({ agent_id: input.agentId, document_id: documentId, mode: 'include' });
     return ok({ documentId, chunks: chunks.length });
+  },
+
+  /**
+   * Replace a document's content with a NEW VERSION. The previous version's
+   * full content stays on its knowledge_document_versions row (history is
+   * never destroyed); only the retrieval derivatives (chunks) are rebuilt for
+   * the new version.
+   */
+  async reingestText(documentId: string, input: { text: string; changeNote?: string | null }): Promise<Result<{ version: number; chunks: number }>> {
+    const sb = createAdminClient();
+    if (!sb) return err({ code: 'unavailable', message: 'The knowledge store is unavailable.' });
+    const chunks = chunkText(input.text);
+    if (!chunks.length) return err({ code: 'invalid', message: 'There is no text to ingest.' });
+
+    const { data: doc } = await sb.from('knowledge_documents').select('id, title, current_version, owner_id').eq('id', documentId).maybeSingle();
+    if (!doc) return err({ code: 'not_found', message: 'Document not found.' });
+
+    const version = (Number(doc.current_version) || 1) + 1;
+    const { error: verErr } = await sb.from('knowledge_document_versions').insert({
+      document_id: documentId,
+      version,
+      title: String(doc.title),
+      content: input.text,
+      change_note: input.changeNote?.trim() || null,
+      created_by: (doc.owner_id as string | null) ?? null,
+    });
+    if (verErr) return err({ code: 'unavailable', message: verErr.message });
+
+    await sb.from('knowledge_chunks').delete().eq('document_id', documentId);
+    const rows = chunks.map((content, idx) => ({ document_id: documentId, version, chunk_index: idx, content, metadata: {} }));
+    const { error: chunkErr } = await sb.from('knowledge_chunks').insert(rows);
+    if (chunkErr) return err({ code: 'unavailable', message: chunkErr.message });
+
+    await sb
+      .from('knowledge_documents')
+      .update({ current_version: version, index_state: 'available', updated_at: new Date().toISOString() })
+      .eq('id', documentId);
+    return ok({ version, chunks: rows.length });
   },
 
   /** Document ids assigned to an agent (mode = include). */
@@ -383,12 +431,34 @@ export const knowledgeRepo = {
     }));
   },
 
-  /** Real collections (empty until collections are created). */
-  async collections(): Promise<{ id: string; name: string; description: string | null }[]> {
+  /** Real collections with REAL document counts — every field from the row. */
+  async collections(): Promise<
+    { id: string; organisationId: string; slug: string; name: string; description: string | null; documentCount: number; status: string; updatedAt: string }[]
+  > {
     const sb = createAdminClient();
     if (!sb) return [];
-    const { data } = await sb.from('knowledge_collections').select('id, name, description').eq('organisation_id', ORG).order('created_at');
-    return (data ?? []).map((r: Row) => ({ id: String(r.id), name: String(r.name), description: (r.description as string | null) ?? null }));
+    const { data } = await sb.from('knowledge_collections').select('*').eq('organisation_id', ORG).order('created_at');
+    const rows = (data ?? []) as Row[];
+    if (!rows.length) return [];
+    const { data: links } = await sb
+      .from('knowledge_collection_documents')
+      .select('collection_id')
+      .in('collection_id', rows.map((r) => String(r.id)));
+    const counts = new Map<string, number>();
+    for (const l of (links ?? []) as Row[]) {
+      const id = String(l.collection_id);
+      counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+    return rows.map((r) => ({
+      id: String(r.id),
+      organisationId: String(r.organisation_id),
+      slug: String(r.slug ?? r.id),
+      name: String(r.name),
+      description: (r.description as string | null) ?? null,
+      documentCount: counts.get(String(r.id)) ?? 0,
+      status: String(r.status ?? 'active'),
+      updatedAt: String(r.updated_at ?? r.created_at ?? ''),
+    }));
   },
 
   async documentStats(): Promise<{ total: number; published: number; inReview: number; drafts: number; archived: number }> {
