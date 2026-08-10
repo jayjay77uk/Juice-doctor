@@ -17,8 +17,8 @@ type Res = { ok: true } | { ok: false; error: string };
 
 /**
  * Per-row controls for a customer subscription — set state (activate / suspend /
- * cancel), change plan, and record a manual payment. Prototype only: no live
- * payment provider is connected.
+ * cancel), change plan, and record a manual payment. No payment provider is
+ * connected — payments are recorded manually by design.
  */
 export function SubscriptionRowActions({
   subscriptionId,

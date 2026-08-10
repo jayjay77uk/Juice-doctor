@@ -366,12 +366,12 @@ export default async function SpecialistDetailPage({
                 <div className="flex flex-col gap-4">
                   <p className="text-sm text-muted-foreground">
                     Conversations and satisfaction feedback for {sp.name} are collected per customer.
-                    In the prototype, each customer’s conversation history lives in the member
-                    dashboard rather than here.
+                    Today, each customer’s conversation history lives in the member dashboard
+                    rather than here.
                   </p>
                   <ComingSoon
                     title="Conversation history"
-                    body="Every subscriber conversation with this specialist is stored and searchable in the full platform."
+                    body="Subscriber conversations are already stored in the platform database — a searchable per-specialist view here is coming soon."
                   />
                 </div>
               </Panel>
@@ -381,7 +381,7 @@ export default async function SpecialistDetailPage({
       />
 
       <p className="text-sm text-muted-foreground">
-        Prototype — mock data through the service layer. No live AI, payments or patient data.
+        Live data from the platform database. No payment provider is connected — payments are recorded manually.
       </p>
     </div>
   );

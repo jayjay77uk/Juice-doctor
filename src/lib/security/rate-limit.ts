@@ -29,8 +29,9 @@ export interface RateLimitConfig {
 }
 
 /**
- * In-memory fixed-window limiter. Suitable for a single instance / the prototype.
- * Production swaps in a distributed store implementing the same `RateLimiter`.
+ * In-memory fixed-window limiter. Per-instance and best-effort: each serverless
+ * instance keeps its own window, so limits are not shared across instances. A
+ * distributed store (Redis/Postgres) can implement the same `RateLimiter` later.
  */
 export function createInMemoryRateLimiter(config: RateLimitConfig): RateLimiter {
   const buckets = new Map<string, { count: number; resetAt: number }>();
@@ -80,5 +81,5 @@ export const RATE_LIMIT_POLICIES = {
   auth: { limit: 5, windowMs: 60_000 }, // 5 login attempts / minute
   contact: { limit: 3, windowMs: 60_000 },
   api: { limit: 100, windowMs: 60_000 },
-  ai: { limit: 20, windowMs: 60_000 }, // future AI endpoints
+  ai: { limit: 20, windowMs: 60_000 }, // unused preset — AI endpoints use durable per-user caps (services/ai-usage) instead
 } as const satisfies Record<string, RateLimitConfig>;

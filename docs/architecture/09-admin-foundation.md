@@ -1,6 +1,8 @@
 # 09 — Admin foundation
 
-> **Phase 2, architecture only.** The administration layer is built as a *production-shaped foundation*: the route group, the shell, the RBAC gates, and the read paths through the service framework all exist and run — but the surfaces are **read-oriented and non-destructive by design**. There is no live data, no auth cookie, and no business logic that mutates records. The point of this phase is to prove that the *shape* is correct, so that Phase 3 fills in behaviour without moving any walls.
+> **Phase 2, architecture only (historical).** The administration layer was built as a *production-shaped foundation*: the route group, the shell, the RBAC gates, and the read paths through the service framework all existed and ran — but the surfaces were **read-oriented and non-destructive by design**. At that point there was no live data, no auth cookie, and no business logic that mutated records. The point of the phase was to prove that the *shape* is correct, so that later phases could fill in behaviour without moving any walls.
+
+> **Update (2026-08-10) — current status.** The platform has since gone live on this foundation. Today the `(admin)` group is gated by **real Supabase Auth** (`requireRole('administrator')` in `(admin)/layout.tsx`; edge protection in `src/proxy.ts` is active whenever Supabase is configured, redirecting unauthenticated requests to `/login`), the services read and **write real Supabase Postgres data** (users, AI agents/prompts, knowledge, feature flags, bookings/consultations, CRM, subscriptions, support), and privileged admin mutations record to an append-only `audit_logs` trail via `src/services/repositories/audit-repo.ts`. Present-tense statements below about mocks, canned personas, bypassed gates and absent write paths describe the **Phase-2 state**, not today's system; the canned admin persona survives only as a local-dev fallback when Supabase is not configured.
 
 This document explains **how the admin area is assembled**, **why it is structured the way it is**, and **what each management surface will be gated on** when it becomes interactive. It is the operator-facing counterpart to the member-facing dashboard: same shell, same service framework, higher-privilege reads.
 
@@ -28,7 +30,7 @@ flowchart TD
     PlatformSvc["audit / settings / notifications"]
   end
   subgraph Data["Data layer"]
-    Mock["Typed mocks (prototype)"]
+    Mock["Supabase repositories (live)"]
     DB["Postgres + RLS\n~55 tables, 13 migrations"]
   end
 
@@ -39,12 +41,12 @@ flowchart TD
   Authz --> Session
   AdminPage --> AdminSvc & AgentsSvc & FlagsSvc
   AdminSvc & AgentsSvc & FlagsSvc & PlatformSvc --> Mock
-  Mock -. "APP_MODE=production" .-> DB
+  Mock --> DB
 ```
 
 Three properties fall out of this placement, and they are the whole thesis of the admin foundation:
 
-1. **The admin area cannot see anything the service layer will not hand it.** Admin pages are React Server Components that `await` service getters. They never touch a database client, never hold a connection string, never import a Supabase module. Swapping mock → Supabase happens entirely below them (`APP_MODE`, server-side, per `src/services/index.ts`).
+1. **The admin area cannot see anything the service layer will not hand it.** Admin pages are React Server Components that `await` service getters. They never touch a database client directly, never hold a connection string. The Phase-2 swap from typed mocks to Supabase happened entirely below them, in the server-only service/repository layer — the pages did not change.
 2. **Privilege is enforced in two independent places.** The app-level guard (`src/lib/auth`) decides whether the page renders; RLS decides whether the row is returned. Even a bug that renders the wrong page cannot leak a row the database refuses to release. See [`04-rls-security-model.md`](04-rls-security-model.md).
 3. **Every management surface is a *view over a service over a table*.** There is no admin-only data model. "User management" is `admin.users` → `profiles`; "audit logs" is `audit.list` → `audit_logs`. This keeps the admin area honest — it is a lens, not a back door.
 
@@ -61,15 +63,17 @@ The admin area is an App Router **route group** — `src/app/(admin)/` — so it
 
 ### 2.1 The layout is the gate
 
-The layout is the single choke point for the whole group. In the prototype it resolves a canned administrator persona; in production it becomes a hard role gate. The code is written so that becoming production is *uncommenting one guard*, not restructuring the tree:
+The layout is the single choke point for the whole group. In Phase 2 it resolved a canned administrator persona; today it is a **hard role gate** on the deployed platform. The code enforces the real guard whenever Supabase is configured, falling back to the canned persona only for keyless local development:
 
 ```ts
 // src/app/(admin)/layout.tsx (current)
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  // Production-shaped: a real gate would `requireRole('administrator')`.
-  const session = await getSession('administrator');
+  // Real RBAC on the deployed platform; canned persona only without Supabase keys.
+  const session = isSupabaseConfigured()
+    ? await requireRole('administrator', '/admin')
+    : await getSession('administrator');
   const userName = session?.user.name ?? 'Admin';
-  return <AppShell roleLabel="Admin" userName={userName} nav={nav}>{children}</AppShell>;
+  return <AppShell roleLabel="Admin" userName={userName} navVariant="admin">{children}</AppShell>;
 }
 ```
 
@@ -86,7 +90,7 @@ sequenceDiagram
   participant L as (admin)/layout.tsx (RSC)
   participant S as Service + RLS
   U->>P: GET /admin
-  Note over P: 1. Edge — is there an auth cookie?<br/>(bypassed while isPrototype)
+  Note over P: 1. Edge — is there an auth cookie?<br/>(active whenever Supabase is configured)
   P->>L: forward
   Note over L: 2. Layout — requireRole('administrator')<br/>redirect on failure
   L->>S: admin.metrics(), agents.list(), featureFlags.all()
@@ -94,11 +98,11 @@ sequenceDiagram
   S-->>U: dashboard
 ```
 
-- **Edge (`src/proxy.ts`)** — the `PROTECTED_PREFIXES = ['/dashboard', '/admin']` block redirects unauthenticated requests to `/login` *before the page runs*, reading the Supabase auth cookie. This is bypassed while `config.isPrototype` (there is no real cookie in a demo), and the production path is present and commented, not deleted.
+- **Edge (`src/proxy.ts`)** — the `PROTECTED_PREFIXES = ['/dashboard', '/admin']` block redirects unauthenticated requests to `/login` *before the page runs*, reading the Supabase auth cookie. This protection is **active on the deployed platform** (whenever Supabase is configured); it degrades to open only in local development without Supabase keys.
 - **Layout (`requireRole`)** — the app-level RBAC decision.
 - **Data (RLS)** — the database's own decision, independent of the app.
 
-**Why bypass at the edge in the prototype?** The dashboards are demonstration shells with no real authentication; forcing a login redirect would make the demo unreachable. The important architectural fact is that the *production code path exists* — going live is setting `APP_MODE`/mode to production, not writing new middleware.
+**Why degrade to open without Supabase?** With no Supabase keys there is no auth cookie to read; forcing a login redirect would make keyless local development unusable. On the deployed platform the guard is live — this is exactly the production code path Phase 2 put in place.
 
 ---
 
@@ -119,7 +123,7 @@ flowchart LR
 - **The navigation is *data*, not markup.** Each layout passes its own `ShellNavItem[]`. Adding an admin surface is adding a row to an array — the same pattern the whole codebase uses for routes (`src/config/routes.ts`), permissions (`src/config/permissions.ts`), and flags (`src/config/feature-flags.ts`). This is the "everything privileged is a registry" principle applied to navigation.
 - **The shell holds no data logic.** It receives already-resolved props (`userName`, `nav`) from a server layout. It never fetches, never checks permissions itself — it is a pure presentational frame. Authorisation stays in the layer that owns it.
 
-The admin `nav` currently lists the operator surfaces (Overview, Customers, Bookings, Content, Media, Messages). In this phase every entry points at `/admin` because the sub-pages are not yet built — the navigation exists to demonstrate the information architecture, and each destination becomes a real page in Phase 3 gated by the permission in the table in §6.
+In Phase 2 the admin `nav` listed the operator surfaces (Overview, Customers, Bookings, Content, Media, Messages) with every entry pointing at `/admin`, because the sub-pages were not yet built — the navigation demonstrated the information architecture. Those destinations have since become real pages (agents, prompts, knowledge, CRM, receptionist, specialists, bookings, config, audit, …), each gated as designed; the nav config now lives in `src/components/layout/sidebar-nav.tsx`.
 
 ---
 
@@ -141,9 +145,9 @@ const agentList = agentsResult.ok ? agentsResult.data : [];
 Several deliberate architectural choices are on display here:
 
 - **Parallel reads.** The three services are independent, so they are awaited together with `Promise.all`. The page pays one round-trip's latency, not three.
-- **`Result<T>` at every boundary.** `admin.metrics()` and `agents.list()` return the discriminated `Result<T>` union (`src/services/result.ts`), so the page must *destructure success from failure* and supply a safe fallback (`{ activeClients: 0, … }`, `[]`). The mock always succeeds today, but the call sites are already written for the day a query fails — nothing is retrofitted. `featureFlags.all()` returns a plain array because flag resolution has no failure mode (it always resolves to a default).
+- **`Result<T>` at every boundary.** `admin.metrics()` and `agents.list()` return the discriminated `Result<T>` union (`src/services/result.ts`), so the page must *destructure success from failure* and supply a safe fallback (`{ activeClients: 0, … }`, `[]`). In Phase 2 the mock always succeeded; today the same call sites absorb real query failures — nothing was retrofitted. `featureFlags.all()` returns a plain array because flag resolution has no failure mode (it always resolves to a default).
 - **RSC, so `server-only` services are importable directly.** Every service module starts with `import 'server-only'`. Because the page is a Server Component, it can import them and the Supabase client (in production) can never be tree-shaken into a browser bundle.
-- **The page renders *whatever the services return*.** It has no knowledge of whether the numbers came from a mock constant or a live `count(*)`. That ignorance is the seam working.
+- **The page renders *whatever the services return*.** It has no knowledge of whether the numbers came from a seed constant (Phase 2) or a live `count(*)` (today). That ignorance is the seam working.
 
 ### 4.1 The three framework reads, and why each is on the dashboard
 
@@ -153,16 +157,16 @@ Several deliberate architectural choices are on display here:
 | `agents.list()` | `src/services/agents.ts` → `src/config/ai-agents.ts` | `ai_agents` (migration 0009) | **Agents are data.** The dashboard lists agents (name, role, `visibility`, `status`) read from a registry; in production the identical call reads the table, so the client creates/edits agents from the admin UI with no code change. See [`05-ai-agent-framework.md`](05-ai-agent-framework.md). |
 | `featureFlags.all()` | `src/services/feature-flags.ts` → `src/config/feature-flags.ts` | `feature_flags` + `feature_flag_overrides` (migration 0013) | The flag registry is real and targeting-aware; the admin surface is the operator's control panel for staged rollout of Phase-3 capabilities. |
 
-The "Recent bookings" table on the dashboard is intentionally still hard-coded sample data — it stands in for the `appointments` read that arrives when the consultation workflow goes live ([`08-consultation-workflow.md`](08-consultation-workflow.md)). Its presence marks *where* a service read will slot in, without pretending to have one yet.
+In Phase 2 the dashboard's "Recent bookings" table was intentionally hard-coded sample data, marking *where* a service read would slot in. That placeholder is gone: the admin dashboard (now the AI Business Dashboard) reads live data through `business`, `receptionist`, `specialists` and `crm` services, and the booking/consultation queue reads real `appointments`/`consultations` rows ([`08-consultation-workflow.md`](08-consultation-workflow.md)).
 
 ### 4.2 Reads are getters; writes will be Server Actions
 
 The whole admin foundation obeys the codebase's read/write split:
 
 - **Reads** are plain async getters on service objects (`admin.metrics`, `agents.list`, `knowledge.documents.list`, `audit.list`). They are the only thing this phase exercises.
-- **Writes**, when they arrive, are **Server Actions** (`'use server'`, the pattern in `src/services/actions.ts`), each fronted by an `assertPermission(...)` guard and each recording to the audit trail via `audit.record(...)`. In this phase the write path for admin operations is deliberately absent — the `audit.record` recorder already exists as a no-op (`src/services/platform.ts`) precisely so call sites can be wired without storing anything.
+- **Writes** are **Server Actions** (`'use server'`, the pattern in `src/services/actions.ts`), each fronted by a role/permission assertion. In Phase 2 the admin write path was deliberately absent and the legacy `audit.record` shim in `src/services/platform.ts` was a no-op; today admin write actions are real (agents, prompts, knowledge, CRM, bookings, receptionist settings, …) and privileged mutations record append-only `audit_logs` rows through `auditRepo.log` (`src/services/repositories/audit-repo.ts`) under the service role.
 
-This is the **"architecture only, no destructive business logic yet"** principle in concrete terms: the shape of every mutation (guard → validate → mutate → audit) is designed, but no mutation is implemented, so nothing in the admin area can create, edit, or delete a real record.
+This was the **"architecture only, no destructive business logic yet"** principle of Phase 2 in concrete terms: the shape of every mutation (guard → validate → mutate → audit) was designed first, then filled in with real behaviour in later phases without moving the seams.
 
 ---
 
@@ -198,13 +202,13 @@ Two levels of granularity, each doing a distinct job:
 
 ### 5.2 Sensitive actions are marked in the catalogue
 
-Permissions flagged `sensitive: true` (`users.delete`, `users.impersonate`, `roles.assign`, `permissions.manage`, `audit.read`, `settings.manage`, `payments.refund`, `agents.configure`, `ai.config.manage`, `health.*`, …) are the ones that, in production, warrant elevated confirmation / MFA and always leave an audit trail. The prototype records the *intent* (the flag on the permission) without implementing the enforcement — again, shape now, behaviour later.
+Permissions flagged `sensitive: true` (`users.delete`, `users.impersonate`, `roles.assign`, `permissions.manage`, `audit.read`, `settings.manage`, `payments.refund`, `agents.configure`, `ai.config.manage`, `health.*`, …) are the ones that warrant elevated confirmation / MFA and always leave an audit trail. The catalogue records the *intent* (the flag on the permission); step-up confirmation / MFA enforcement is not yet wired — shape now, behaviour later.
 
 ---
 
 ## 6. Admin surfaces → permission → backing table/service
 
-The management surfaces the admin foundation is designed to host. **Backing** names the service getter (present today) and the production table it reads. **State** is honest about what exists in this phase: *live* = wired and reading through the framework on the dashboard now; *scaffold* = designed, service getter exists, page arrives in Phase 3; *planned* = designed at the data/permission layer, no service getter yet.
+The management surfaces the admin foundation was designed to host. **Backing** names the service getter and the production table it reads. **State** is a **Phase-2 snapshot** (*live* = wired on the dashboard then; *scaffold* = getter existed, page to come; *planned* = designed at the data/permission layer only). Most "scaffold"/"planned" rows have since shipped as real pages reading and writing live Supabase data — payments remain manual subscription records (no payment provider), and organisations/roles surfaces are still not built.
 
 | Surface | URL (target) | Required permission | Backing service (`src/services`) | Backing table(s) / migration | State |
 | --- | --- | --- | --- | --- | --- |
@@ -235,9 +239,11 @@ The management surfaces the admin foundation is designed to host. **Backing** na
 
 ## 7. The governing principle: architecture only, no destructive business logic
 
-This is the constraint that defines Phase 2 for the admin area, stated plainly and then justified.
+*Historical — this section records the Phase-2 constraint. The write paths, real auth and live data described as absent below have since been built (see the status note at the top).*
 
-**What exists:**
+This is the constraint that defined Phase 2 for the admin area, stated plainly and then justified.
+
+**What existed:**
 
 - The `(admin)` route group, its layout, and the shared `AppShell` — the complete operator frame.
 - The dashboard reading live through `admin.metrics`, `agents.list`, and `featureFlags.all`.
@@ -245,7 +251,7 @@ This is the constraint that defines Phase 2 for the admin area, stated plainly a
 - The service getters and backing tables for every surface in §6.
 - The audit recorder (`audit.record`) as a wired no-op, and the Server Action pattern (`src/services/actions.ts`) ready to host writes.
 
-**What deliberately does not exist:**
+**What deliberately did not exist in Phase 2:**
 
 - No admin action creates, updates, or deletes a real record. There is no "delete user," no "assign role," no "publish document" that persists anything.
 - No live data — every read returns typed seed/mock data (`admin.users` → four seed profiles, `knowledge.documents` → empty, `audit.list` → empty).

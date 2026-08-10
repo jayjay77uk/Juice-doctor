@@ -11,11 +11,6 @@ function num(value: string | undefined, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
-function bool(value: string | undefined, fallback: boolean): boolean {
-  if (value == null || value === '') return fallback;
-  return /^(1|true|yes|on)$/i.test(value);
-}
-
 /** AI_REQUEST_TIMEOUT accepts ms (>=1000) or seconds (<1000, multiplied up). */
 function timeoutMs(value: string | undefined, fallback: number): number {
   const n = num(value, fallback);
@@ -37,8 +32,6 @@ export const env = {
   aiRequestTimeoutMs: timeoutMs(process.env.AI_REQUEST_TIMEOUT, 60_000),
   aiDailyUserLimit: num(process.env.AI_DAILY_USER_LIMIT, 50),
   aiMonthlyUserLimit: num(process.env.AI_MONTHLY_USER_LIMIT, 500),
-  // Prototype mode defaults ON — extra safety wording + simulated-data notices.
-  aiPrototypeMode: bool(process.env.AI_PROTOTYPE_MODE, true),
 
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3011',
 } as const;

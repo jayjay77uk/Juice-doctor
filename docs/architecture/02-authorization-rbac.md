@@ -7,13 +7,13 @@
 > enforced twice: once in the application and once in the database via
 > Row-Level Security (RLS).
 >
-> **Prototype status.** Everything described here is *production-shaped* but runs
-> on typed mock providers and paper SQL. There is no live auth, no connected
-> Postgres, and no data. The `session` seam returns canned personas; the SQL
-> migrations are the *design* of the production database, not something the
-> prototype executes. Only two small function bodies (`loadSession()` and the
-> service-layer provider switch) change when this goes live — the authorization
-> model itself is already the real thing.
+> **Status.** Everything described here is now *live*: the session seam resolves
+> real Supabase Auth sessions, the SQL migrations are applied to the live
+> Postgres, and RLS enforces these rules on real rows. (This document was
+> originally written in Phase 2, when the app ran on typed mock providers and
+> the SQL was unexecuted design; canned personas survive only as a local-dev
+> fallback when Supabase is not configured.) The authorization model itself is
+> unchanged — it was the real thing from day one.
 
 ---
 
@@ -284,12 +284,13 @@ create table public.user_permission_overrides (
 );
 ```
 
-Two production affordances the DB adds beyond the in-memory model: overrides
+Two production affordances the DB adds beyond the in-code model: overrides
 record **who** granted them and **why** (`granted_by`, `reason`) for audit, and
 they may **expire** (`expires_at`) so a temporary elevation lapses on its own.
-The app-side `hasPermission` treats `grants`/`denies` as already-resolved lists,
-so the (future) session loader is responsible for filtering out expired rows when
-it populates them — keeping the pure engine free of clocks.
+The app-side `hasPermission` treats `grants`/`denies` as already-resolved lists —
+keeping the pure engine free of clocks. (Note: the live session loader does not
+yet populate per-user overrides onto the session; RLS honours them, including
+`expires_at`, independently in the database.)
 
 ---
 
@@ -352,18 +353,19 @@ the guard never leaks the permission key, a user id, or SQL to the client.
 
 Every guard resolves the caller through `getSession()` in
 [`session.ts`](../../src/lib/auth/session.ts), then `toAuthContext()` projects the
-role + overrides into the engine's `AuthContext`. In the prototype `getSession`
-returns a **canned persona** (a `roleHint` lets each shell present member vs
-admin); in production it will read the Supabase auth cookie, refresh the token,
-and load the profile (role, org, overrides). **Only `loadSession()`'s body
-changes** — the guards, the engine, and RLS are untouched by that swap.
+role + overrides into the engine's `AuthContext`. When Supabase is not configured
+(local dev), `getSession` falls back to a **canned persona** (a `roleHint` lets
+each shell present member vs admin); on the deployed platform it reads the
+Supabase auth cookie, refreshes the token, and loads the profile (role, org).
+**Only `loadSession()`'s body distinguishes the two** — the guards, the engine,
+and RLS are untouched by that split.
 
 ```ts
-// src/lib/auth/session.ts — the single swap point
+// src/lib/auth/session.ts — the single swap point (live shape)
 async function loadSession(roleHint: AppRole): Promise<Session | null> {
-  if (config.isPrototype) return { user: CANNED[roleHint] };  // demo persona
-  // production (deferred): read sb cookie → getUser() → loadProfile() → session
-  return null;
+  if (!isSupabaseConfigured()) return { user: CANNED[roleHint] }; // local-dev fallback
+  // live: Supabase auth cookie → getUser() → load profile (role, org) → session
+  // …
 }
 ```
 
@@ -386,10 +388,9 @@ flowchart TD
 - **`src/proxy.ts`** (Next 16 renamed `middleware.ts` → `proxy.ts`) is the
   outermost net: it applies the strict security-header/CSP baseline, blocks
   cross-origin *mutating* requests (CSRF origin check), and protects the
-  `(dashboard)` / `(admin)` route groups. In the prototype route-protection is
-  **bypassed** (`!appConfig.isPrototype`) because there is no real cookie and the
-  dashboards are demo shells; the production branch is present and commented, not
-  deleted.
+  `(dashboard)` / `(admin)` route groups. Route protection is **active** whenever
+  Supabase is configured (as on the deployed platform); only local development
+  without Supabase keys degrades to open so the app still renders.
 - **Guards** (`require*` / `assert*`) fire inside the RSC / action.
 - **RLS** fires last, in the database, and trusts none of the above.
 
@@ -519,11 +520,12 @@ prevent. The mechanisms:
 
 ## 11. Deliberate deferrals & invariants
 
-- **No live auth in Phase 2.** Sessions are canned personas; RLS runs on paper.
-  The swap to Supabase Auth touches exactly one function body (`loadSession()`).
-- **Overrides expiry is resolved at the seam.** The pure engine takes
-  already-filtered `grants`/`denies`; the (future) session loader and RLS both
-  honour `expires_at`.
+- **Live auth landed as designed.** The Phase-2 swap to Supabase Auth touched
+  exactly one function body (`loadSession()`); canned personas survive only as
+  the local-dev fallback, and RLS now runs on the live database.
+- **Overrides expiry is resolved outside the engine.** The pure engine takes
+  already-filtered `grants`/`denies`; RLS honours `expires_at` in the database.
+  (The live session loader does not yet load overrides onto the session.)
 - **The catalogue is closed at compile time.** New capabilities are added to
   `PERMISSIONS` (auto-granting super-admin), then reflected into the DB seed —
   never invented ad hoc at a callsite.

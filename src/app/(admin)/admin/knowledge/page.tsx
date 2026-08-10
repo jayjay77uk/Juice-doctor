@@ -146,7 +146,7 @@ export default async function KnowledgeBasePage() {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — mock data, served through the service layer. AI replies run on the live model (non-production); no real patient data.
+        Live data from the platform database. Only published, available documents ground AI answers; AI replies run on the live model and are not clinically reviewed.
       </p>
     </div>
   );

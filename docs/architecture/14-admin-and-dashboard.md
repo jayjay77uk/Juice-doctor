@@ -1,6 +1,6 @@
 # 14 · Admin Portal & User Dashboard
 
-> **Phase 3, prototype.** This document explains the two authenticated shells the platform ships — the operator-facing **admin portal** (`(admin)`) and the member-facing **user dashboard** (`(dashboard)`) — and *why* they are built the way they are. No real AI runs, no patient data is stored, no payments are taken. Every surface is a **React Server Component that `await`s a server-only service**; the service reads (and, for the admin, mutates) an in-process mock store today and repoints at Supabase in production without the pages changing.
+> **Written in Phase 3; status updated 2026-08-10.** This document explains the two authenticated shells the platform ships — the operator-facing **admin portal** (`(admin)`) and the member-facing **user dashboard** (`(dashboard)`) — and *why* they are built the way they are. When first written, no AI ran and the services mutated in-process mock stores. Today both shells are **live**: real Supabase Auth gates them, the services read and write real Supabase Postgres rows, live Anthropic Claude inference powers member conversations and the admin playground, and member surfaces show each user's own data. Payments remain manual records (no payment provider), and AI replies are AI-generated and not clinically reviewed. Every surface is still a **React Server Component that `await`s a server-only service** — the pages did not change when the data went live.
 
 The governing principle of Phase 3 is **"build once, configure forever"**: nothing about AI behaviour is hardcoded. Prompts, personalities, temperatures, models, safety rules, knowledge and feature flags are all *data* managed through the admin portal documented here. The two shells are the human interface onto that data.
 
@@ -18,13 +18,13 @@ Both authenticated areas are App Router **route groups** — `src/app/(admin)/` 
 | --- | --- |
 | `src/components/layout/app-shell.tsx` | The shared shell: sticky sidebar (logo + nav + "back to site"), sticky top bar (name + role label + avatar), and the `<main>` content region. Server component. |
 | `src/components/layout/sidebar-nav.tsx` | The **client** nav: owns the nav configuration (with its lucide icons) and computes the active route by path. |
-| `src/app/(admin)/layout.tsx` | Establishes the admin session, renders `<AppShell navVariant="admin" roleLabel="Admin">`, and is where the production role gate (`requireRole('administrator')`) lands. `export const dynamic = 'force-dynamic'`. |
+| `src/app/(admin)/layout.tsx` | Establishes the admin session, renders `<AppShell navVariant="admin" roleLabel="Admin">`, and enforces the role gate (`requireRole('administrator')`, active whenever Supabase is configured). `export const dynamic = 'force-dynamic'`. |
 | `src/app/(dashboard)/layout.tsx` | The member equivalent: `<AppShell navVariant="dashboard" roleLabel="Member area">`. Also `force-dynamic`. |
 
 ```mermaid
 flowchart LR
   subgraph AdminGroup["(admin) route group"]
-    ALayout["layout.tsx\ngetSession('administrator')\ndynamic = force-dynamic"]
+    ALayout["layout.tsx\nrequireRole('administrator')\ndynamic = force-dynamic"]
     APages["~15 admin pages (RSC)"]
   end
   subgraph DashGroup["(dashboard) route group"]
@@ -41,7 +41,7 @@ flowchart LR
 
 ### Why `force-dynamic`
 
-The service layer is **mutable at runtime**: creating an agent, saving a prompt draft or toggling a feature flag mutates an in-process store within the session. If any admin page were statically prerendered or cached, it would show stale data after a mutation. `export const dynamic = 'force-dynamic'` on both layouts forces every render on demand, so the page always reflects the current state of the service layer. Combined with `revalidatePath(...)` in the write path (§4), a mutation is immediately visible on the next render.
+The service layer is **mutable at runtime**: creating an agent, saving a prompt draft or toggling a feature flag writes real database rows. If any admin page were statically prerendered or cached, it would show stale data after a mutation. `export const dynamic = 'force-dynamic'` on both layouts forces every render on demand, so the page always reflects the current state of the data. Combined with `revalidatePath(...)` in the write path (§4), a mutation is immediately visible on the next render.
 
 ### The RSC icon-passing lesson
 
@@ -109,7 +109,7 @@ Every surface is gated by an RBAC **permission** (from `src/config/permissions.t
 | Prompt — editor | `/admin/ai/prompts/[id]` | `agents.update` | `prompts.ts` → `admin-actions.ts` | `ai_prompts`, `ai_prompt_versions` |
 | Playground | `/admin/ai/playground` | `agents.read` | `playground.ts` → `admin-actions.ts` | `ai_run_logs` (`is_playground=true`) |
 | Safety Centre | `/admin/ai/safety` | `agents.configure` | `safety.ts` | `ai_safety_policies`, `ai_agent_safety_policies` |
-| Memory Centre | `/admin/ai/memory` | `memory.read` / `memory.manage` | `memory.ts` | memory scopes (`0011`) |
+| Memory Centre | `/admin/ai/memory` | `memory.read` / `memory.manage` | (page is illustrative — coming soon; `ai_memory` rows are real) | memory scopes (`0011`) |
 | Analytics | `/admin/ai/analytics` | `analytics.read` | `analytics.ts` | `analytics_events`, `analytics_daily_rollup` |
 | Knowledge base | `/admin/knowledge` | `knowledge.read` | `knowledge.ts` | `knowledge_collections`, `knowledge_collection_documents` |
 | Knowledge — doc | `/admin/knowledge/[id]` | `knowledge.approve` / `knowledge.publish` | `knowledge.ts` → `admin-actions.ts` | knowledge docs (`0012`) |
@@ -125,7 +125,7 @@ Access control is enforced in **two independent places**, and this redundancy is
 1. **RBAC gates the surface (app layer).** The permission catalogue in `src/config/permissions.ts` defines fine-grained `resource.action` capabilities and which roles hold them cumulatively. In production a guard (`assertPermission('agents.configure')`) runs before a page renders or an action mutates; a member — who holds *no* catalogue permissions — never sees `/admin` at all. The mutation-heavy AI surfaces sit behind the `agents.*`, `knowledge.*`, `feature_flags.manage` and `audit.read` permissions the `administrator` role adds.
 2. **RLS re-enforces at the data layer (DB).** Every table from `0014` (and `0009`/`0012`) has row-level security on. Even if an app-level bug rendered the wrong page, the database refuses to return a row the caller's role/tenant may not see. The admin portal is *a lens, not a back door* — it can only display what the service, and beneath it RLS, hands it.
 
-In the prototype the gate is production-*shaped* but permissive (`getSession('administrator')` returns a stub admin) so the whole portal is explorable; the seam where the real gate lands is the layout and the top of each Server Action.
+The gate is **live**: on the deployed platform the `(admin)` layout enforces `requireRole('administrator')` against real Supabase Auth sessions, and every privileged Server Action asserts the role/session at its top. Only keyless local development (no Supabase configured) falls back to a permissive canned admin so the portal still renders.
 
 ---
 
@@ -165,7 +165,7 @@ sequenceDiagram
   participant Action as admin-actions.ts ('use server')
   participant Zod as zod schema
   participant Svc as service (agents / prompts / …)
-  participant Store as mock store → (prod) Supabase
+  participant Store as Supabase (via repositories)
 
   Form->>Action: POST FormData
   Action->>Zod: safeParse(FormData)
@@ -189,7 +189,7 @@ The portal uses **both** kinds of form, matched to the interaction:
 - **Server-component forms for single, no-input operations.** A publish/duplicate/archive/toggle button is a plain `<form action={publishAgentAction}>` with a hidden `id` — no client JS, no state. These actions return `Promise<void>`; they just mutate and `revalidatePath`. See the `IconAction` helper in `agents/page.tsx`.
 - **Client forms with `useActionState` for validated, multi-field edits.** Where the operator types (create agent, edit agent, save a prompt draft), the form is a `'use client'` component that binds the action via `const [state, formAction] = useActionState(action, idleAction)`, renders `state.fieldErrors` inline, and shows pending UI via `useFormStatus()`. See `create-agent-form.tsx`, `agent-edit-form.tsx`, `prompt-editor.tsx`.
 
-The **playground** is the one exception to the FormData pattern: `runPlaygroundAction` takes a typed input object and *returns* a `PlaygroundResult` straight to the client console (`playground-console.tsx`), because the "run" is an interactive request/response, not a navigation. It is a **mock** — no inference happens — and it writes an `ai_run_logs` row flagged `is_playground=true` so test runs never pollute real observability. See [`05-ai-agent-framework.md`](05-ai-agent-framework.md).
+The **playground** is the one exception to the FormData pattern: `runPlaygroundAction` takes a typed input object and *returns* a `PlaygroundResult` straight to the client console (`playground-console.tsx`), because the "run" is an interactive request/response, not a navigation. It performs **real inference** (knowledge retrieval + a live model call) and writes an `ai_run_logs` row flagged `is_playground=true` so test runs never pollute real observability. See [`05-ai-agent-framework.md`](05-ai-agent-framework.md).
 
 ---
 
@@ -206,30 +206,31 @@ The `(dashboard)` shell is the member's home. It shares the shell and the entire
 | Assessments | `/dashboard/assessments` | `assessments()` |
 | Journey | `/dashboard/journey` | `journey()` (timeline) |
 | Bookings | `/dashboard/bookings` | `upcoming()` |
-| Conversations | `/dashboard/conversations` | `savedConversations()` — **AI is Phase-next** |
+| Conversations | `/dashboard/conversations` | `savedConversations()` — **live AI conversations** |
 | Notifications | `/dashboard/notifications` | `notifications()` |
-| Settings | `/dashboard/settings` | preferences (canned) |
+| Settings | `/dashboard/settings` | preferences |
 
-`member.ts` is `import 'server-only'` and returns **canned member data** wrapped in the same `Result<T>` shape as every other service, so the dashboard is fully populated for demos. In production it reads the member's *own* rows (`health_profiles`, `goals`, `assessments`, `notifications`, …) behind RLS — no permission catalogue entry needed, because a member's access to their own data is granted by **ownership** (`user_id = auth.uid()`), not by an RBAC permission (see `src/config/permissions.ts`, and [`02-authorization-rbac.md`](02-authorization-rbac.md)).
+`member.ts` is `import 'server-only'` and returns the **member's real records** wrapped in the same `Result<T>` shape as every other service: it reads the signed-in user's *own* rows (`health_profiles`, `goals`, appointments, journey, conversations, …) with per-user ownership checks and RLS behind it — no permission catalogue entry needed, because a member's access to their own data is granted by **ownership** (`user_id = auth.uid()`), not by an RBAC permission (see `src/config/permissions.ts`, and [`02-authorization-rbac.md`](02-authorization-rbac.md)).
 
 ### The onboarding wizard
 
-`src/components/dashboard/onboarding-wizard.tsx` is a `'use client'` multi-step flow — *Welcome → Your goals → Health basics → Preferences → Done* — with a progress rail, per-step validation (you cannot continue past "goals" with none selected), and back/next controls. In the prototype **nothing is stored**; a real submit would write `health_profiles` / `goals` / preferences. It is architecture-and-interface only, no AI.
+`src/components/dashboard/onboarding-wizard.tsx` is a `'use client'` multi-step flow — *Welcome → Your goals → Health basics → Preferences → Done* — with a progress rail, per-step validation (you cannot continue past "goals" with none selected), and back/next controls. Its answers are **still not stored** (the UI says so honestly); a real submit would write `health_profiles` / `goals` / preferences. It remains interface-only — the exception among member surfaces, which otherwise read and write real data.
 
-### Conversations await Phase-next AI
+### Conversations are live
 
-The **Conversations** surface lists saved AI chats (title, agent, preview, timestamp) from `member.savedConversations()`, but the chat experience itself is deliberately *not* built here: **no real AI or inference runs in Phase 3.** This surface exists so the seam is visible and the information architecture is complete; the live conversational agent is a subsequent phase that will consume the agents, prompts and safety policies configured in the admin portal.
+The **Conversations** surface lists the member's real AI chats from `member.savedConversations()`, and the chat experience itself is **built and live**: streaming replies from the HERNE specialists via real Anthropic Claude inference, consuming the agents, published prompts and safety machinery configured in the admin portal, with citations, usage limits and run logging on every turn. (Conversations can be archived; a delete UI is not built.)
 
 ---
 
-## 6. Prototype behaviour
+## 6. Runtime behaviour today
 
-Everything above runs, but on a **prototype seam** — understanding it prevents surprise:
+The Phase-3 prototype seam (in-process mock stores, mutations lost on restart, canned data) has been **crossed** — understanding today's behaviour prevents surprise:
 
-- **In-process mutable mock stores.** The admin services (`agents`, `prompts`, `knowledge`, `featureFlags`, `playground`) hold their data in module-level mutable stores, seeded from the config registries (`src/config/ai-agents.ts`, `src/config/ai-models.ts`, `src/config/feature-flags.ts`). CRUD is **fully interactive within a session**: create an agent and it appears in the list; save a prompt draft and it's there on reload.
-- **Resets on restart.** Because the stores are in-process, all mutations are lost when the server restarts. This is expected — the prototype demonstrates *behaviour and shape*, not persistence.
-- **No real data, AI, or payments.** `member.ts` returns sample health data; the playground returns a mocked `PlaygroundResult` with no inference; there are no patient records and no payment flows.
-- **The production swap is below the pages.** Selected off the non-public `APP_MODE` env (see `src/services/index.ts`), production repoints the services at the `0009` / `0012` / `0014` tables. Agents, prompts and policies become **rows**; the pages, the UI kit and the Server Actions do not change — they already consume async, `Result`-typed, RLS-shaped interfaces.
+- **Real persistence.** The admin services (`agents`, `prompts`, `knowledge`, `featureFlags`, `playground`) read and write Supabase Postgres rows (`0009` / `0012` / `0014` tables) through server-only repositories, idempotently seeded from the config registries and the HERNE pack. CRUD survives restarts and applies across instances.
+- **Real AI.** The playground and member conversations run live Anthropic Claude inference; every call is logged to `ai_run_logs` with tokens, cost and latency.
+- **Real member data.** `member.ts` reads the signed-in member's own rows behind ownership checks and RLS.
+- **No payment provider.** Subscription payments are manual records by design; pricing is "price on request". AI replies are AI-generated and **not clinically reviewed** — not for emergencies.
+- **The swap happened below the pages.** Agents, prompts and policies became **rows**; the pages, the UI kit and the Server Actions did not change — they already consumed async, `Result`-typed, RLS-shaped interfaces. That was the whole point of the seam.
 
 ---
 

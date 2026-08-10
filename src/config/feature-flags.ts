@@ -20,13 +20,13 @@ export interface FeatureFlagDef {
 export const FEATURE_FLAGS = {
   'ai.chat': {
     key: 'ai.chat',
-    description: 'The AI chat experience (Phase 3).',
+    description: 'The AI chat experience (specialist chat is live today; flag reserved for future gating).',
     defaultEnabled: false,
     category: 'ai',
   },
   'ai.selfie_scan_inference': {
     key: 'ai.selfie_scan_inference',
-    description: 'Real inference for the Remote Selfie Scan (currently mocked).',
+    description: 'Real inference for the Remote Selfie Scan (today the scan is an on-device demonstration only).',
     defaultEnabled: false,
     category: 'ai',
   },
@@ -44,7 +44,7 @@ export const FEATURE_FLAGS = {
   },
   'platform.live_booking': {
     key: 'platform.live_booking',
-    description: 'Real-time appointment availability and booking.',
+    description: 'Real-time availability calendars (basic appointment booking is already live).',
     defaultEnabled: false,
     category: 'platform',
   },

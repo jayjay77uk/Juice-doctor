@@ -14,15 +14,15 @@ import { resources as resourceData } from '@/content/resources';
 import { ok, err, type Page, type Result } from './result';
 
 /**
- * Read service — the ONLY layer that knows where data comes from.
+ * Marketing-content read service (programmes, consultations copy, testimonials,
+ * podcast, resources). These getters deliberately read neutral placeholder
+ * constants from `src/content/*` pending client-supplied branding/content;
+ * operational data (CRM, conversations, knowledge, subscriptions, …) lives in
+ * the Supabase-backed services and repositories instead.
  *
- * Prototype: every getter reads typed constants from `src/content/*`.
- * Production (Phase 2): a `*.supabase.ts` provider is added per domain and
- * selected here off the non-public `APP_MODE` env — components never change,
- * because they already consume the async, paginated, error-typed shapes below.
- *
- * The interface intentionally carries pagination + a `Result` error union now,
- * even though the mock always succeeds, so nothing is retrofitted later.
+ * A `*.supabase.ts` provider per domain can later be selected here off the
+ * non-public `APP_MODE` env — components never change, because they already
+ * consume the async, paginated, error-typed shapes below.
  */
 
 const APP_MODE = process.env.APP_MODE ?? 'prototype';

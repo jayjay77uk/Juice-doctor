@@ -4,8 +4,8 @@ import { publicRoutes } from '@/config/routes';
 import { programmes, podcast, resources } from '@/services';
 
 /**
- * Generated from the route registry plus dynamic slugs from the service layer —
- * so it works identically for mock (prototype) and Supabase (production) data.
+ * Generated from the route registry plus dynamic slugs from the content
+ * services — so it stays correct wherever those services read their data from.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [programmeSlugs, episodeSlugs, resourceSlugs] = await Promise.all([

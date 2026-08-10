@@ -33,7 +33,7 @@ export default function DisclaimerPage() {
         },
         {
           heading: 'No live patient data; simulated wearables',
-          body: 'No real patient records are used — all data is fictional or anonymised for demonstration. Wearable insights are simulated; no live device or Thryve connection is active. Voice conversations are planned and not yet connected.',
+          body: 'The demonstration accounts, cases and examples are fictional — no real patient records are used. Information you enter yourself is stored securely so your conversations and plans continue between visits. Wearable insights are simulated; no live device or Thryve connection is active. Voice conversations are planned and not yet available.',
         },
         {
           heading: 'Summary of standing notices',

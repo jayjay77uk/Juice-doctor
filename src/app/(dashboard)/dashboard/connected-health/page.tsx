@@ -35,14 +35,14 @@ export default async function ConnectedHealthPage() {
             </form>
           ) : (
             <form action={connectWearableAction}>
-              <Button type="submit" size="sm">Connect a device (prototype)</Button>
+              <Button type="submit" size="sm">Connect a device (sample data)</Button>
             </form>
           )
         }
       />
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        Prototype — the live Thryve connection is not active. Connecting loads sample data via the mock adapter; no real device is synchronised.
+        The live device connection is not active yet. Connecting loads sample data so you can see how this works — no real device is synchronised.
       </div>
 
       <StatGrid>

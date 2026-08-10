@@ -1,13 +1,13 @@
 # 03 · Database Architecture
 
-> **Prototype note.** This is a *paper design*, not a running database. The prototype
-> executes **no** SQL: every read/write goes through the server-only service layer
-> (`src/services/*`) backed by typed **mock providers**, selected off the non-public
-> `APP_MODE` env behind the single seam `config.isPrototype` (`src/config/app.ts`).
-> The migrations in [`db/migrations/`](../../db/migrations) are the *production database
-> design* and the source of truth from which the TypeScript model in `src/types/*` is
-> derived. Nothing here is applied, no data is stored, and Supabase is **not** connected.
-> See [`db/README.md`](../../db/README.md) for the canonical inventory and ERD.
+> **Status note.** Originally authored as a *paper design*: in Phase 2 the prototype
+> executed **no** SQL and ran on typed mock providers. That stage is history — the
+> migrations in [`db/migrations/`](../../db/migrations) (the set now runs `0001`–`0030`)
+> are **applied to the live Supabase Postgres**, and every operational read/write goes
+> through the server-only service layer (`src/services/*`, backed by repositories over
+> the live tables). The migrations remain the source of truth from which the TypeScript
+> model in `src/types/*` is derived. This document covers the foundational set
+> (`0001`–`0013`). See [`db/README.md`](../../db/README.md) for the canonical inventory and ERD.
 
 Dialect: **PostgreSQL 15+ / Supabase**.
 
@@ -23,10 +23,10 @@ requires* — but never executed — is the highest-leverage way to hit that bri
   the memory scopes) to be **real**, because it has to compile as SQL and as TypeScript.
 - It makes the eventual switch to a live database a **mechanical** step — *run the
   migrations, swap the mock provider for the Supabase client* — rather than a redesign.
-- It keeps the prototype cheap and safe: no live data, no auth, no PHI, no bills.
+- It kept the Phase-2 prototype cheap and safe: no live data, no auth, no PHI, no bills.
 
-Everything below is therefore written to be **correct in production**, then deliberately
-*not run* in the prototype.
+Everything below was therefore written to be **correct in production**, deliberately
+*not run* during Phase 2 — and has since been applied unchanged to the live database.
 
 ---
 
@@ -105,10 +105,15 @@ The trade-off — you cannot read the whole schema in one buffer — is bought b
 
 ---
 
-## 4. The 13-migration inventory
+## 4. The foundational migration inventory (0001–0013)
 
-**~55 tables across 13 migrations.** Run in numeric order — later migrations depend on
-earlier ones. Grouped by domain concern:
+**~55 tables across the first 13 migrations.** Run in numeric order — later migrations
+depend on earlier ones. Grouped by domain concern:
+
+> Migrations `0014`–`0030` have since extended this foundation (AI platform management,
+> AI business tables, HERNE evidence/collaboration/wearables, knowledge full-text search,
+> AI telemetry, production CRM/subscriptions, support tickets, correctness fixes and
+> function grants). This section documents the foundational set.
 
 ### Foundation & tenancy
 
@@ -138,14 +143,14 @@ earlier ones. Grouped by domain concern:
 | --- | --- | --- | --- |
 | 0008 | `commerce` | `programmes`, `programme_enrollments`, `plans`, `subscriptions`, `payments`, `invoices` | Provider-agnostic (records `provider` + nullable `provider_*_id`); money in minor units; only *published* programmes are world-readable. |
 
-### AI foundation (design only — no inference)
+### AI foundation (live inference now runs on these tables — see 13/21)
 
 | # | File | Key objects | Notes |
 | --- | --- | --- | --- |
-| 0009 | `ai_agents` | `ai_model_providers`, `ai_models`, `ai_tools`, `ai_agents`, `ai_agent_versions`, `ai_agent_tools`, `ai_agent_knowledge_sources`, `ai_configurations` | **Agents are data.** Every save snapshots to the append-only `ai_agent_versions`. 3 seed agents: `assistant-ai`, `intake-triage`, `specialist-copilot`. |
+| 0009 | `ai_agents` | `ai_model_providers`, `ai_models`, `ai_tools`, `ai_agents`, `ai_agent_versions`, `ai_agent_tools`, `ai_agent_knowledge_sources`, `ai_configurations` | **Agents are data.** Every save snapshots to the append-only `ai_agent_versions`. Seeded today with the live roster (Receptionist AI + the eight HERNE specialists, via `services/herne/seed.ts`); extended by `0017`. |
 | 0010 | `conversations` | `conversations`, `messages`, `message_feedback` | `messages` append-only (transcript = audit record). `agent_id` is a **soft** reference (no FK). |
 | 0011 | `memory` | `ai_memory` | **One table, six isolation scopes** (session, user, conversation, agent, organisation, global) — a `scope` discriminator + nullable scope keys, isolated by RLS. |
-| 0012 | `knowledge` | `knowledge_categories`, `knowledge_tags`, `knowledge_documents`, `knowledge_document_tags`, `knowledge_document_versions`, `knowledge_chunks`, `knowledge_embeddings`, `knowledge_permissions`, `knowledge_workflow_events` | Publish state machine draft→in_review→approved→published (+rejected/archived). **Embeddings are placeholders — pgvector deferred to Phase 3.** |
+| 0012 | `knowledge` | `knowledge_categories`, `knowledge_tags`, `knowledge_documents`, `knowledge_document_tags`, `knowledge_document_versions`, `knowledge_chunks`, `knowledge_embeddings`, `knowledge_permissions`, `knowledge_workflow_events` | Publish state machine draft→in_review→approved→published (+rejected/archived). **Embeddings are placeholders — pgvector still deferred; live retrieval is ranked Postgres full-text search (`0018`).** |
 
 ### Platform / ops
 
@@ -232,8 +237,8 @@ can silently drift:
 
 `app.has_permission(perm_key)` implements the *same* deny-wins rule as the app engine:
 an explicit `deny` override beats any grant, otherwise a role grant **or** a per-user
-grant allows. The prototype exercises the app layer; RLS is the belt that would run in
-production even if a bug slipped past the braces. Illustrative policy shapes:
+grant allows. The app layer decides first; RLS runs live underneath it as the belt that
+catches anything slipping past the braces. Illustrative policy shapes:
 
 - **Personal / PHI data** (health, goals, assessments, subscriptions): owner via
   `user_id = auth.uid()`; the treating practitioner / staff read *within care scope*;
@@ -246,8 +251,9 @@ production even if a bug slipped past the braces. Illustrative policy shapes:
   `role = app.current_role()`, so a user cannot promote themselves).
 
 The middleware in `src/proxy.ts` (Next 16 renamed `middleware`→`proxy`) is the outermost
-ring — security headers, cross-origin mutation blocking, and route-group protection — but
-it is **bypassed in the prototype**; RLS + RBAC are the load-bearing boundaries by design.
+ring — security headers, cross-origin mutation blocking, and route-group protection. Its
+route protection is **active whenever Supabase is configured** (local dev without keys
+degrades to open); RLS + RBAC remain the load-bearing boundaries by design.
 
 ---
 
@@ -331,17 +337,17 @@ faithfully:
   This is the type-system expression of the RLS scoping: you cannot *construct* an
   `agent`-scope read without supplying the org key the policy will check.
 
-These types are what the mock providers return and the Server Actions accept, so the
-prototype is already coded against the exact contract the live database will present. When
-Supabase is connected, generated `Database` types can be reconciled against these
-hand-authored ones as a conformance check — the migrations remain canonical either way.
+These types are what the service layer returns and the Server Actions accept — the same
+contract the live database presents. With Supabase connected, generated `Database` types
+can be reconciled against these hand-authored ones as a conformance check — the
+migrations remain canonical either way.
 
 ---
 
 ## 9. Cross-references
 
 - [`db/README.md`](../../db/README.md) — canonical inventory, conventions table, full ERD.
-- [`db/migrations/`](../../db/migrations) — the 13 migration files (the design source of truth).
+- [`db/migrations/`](../../db/migrations) — the migration files, `0001`–`0030` (the applied source of truth).
 - [`db/storage.md`](../../db/storage.md) — Supabase Storage buckets (avatars, knowledge assets).
 - `src/lib/auth/*` — the application RBAC that RLS mirrors.
 - `src/types/*` — the TypeScript projection of this schema.

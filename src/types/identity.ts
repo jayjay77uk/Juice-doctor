@@ -2,7 +2,7 @@ import type { AppRole } from '@/lib/auth/roles';
 
 /**
  * Identity & tenancy model — mirrors migrations 0002–0005. String-union enums
- * mirror the Postgres enums so the mock and Supabase providers share one shape.
+ * mirror the Postgres enums so app code and the database share one shape.
  */
 
 export type RecordStatus = 'draft' | 'active' | 'archived' | 'deleted';

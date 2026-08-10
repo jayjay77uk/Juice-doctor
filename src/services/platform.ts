@@ -6,9 +6,11 @@ import type { ListQuery } from './index';
 
 /**
  * Platform/ops services — notifications, system settings, and the audit log.
- * The audit recorder is the one call sites use to write the append-only trail;
- * in the prototype it is a no-op (nothing is stored), in production it inserts
- * into audit_logs via SECURITY DEFINER server code.
+ * NOTE: the LIVE audit trail is written and read via
+ * `repositories/audit-repo.ts` (real append-only inserts into audit_logs). The
+ * recorder below is an unused legacy no-op kept for interface compatibility,
+ * and the settings/notifications here are static seed values — not the
+ * database rows.
  */
 
 export interface AuditEntry {
@@ -22,9 +24,9 @@ export interface AuditEntry {
 }
 
 export const audit = {
-  /** Record an auditable action. Prototype: no-op. Production: insert append-only. */
+  /** Legacy no-op — the real audit write path is repositories/audit-repo.ts (auditRepo.log). */
   async record(_entry: AuditEntry): Promise<void> {
-    // no-op in the prototype — nothing is stored.
+    // Intentionally does nothing; call sites use auditRepo.log for the live trail.
   },
   async list(_q: ListQuery = {}): Promise<Result<Page<AuditLog>>> {
     return ok({ items: [], nextCursor: null });
@@ -40,6 +42,7 @@ export const notifications = {
   },
 };
 
+// Static seed values shown on /admin/config — NOT the system_settings table rows.
 const SEED_SETTINGS: SystemSetting[] = [
   {
     id: 'set_brand',

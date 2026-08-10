@@ -2,9 +2,11 @@
 
 A **prototype** platform, built to demonstrate the full vision to the client before production development.
 
-> ⚠️ **Prototype — for demonstration only.** Not production-ready. No live AI, real accounts, payments, patient data, or connected database. A "Prototype Environment" banner is shown in every non-production build.
+> ⚠️ **Prototype — for demonstration only.** Not production-ready: no payments, no email provider (the only email sent is the password-reset message), and no real patient data — every demo account and seeded record is fictional. It **does** run live Anthropic Claude AI, real Supabase Auth accounts and a live Supabase Postgres database. A "Prototype Environment" banner is shown in every non-production build.
 
-Phase 1 delivers the **foundation**: design system, component library, all pages, the three signature features (the Framework, Assessment, Remote Selfie Scan), mock auth + dashboards, and a production-shaped data/write seam — with **no AI**.
+**Current status (2026-08-10):** all four phases below are delivered and live at `https://prototypeai-rose.vercel.app`. The platform runs real Claude inference (receptionist + eight HERNE specialists with streaming replies, safety pre/post checks, usage limits and per-call cost logging), real Supabase auth, and database persistence for all operational data, behind a full admin portal. Wearable data is simulated, voice is planned, and payments/email remain unconnected. The phase sections below are kept as delivery history.
+
+Phase 1 delivered the **foundation**: design system, component library, all pages, the three signature features (the Framework, Assessment, Remote Selfie Scan), mock auth + dashboards, and a production-shaped data/write seam — with **no AI**.
 
 ## Tech stack
 
@@ -18,7 +20,8 @@ Phase 1 delivers the **foundation**: design system, component library, all pages
 | Forms | react-hook-form + zod (+ Server Actions) |
 | Icons | lucide-react |
 | Fonts | Fraunces (display) + Inter (text) via `next/font` |
-| Backend (Phase 2) | Supabase — designed on paper only (`db/`), not connected |
+| Backend | Supabase (Postgres + Auth) — live; migrations in `db/migrations/` |
+| AI | Anthropic Claude (live inference, default `claude-sonnet-5`) |
 
 ## Getting started
 
@@ -27,7 +30,7 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
-No environment variables are required to run the prototype (see `.env.example`).
+Without environment variables the app boots in a limited preview mode; live AI and real accounts/data require the Supabase and Anthropic keys listed in `.env.example`.
 
 ```bash
 npm run typecheck  # tsc --noEmit
@@ -41,14 +44,14 @@ Three hard layers, enforced by folder convention:
 
 - **UI** (`src/components/`) — presentational, prop-driven, no knowledge of data origin.
 - **Domain** (`src/hooks`, `src/lib`) — behaviour and helpers, backend-agnostic.
-- **Services** (`src/services/`) — the only layer that touches data. **Reads** are async, server-only getters; **writes** are Server Actions. Both are production-shaped (async, paginated, error-typed) so Phase 2 is a provider swap, not a rewrite.
+- **Services** (`src/services/`) — the only layer that touches data. **Reads** are async, server-only getters; **writes** are Server Actions. Both are production-shaped (async, paginated, error-typed), which is why Phase 2 was a provider swap, not a rewrite.
 
 ### The prototype → production seam
 
-- **`src/config/app.ts`** — single source of truth. `NEXT_PUBLIC_APP_MODE` is cosmetic (drives the banner). The data provider is chosen off the **non-public** `APP_MODE`, server-side, so no Supabase client can leak into the browser bundle.
-- **`src/content/*`** — typed mock data; shapes are **derived from** `db/schema.sql`.
-- **`src/services/actions.ts`** — Server Actions validate with zod and return a fake success; Phase 2 swaps the body for Resend email + Supabase insert.
-- **`db/`** — paper SQL schema, RLS policies and Storage layout (Phase-1 deliverable, not executed).
+- **`src/config/app.ts`** — single source of truth. `NEXT_PUBLIC_APP_MODE` is cosmetic (drives the banner). Operational data always reads the live Supabase database through the server-only service layer; the browser only ever holds the RLS-enforced anon-key auth client (used for the password-reset flow), never the service-role key.
+- **`src/content/*`** — typed placeholder **marketing** content, pending client-supplied wording; all operational data lives in Supabase.
+- **`src/services/actions.ts`** — auth Server Actions are real Supabase Auth (rate-limited per visitor); the marketing forms (contact, newsletter, booking) validate with zod and remain declared mocks that send nothing until an email provider is wired.
+- **`db/`** — the SQL migrations (with RLS) and Storage layout, applied to the live Supabase database (see `db/README.md`).
 
 ## Project structure
 
@@ -57,18 +60,18 @@ src/
 ├─ app/                    # App Router — routing + layouts only
 │  ├─ (marketing)/         # public site (shared Header + Footer)
 │  ├─ (auth)/              # login / register
-│  ├─ (dashboard)/         # mock member shell
-│  └─ (admin)/             # mock admin shell
+│  ├─ (dashboard)/         # member dashboard (live data)
+│  └─ (admin)/             # admin portal (live data)
 ├─ components/
 │  ├─ ui/                  # primitives (Button, Card, Field, Accordion…)
 │  ├─ layout/              # Header, Footer, PrototypeBanner, AppShell…
 │  └─ sections/            # composed section blocks + interactive flows
 ├─ config/                 # app mode, route registry, metadata
-├─ content/                # typed mock/seed content
+├─ content/                # typed placeholder marketing content
 ├─ services/               # server-only reads + Server Action writes
 ├─ lib/                    # cn(), zod schemas
 └─ types/                  # content model
-db/                        # paper schema.sql / rls.sql / storage.md
+db/                        # SQL migrations (applied to live Supabase) + storage.md
 ```
 
 ## Phase 1 scope
@@ -79,9 +82,9 @@ db/                        # paper schema.sql / rls.sql / storage.md
 
 ## Backend architecture (Phase 2)
 
-The enterprise backend **foundation** — designed as it would exist in production, but not connected (no AI, no live data, no payments):
+The enterprise backend **foundation** — designed as it would exist in production, and now running live against Supabase (no payments):
 
-- **Database** — ~55 tables across 13 SQL migrations in [`db/migrations/`](db/migrations) with RLS on every table. See [`db/README.md`](db/README.md).
+- **Database** — SQL migrations in [`db/migrations/`](db/migrations) (30 today, applied to the live database) with RLS on every table. See [`db/README.md`](db/README.md).
 - **Auth & RBAC** — a 6-role hierarchy, permission matrix, guards and session seam in [`src/lib/auth`](src/lib/auth); middleware in [`src/proxy.ts`](src/proxy.ts).
 - **Security** — headers/CSP, rate limiting, CSRF, file validation, typed errors in [`src/lib/security`](src/lib/security).
 - **Frameworks** — AI agents (data-driven), knowledge, memory (six scopes), consultations, and platform ops as typed services in [`src/services`](src/services) and models in [`src/types`](src/types).
@@ -89,19 +92,19 @@ The enterprise backend **foundation** — designed as it would exist in producti
 
 ## AI platform & admin portal (Phase 3)
 
-The **AI management platform** — "build once, configure forever". Every assistant is configured through the admin dashboard; **nothing about AI behaviour is hardcoded**. Still prototype-mode (mock stores, **no live AI**, no patient data, no payments).
+The **AI management platform** — "build once, configure forever". Every assistant is configured through the admin dashboard; **nothing about AI behaviour is hardcoded**. Now live: database-backed stores and **real Claude inference** (no real patient data, no payments).
 
-- **Admin portal** ([`src/app/(admin)`](<src/app/(admin)>)) — AI Dashboard, Agent Management (create/version/publish/configure), Prompt Management (versioned, workflowed), AI Playground (isolated mock test harness), Safety Centre, Memory Centre, Analytics, Knowledge Base portal, Users, Consultations, Configuration Centre, Audit Logs.
+- **Admin portal** ([`src/app/(admin)`](<src/app/(admin)>)) — AI Dashboard, Agent Management (create/version/publish/configure), Prompt Management (versioned, workflowed), AI Playground (real inference, logged), Safety Centre, Memory Centre, Analytics, Knowledge Base portal, Users, Consultations, Configuration Centre, Audit Logs.
 - **User dashboard** ([`src/app/(dashboard)`](<src/app/(dashboard)>)) — overview, onboarding wizard, goals, health/fitness/nutrition profile, assessments, journey timeline, bookings, saved conversations, notifications, settings.
-- **Data-driven** — agents/prompts/models/tools/safety/knowledge are data in [`src/config`](src/config) + [`src/services`](src/services) (mock), designed to swap onto migration [`db/migrations/0014`](db/migrations) in production.
+- **Data-driven** — agents/prompts/models/tools/safety/knowledge are database rows (migration [`db/migrations/0014`](db/migrations) onward: `ai_agents` is the source of truth, and the **published** prompt version feeds live inference), managed through [`src/services`](src/services).
 - **Docs** — [AI Management Platform](docs/architecture/13-ai-platform.md) · [Admin Portal & User Dashboard](docs/architecture/14-admin-and-dashboard.md).
 
 ## The AI agent system (Phase 4)
 
 An AI agent system **representing the client** — not an AI builder, and not a generic marketplace. The lifecycle is **Receptionist AI → Specialist AIs → CRM → Administration**, reusing every Phase 2–3 module. It operates through the **existing, accepted frontend** (no new public site was imposed).
 
-- **Receptionist AI** — the free front door (backend service + Server Actions): receives the visitor, qualifies, summarises, recommends an approved specialist, creates/updates the CRM lead, and escalates to a **configurable escalation target** (the client or an authorised team member) with WhatsApp handoff. Its routing rules, questions and confidence threshold are a **replaceable mock**, moved to configuration.
-- **Specialist AIs** — **four configurable placeholders** (`Specialist AI 1–4`); their final names, codes, purposes, behaviour, pricing and knowledge are admin-configurable data, supplied by the client.
+- **Receptionist AI** — the free front door (backend service + Server Actions): receives the visitor, qualifies, summarises, recommends an approved specialist, creates/updates the CRM lead, and escalates to a **configurable escalation target** (the client or an authorised team member) with WhatsApp handoff. Initially delivered with mock routing rules; today the receptionist runs a **live Claude structured assessment** — roster-constrained, with a confidence threshold and honest escalation.
+- **Specialist AIs** — delivered as **four configurable placeholders** (`Specialist AI 1–4`); since replaced by the **eight HERNE specialists**, live with streaming replies, whose names, codes, purposes, behaviour and knowledge remain admin-configurable data.
 - **AI-centric CRM** ([`/admin/crm`](<src/app/(admin)/admin/crm>)) — leads storing the full conversation, consultation summary, recommendation + confidence, alternative matches, human-review/WhatsApp/subscription/follow-up status, progress, notes and the responsible team member.
 - **Admin** organised as **Business · Receptionist AI · Specialist AIs · CRM · Administration**.
 - **Docs** — [The AI Business Lifecycle](docs/architecture/15-ai-business-lifecycle.md).

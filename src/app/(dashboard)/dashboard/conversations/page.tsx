@@ -96,7 +96,7 @@ export default async function ConversationsPage() {
       )}
 
       <p className="text-sm text-muted-foreground">
-        Prototype — replies are AI-generated and not clinically reviewed. Not for emergencies. No real patient records are used.
+        Replies are AI-generated and not clinically reviewed. Not for emergencies — call your local emergency services.
       </p>
     </div>
   );

@@ -8,8 +8,9 @@ import { assertRole, assertSession } from '@/lib/auth/authorize';
 
 /**
  * Server Actions for subscription management — admin (plans, customer
- * subscriptions, manual payments) and customer (cancel / change / upgrade in
- * prototype mode). No live payment provider is connected.
+ * subscriptions, manual payment records) and customer self-serve (cancel /
+ * change / upgrade, with no payment step). No payment provider is connected —
+ * payments are recorded manually by design.
  */
 
 function revalidateAll(): void {
@@ -35,7 +36,7 @@ export async function createPlanAction(_prev: ActionResult, formData: FormData):
   const result = await subscriptionsService.plans.create({ name, description, scope, specialistSlugs });
   if (!result.ok) return { status: 'error', message: result.error.message };
   revalidateAll();
-  return { status: 'success', message: 'Plan created. (Prototype: no price is set — configurable later.)' };
+  return { status: 'success', message: 'Plan created. (No price is set — pricing can be added once supplied.)' };
 }
 
 export async function archivePlanAction(formData: FormData): Promise<void> {
@@ -68,7 +69,7 @@ export async function recordPaymentAction(id: string, note: string): Promise<Res
   return r.ok ? { ok: true } : { ok: false, error: r.error.message };
 }
 
-// ── Customer: manage own access (prototype) ──────────────────────────────────
+// ── Customer: manage own access (no payment step) ────────────────────────────
 export async function customerCancelAction(id: string): Promise<Res> {
   try { await assertSession(); } catch { return { ok: false, error: 'Please sign in.' }; }
   const r = await subscriptionsService.cancel(id);

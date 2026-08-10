@@ -302,7 +302,7 @@ export default async function CrmLeadDetailPage({
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — mock data through the service layer. AI replies run on the live model (non-production). No real payments.
+        Live data from the platform database — includes seeded demonstration leads. AI replies run on the live model and are not clinically reviewed. No payment provider is connected.
       </p>
     </div>
   );

@@ -19,8 +19,7 @@ import { sanitizeIlikeTerm } from '@/lib/security/sanitize';
 
 /**
  * Production CRM repository over crm_leads + crm_lead_events. Real rows, real
- * events, real pipeline counts — same API shape as the in-process mock so the
- * service dispatches transparently. All queries are org-scoped; writes stamp
+ * events, real pipeline counts. All queries are org-scoped; writes stamp
  * updated_at and append an audit event where the workflow requires one.
  */
 

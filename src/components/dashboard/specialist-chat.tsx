@@ -231,7 +231,7 @@ export function SpecialistChat({
             <LifeBuoy className="size-4" /> Request human support
           </Button>
           <p className="text-right text-xs text-muted-foreground">
-            Prototype — AI-generated, not clinically reviewed. Not for emergencies — call your local emergency services.
+            AI-generated, not clinically reviewed. Not for emergencies — call your local emergency services.
           </p>
         </div>
       </div>

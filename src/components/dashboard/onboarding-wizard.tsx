@@ -105,7 +105,7 @@ export function OnboardingWizard() {
           <div className="flex flex-col gap-5">
             <div>
               <h2 className="text-h3 text-foreground">A little about you</h2>
-              <p className="text-muted-foreground">This helps us personalise your plan. Nothing is stored in this prototype.</p>
+              <p className="text-muted-foreground">This helps us personalise your plan. Nothing you enter here is saved yet.</p>
             </div>
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Age range" name="age">

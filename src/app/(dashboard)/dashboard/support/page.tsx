@@ -49,7 +49,7 @@ export default async function SupportPage() {
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — no message is actually sent.
+        Support requests are saved to your account and reviewed by the team. No email confirmation is sent.
       </p>
     </div>
   );

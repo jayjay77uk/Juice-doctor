@@ -1,8 +1,8 @@
 # 06 · Knowledge Management Architecture
 
-> **Scope.** This document describes the **knowledge management** subsystem of *Prototype AI* — the curated, organisation-authored source material that the AI will eventually reason over. It covers the ingestion-to-retrieval pipeline (document → version → chunk → embedding), the taxonomy (categories + tags), the publishing/approval **state machine**, source tracking + storage, layered access control (visibility + fine-grained grants), and the deferred vector-search layer.
+> **Scope.** This document describes the **knowledge management** subsystem of *Prototype AI* — the curated, organisation-authored source material that the AI reasons over. It covers the ingestion-to-retrieval pipeline (document → version → chunk → embedding), the taxonomy (categories + tags), the publishing/approval **state machine**, source tracking + storage, layered access control (visibility + fine-grained grants), and the deferred vector-search layer.
 >
-> **Prototype status.** This is Phase 2 — the **enterprise backend foundation as production-grade design**. The schema, types, and service seams are production-shaped, but **no inference, no ingestion, and no embeddings run yet**. `pgvector` is intentionally not enabled. The service layer (`src/services/knowledge.ts`) returns seed categories and no documents. Everything here is modelled so that turning the real pipeline on in Phase 3 requires *adding* code, not *re-architecting* it.
+> **Status.** The pipeline is **live**: pasted-text ingestion → chunking → **ranked Postgres full-text retrieval** (`ts_rank` via a SQL function; migrations `0012` + `0018`), with only published + available documents grounding live AI answers, and the publishing/approval workflow running on real rows (`src/services/knowledge.ts` over `repositories/knowledge-repo.ts`). Still deferred: **embeddings / vector search** (`pgvector` is not enabled — `knowledge_embeddings` remains a metadata placeholder) and **file uploads** (raw file bytes are not stored; content arrives as pasted text, and metadata-only documents advance index states manually). This document was written in Phase 2 before any of the pipeline ran; the schema it describes is unchanged.
 
 **Canonical sources for this document:**
 
@@ -19,7 +19,7 @@
 
 ## 1. What "knowledge" is, and why it is its own subsystem
 
-The knowledge base is the **grounding corpus**: the set of documents the AI agents (see [`db/migrations/0009_ai_agents.sql`](../../db/migrations/0009_ai_agents.sql)) will be given as retrieval-augmented context — the framework documentation, domain guidance, intake/triage material, public FAQ, and so on. An agent without a knowledge base is a general chatbot; an agent *with* one is a domain expert whose answers are traceable to approved, versioned, organisation-owned source material.
+The knowledge base is the **grounding corpus**: the set of documents the AI agents (see [`db/migrations/0009_ai_agents.sql`](../../db/migrations/0009_ai_agents.sql)) are given as retrieval-augmented context — the framework documentation, domain guidance, intake/triage material, public FAQ, and so on. An agent without a knowledge base is a general chatbot; an agent *with* one is a domain expert whose answers are traceable to approved, versioned, organisation-owned source material.
 
 That framing drives the single most important architectural decision in this subsystem:
 
@@ -108,7 +108,7 @@ create type knowledge_source_type as enum (
 
 **Why declare `ocr` and `audio_transcript` now?** Enum changes are cheap on paper but disruptive in a live system (they touch every consumer, every check constraint, every seeded fixture). By naming the two anticipated ingestion modes up front, a future OCR or transcription pipeline is *new code writing existing table shapes* — it produces `knowledge_documents` + versions + chunks exactly like a PDF does. The abstraction "everything becomes chunks of text" holds across all eight source types, which is exactly why chunking is modelled independently of source (see §7).
 
-**File safety.** Uploads flow through the platform's file-validation utility ([`src/lib/security/file-validation.ts`](../../src/lib/security/file-validation.ts)) — size limits, MIME allow-listing, magic-number sniffing, and a malware-scan hook — *before* a `knowledge_documents` row or its bytes are committed. Source type on the row is the declared truth; the validator is the enforced truth.
+**File safety.** When file-upload ingestion lands, uploads will flow through the platform's file-validation utility ([`src/lib/security/file-validation.ts`](../../src/lib/security/file-validation.ts)) — size limits, MIME allow-listing, magic-number sniffing, and a malware-scan hook — *before* a `knowledge_documents` row or its bytes are committed. Today no raw file bytes are stored: content is ingested as pasted text (`knowledgeRepo.ingestText`), and file-typed documents are metadata-only records.
 
 ---
 
@@ -135,7 +135,7 @@ flowchart TD
 - **`on delete set null` on `knowledge_documents.category_id`** — deleting a category detaches its documents; it never destroys them.
 - `sort_order` gives deterministic ordering; `slug` is unique per `(organisation_id, slug)`; `status` reuses the generic `record_status` lifecycle (`draft`/`active`/`archived`/`deleted`).
 
-The prototype seeds four root categories via [`src/services/knowledge.ts`](../../src/services/knowledge.ts) (`Category One`, `Category Two`, `Category Three`, `Category Four`) so the admin UI has a realistic tree to render with no data connected.
+Four root categories (`Guides`, `Reference`, `Onboarding`, `Internal`) are idempotently seeded as real `knowledge_categories` rows (via `repositories/knowledge-repo.ts`), so the admin UI always has a tree to render. (The `Category One…Four` names in the diagram above are the historical Phase-2 placeholder set.)
 
 ### Tags — flat, cross-cutting labels
 
@@ -244,7 +244,7 @@ Storage is a **private** bucket by design. `visibility='public'` on a document g
 
 ### 6.2 Why versioning is first-class — even before embeddings exist
 
-`knowledge_document_versions` keeps the **full edit history**; `knowledge_documents.current_version` points at the live one. This is modelled *now*, in a phase with no inference and no vectors, and that is deliberate:
+`knowledge_document_versions` keeps the **full edit history**; `knowledge_documents.current_version` points at the live one. This was modelled from the start — before any inference or vectors ran — and that was deliberate:
 
 1. **Chunks and embeddings are stamped with their source `version`.** `knowledge_chunks.version` records exactly which version each chunk was derived from. The moment a document is edited (new version), every chunk carrying an older `version` is **provably stale** — identifiable and prunable with a single `WHERE version <> current_version`. Without versioning, staleness would be a guess. *This is the load-bearing reason versioning cannot wait for Phase 3:* the retrieval layer's correctness depends on it, and the retrieval-layer tables already reference it.
 2. **RAG answers must be traceable.** When an agent grounds a response on a chunk, the chunk's `version` ties the citation to the exact document revision that was live at answer time. Editing the document later does not silently rewrite the provenance of past answers.
@@ -380,7 +380,7 @@ All predicates resolve through the `app`-schema `SECURITY DEFINER` helpers (`cur
 
 ## 9. Future vector search
 
-Once `pgvector` is enabled (Phase 3), retrieval becomes an approximate-nearest-neighbour query over `knowledge_embeddings.embedding`, joined back to `knowledge_chunks` for the returned text and to `knowledge_documents` for provenance and access checks:
+Until `pgvector` is enabled, **live retrieval is ranked full-text search** over `knowledge_chunks` (the `search_knowledge_chunks` SQL function, `ts_rank`-ordered, restricted to published + available documents and locked to the service role). Once `pgvector` is enabled, retrieval becomes an approximate-nearest-neighbour query over `knowledge_embeddings.embedding`, joined back to `knowledge_chunks` for the returned text and to `knowledge_documents` for provenance and access checks:
 
 ```mermaid
 flowchart LR
@@ -403,14 +403,15 @@ None of that requires new tables in Phase 3. The vector column and ANN index are
 
 ## 10. Summary — what is real vs. deferred
 
-| Concern | Phase 2 (now) | Phase 3 (deferred) |
+| Concern | Live today | Deferred |
 | --- | --- | --- |
-| Documents · versions · taxonomy | ✅ Modelled, typed, RLS-secured, seeded | — |
-| Chunking table + version stamping | ✅ Modelled (no ingestion runtime yet) | Real chunker populates rows |
+| Documents · versions · taxonomy | ✅ Live rows, typed, RLS-secured | — |
+| Chunking table + version stamping | ✅ Live — pasted-text ingestion populates chunks | File-upload ingestion (raw bytes are not yet stored) |
 | Embeddings | ⚠️ Placeholder (metadata only, no vector column) | `pgvector` enabled; `vector(N)` + ANN index added |
-| Publishing/approval state machine | ✅ `PUBLISH_TRANSITIONS` + append-only ledger | — |
+| Publishing/approval state machine | ✅ `PUBLISH_TRANSITIONS` + append-only ledger, live | — |
 | Access control | ✅ Visibility + grants + RLS inheritance | — |
 | Source types | ✅ All 8 declared (incl. future `ocr`/`audio_transcript`) | OCR + audio ingestion pipelines |
+| Full-text retrieval | ✅ Ranked `ts_rank` search over published + available chunks (`0018`) | — |
 | Vector retrieval | ❌ Not implemented | ANN search over embeddings |
 
 Every deferred item is an **additive** change against a shape that already exists. Nothing in the knowledge subsystem is designed to be re-architected — only turned on.

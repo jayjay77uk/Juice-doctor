@@ -30,7 +30,7 @@ engineering team, never in client-facing documents.
 - [ ] "Wearable data is simulated" notices removed once live
 
 ## Identity, accounts & access
-- [ ] Production authentication (email verification, password reset, optional MFA)
+- [ ] Production authentication (email verification, optional MFA — password reset already works)
 - [ ] Role-based access verified for member / practitioner / administrator (+ any others)
 - [ ] Practitioner console built (human review + case management)
 - [ ] Multi-organisation/tenant support (if required)
@@ -53,7 +53,8 @@ engineering team, never in client-facing documents.
 ## Commerce & communications
 - [ ] Live subscriptions/payments provider connected (no live payments today)
 - [ ] Transactional email/notifications connected
-- [ ] Booking flow connected (if in scope)
+- [ ] Booking confirmations/notifications connected (booking records are already stored in the
+      platform database)
 
 ## Content & localisation
 - [ ] Final approved marketing copy applied across the public site

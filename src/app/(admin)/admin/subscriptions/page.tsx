@@ -159,7 +159,7 @@ export default async function AdminSubscriptionsPage() {
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — no live payment provider is connected. Payments are recorded manually.
+        No payment provider is connected — payments are recorded manually. Plans and subscriptions are live platform data.
       </p>
     </div>
   );

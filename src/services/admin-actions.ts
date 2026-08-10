@@ -17,10 +17,11 @@ import type { PublishStatus } from '@/types/knowledge';
 import type { PlaygroundResult } from '@/types/ai-platform';
 
 /**
- * Admin Server Actions — the write path for AI agent management. Prototype
- * mutates the in-process store; production repoints the same actions at Supabase.
- * Every mutation is validated with zod and (in production) would be audited and
- * permission-checked (assertPermission('agents.*')) before running.
+ * Admin Server Actions — the write path for AI agent management. Every action
+ * is permission-checked with assertRole('administrator') and persists to the
+ * platform database (Supabase); free-form input is validated with zod, and
+ * significant changes (agent edits/publish/archive, prompt publishing, flag
+ * toggles) are recorded in the append-only audit log via auditRepo.
  */
 
 function toList(value: FormDataEntryValue | null): string[] {
@@ -280,7 +281,7 @@ export async function uploadDocumentAction(_prev: ActionResult, formData: FormDa
   if (!result.ok) return { status: 'error', message: result.error.message };
   revalidatePath('/admin/knowledge');
   revalidatePath(`/admin/specialists/${parsed.data.assignedSpecialistSlug}`);
-  return { status: 'success', message: 'Document uploaded — it is now “uploaded” and awaiting processing. (Prototype: no file is stored.)' };
+  return { status: 'success', message: 'Document record created in the “uploaded” state. No file content is stored — paste text to index it, or advance the index state manually.' };
 }
 
 function revalidateKnowledge(id: string): void {

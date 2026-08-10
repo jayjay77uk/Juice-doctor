@@ -12,12 +12,14 @@ import type { SystemSetting } from '@/types/platform';
 
 export const metadata: Metadata = createMetadata({
   title: 'Configuration Centre',
-  description: 'Feature flags, AI defaults and system settings — all editable, nothing hardcoded.',
+  description: 'Feature flags (live and editable), plus reference AI defaults and system settings.',
 });
 
-// prototype mock — seeds ai_configurations in production.
+// Static reference values for display only — not read by live inference, which
+// uses each agent's published prompt version and the environment-configured
+// model (ANTHROPIC_DEFAULT_MODEL).
 const AI_DEFAULTS: { label: string; value: string }[] = [
-  { label: 'Default model', value: 'Claude Opus 4.8' },
+  { label: 'Default model', value: 'claude-sonnet-5 (ANTHROPIC_DEFAULT_MODEL)' },
   { label: 'Max turns per conversation', value: '40' },
   { label: 'Rate limit', value: '20 requests/min' },
   { label: 'Default temperature', value: '0.7' },
@@ -51,13 +53,13 @@ export default async function ConfigPage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <AdminHeader
         title="Configuration Centre"
-        description="Feature flags, AI defaults and system settings — all editable, nothing hardcoded."
+        description="Feature flags (live and editable), plus reference AI defaults and system settings."
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Configuration' }]}
       />
 
       <Panel
         title="Feature flags"
-        description="Toggle capabilities live — production layers organisation, role and user overrides on top."
+        description="Toggle capabilities live — changes are stored in the platform database and take effect immediately."
         padded={false}
       >
         <ul className="divide-y divide-border">
@@ -93,7 +95,7 @@ export default async function ConfigPage() {
 
       <Panel
         title="AI configuration"
-        description="Defaults applied to every agent unless overridden."
+        description="Reference defaults for display — live inference uses each agent's published prompt version and the environment-configured model."
         actions={<Cpu className="size-4 text-muted-foreground" />}
       >
         <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
@@ -105,13 +107,13 @@ export default async function ConfigPage() {
           ))}
         </dl>
         <p className="mt-5 text-sm text-muted-foreground">
-          Prototype — these seed <span className="font-mono">ai_configurations</span> in production.
+          These values are static reference data — they are not yet wired into live inference.
         </p>
       </Panel>
 
       <Panel
         title="System settings"
-        description="Platform key/value settings, resolved per organisation."
+        description="Static reference key/value settings — not yet backed by the live settings table."
         actions={<Settings2 className="size-4 text-muted-foreground" />}
         padded={false}
       >
@@ -119,7 +121,7 @@ export default async function ConfigPage() {
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — mock data, served through the service layer. AI replies run on the live model (non-production); no real patient data.
+        Feature flags are live platform data. The AI configuration and system settings panels show static reference values only.
       </p>
     </div>
   );

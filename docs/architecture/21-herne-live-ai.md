@@ -60,8 +60,7 @@ errors rather than a vague provider failure. Secrets are **never** exposed to th
 | `AI_REQUEST_TIMEOUT` | `60000` | Per-call timeout. Accepts **milliseconds** (≥1000) or **seconds** (<1000, scaled up). |
 | `AI_DAILY_USER_LIMIT` | `50` | Per-user daily message cap (prototype usage limit). |
 | `AI_MONTHLY_USER_LIMIT` | `500` | Per-user monthly message cap. |
-| `AI_PROTOTYPE_MODE` | `true` | Prototype mode ON ⇒ extra safety wording + simulated-data notices. Keep true until a live clinical deployment is separately approved. |
-| `NEXT_PUBLIC_APP_MODE` | `prototype` | **Cosmetic only** (client-visible): drives the "Prototype Environment" banner. Never gate secrets on it. |
+| `NEXT_PUBLIC_APP_MODE` | `prototype` | **Cosmetic only** (client-visible): drives the demonstration-environment banner (`config.isPrototype`). Never gate secrets on it. The model-facing PROTOTYPE RESTRICTIONS safety block is unconditional — it does not depend on this flag. |
 
 ## Prompt-assembly flow
 
@@ -311,8 +310,8 @@ change** — the provider reads the credential from the environment:
 2. **Rotate / revoke** the current development key once the client key is live.
 3. Optionally raise **`AI_DAILY_USER_LIMIT`** / **`AI_MONTHLY_USER_LIMIT`** for production
    volumes.
-4. Leave **`AI_PROTOTYPE_MODE`** and **`NEXT_PUBLIC_APP_MODE`** as prototype until a live
-   clinical deployment is separately approved; flip them together when going to production.
+4. Leave **`NEXT_PUBLIC_APP_MODE`** as `prototype` until a live clinical deployment is
+   separately approved; flip it when going to production.
 
 Because everything is read through `env` and the provider abstraction, no orchestration or
 UI change is needed to point the platform at the client's own account.

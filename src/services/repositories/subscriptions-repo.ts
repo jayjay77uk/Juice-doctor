@@ -16,8 +16,7 @@ import { specialists } from '../specialists';
  * Production subscriptions repository over subscription_plans,
  * customer_subscriptions and subscription_payments (migration 0027). Payments
  * remain MANUAL RECORDS by design — no live payment provider is configured in
- * this project, so no card data ever exists here. Same API shape as the
- * in-process store so the service dispatches transparently.
+ * this project, so no card data ever exists here.
  */
 
 const ORG = '00000000-0000-0000-0000-000000000001';

@@ -131,7 +131,7 @@ export interface CrmLeadEvent {
   createdAt: string;
 }
 
-/** The receptionist's recommendation output (mock in the prototype). */
+/** The receptionist's recommendation output (produced by live AI assessment, validated against the active roster). */
 export interface ReceptionistRecommendation {
   specialistSlug: string;
   specialistName: string;
@@ -201,7 +201,7 @@ export interface CustomerSubscription {
   updatedAt: string;
 }
 
-/** A manually-recorded payment (prototype only — no live payment provider). */
+/** A manually-recorded payment — payments are manual records by design; no live payment provider is connected. */
 export interface ManualPayment {
   id: string;
   subscriptionId: string;

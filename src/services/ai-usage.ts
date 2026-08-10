@@ -26,10 +26,10 @@ export async function checkUsageLimit(userId: string): Promise<UsageDecision> {
   const [day, month] = await Promise.all([runLogRepo.userUsage(userId, 1), runLogRepo.userUsage(userId, 30)]);
   const base = { daily: day.count, monthly: month.count, dailyLimit, monthlyLimit };
   if (day.count >= dailyLimit) {
-    return { ...base, allowed: false, message: `You've reached the prototype daily limit of ${dailyLimit} messages. Please try again tomorrow.` };
+    return { ...base, allowed: false, message: `You've reached the daily limit of ${dailyLimit} messages. Please try again tomorrow.` };
   }
   if (month.count >= monthlyLimit) {
-    return { ...base, allowed: false, message: `You've reached the prototype monthly limit of ${monthlyLimit} messages this month.` };
+    return { ...base, allowed: false, message: `You've reached the monthly limit of ${monthlyLimit} messages this month.` };
   }
   return { ...base, allowed: true, message: '' };
 }

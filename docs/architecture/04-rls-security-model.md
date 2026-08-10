@@ -2,7 +2,7 @@
 
 > **Scope.** This document explains the **Row-Level Security (RLS)** posture of the Prototype AI platform: the governing principle, the `SECURITY DEFINER` helper functions that make policies both safe and terse, the small vocabulary of standard policy patterns, the append-only log discipline, and two fully worked examples. It closes with *why* the platform enforces access in two places at once — RBAC in the application **and** RLS in the database.
 >
-> **Prototype note.** The migrations under [`db/migrations/`](../../db/migrations/) are the production database **design**. The prototype does not execute them — it runs on typed mock providers behind the server-only service layer, selected off the non-public `APP_MODE` env via the single seam `config.isPrototype` ([`src/config/app.ts`](../../src/config/app.ts)). The SQL below is nonetheless the authoritative source of truth: when the platform connects to Supabase, going live is "run the migrations + swap the provider", not a redesign. Every policy quoted here is real and lives in the migration cited.
+> **Status note.** The migrations under [`db/migrations/`](../../db/migrations/) are **applied to the live Supabase Postgres** — every policy quoted here is real, lives in the migration cited, and is enforced on live rows today. (When this document was first written, in Phase 2, the SQL was an unexecuted design and the app ran on mock providers; that stage is history.) Server-side writes that must bypass RLS run under the service-role key, which never leaves the server — see §4.
 
 ---
 
@@ -16,7 +16,7 @@ Why put the primary boundary in the database rather than in the application?
 
 - **The application is not the only door.** A health platform accumulates access paths over time: the web app, background jobs, an admin console, a future mobile client, analytics exports, a data-science notebook, an incident-response query. Any authorisation logic that lives *only* in the Next.js app is bypassed by every one of those paths. Logic that lives in RLS is enforced no matter who opens the connection, as long as they connect as an ordinary authenticated user.
 - **PHI raises the stakes.** [`0006_health_profiles.sql`](../../db/migrations/0006_health_profiles.sql) holds dates of birth, biological sex, diagnosed conditions, medications, allergies, and emergency contacts. A single over-broad `using (true)` on that table is a reportable data breach. The design treats a permissive policy as a defect, not a shortcut.
-- **Least privilege is the default, not the exception.** Per the convention table in [`db/README.md`](../../db/README.md): *"RLS enabled on every table; least-privilege policies; append-only logs have no update/delete; `using(true)` only for genuinely public reads."* Across all 13 migrations, an unconditional `using (true)` appears **only** for genuinely public reads — published programmes ([`0008`](../../db/migrations/0008_commerce.sql)) and the `global` memory scope ([`0011`](../../db/migrations/0011_memory.sql)). Everywhere else the predicate names an owner, a tenant, a role, or a permission.
+- **Least privilege is the default, not the exception.** Per the convention table in [`db/README.md`](../../db/README.md): *"RLS enabled on every table; least-privilege policies; append-only logs have no update/delete; `using(true)` only for genuinely public reads."* Across the foundational migrations, an unconditional `using (true)` appears **only** for genuinely public reads — published programmes ([`0008`](../../db/migrations/0008_commerce.sql)) and the `global` memory scope ([`0011`](../../db/migrations/0011_memory.sql)). Everywhere else the predicate names an owner, a tenant, a role, or a permission.
 
 ```mermaid
 flowchart TD
@@ -328,7 +328,7 @@ What this buys, and why the shape is correct:
 - **`global` is the single deliberate public read.** It is written by super-admins only; the corresponding `INSERT`/`UPDATE`/`DELETE` policies each end in `scope = 'global' and app.is_super_admin()`.
 - **Writes re-validate the post-image.** The `UPDATE` policy repeats the same scope predicate in *both* `USING` and `WITH CHECK`, so a row cannot be *re-scoped* out from under RLS — you can't take a `user`-scoped row you own and flip it to `global`.
 
-This is the payoff of pairing a discriminated table with helper-driven RLS: the application gets one uniform retrieval API (`MemorySelector` in [`src/types/memory.ts`](../../src/types/memory.ts) / [`src/services/memory.ts`](../../src/services/memory.ts)), while the database still enforces six independent least-privilege boundaries.
+This is the payoff of pairing a discriminated table with helper-driven RLS: the application gets one uniform retrieval API (`MemorySelector` in [`src/types/memory.ts`](../../src/types/memory.ts), implemented live by [`src/services/repositories/memory-repo.ts`](../../src/services/repositories/memory-repo.ts)), while the database still enforces six independent least-privilege boundaries.
 
 ---
 

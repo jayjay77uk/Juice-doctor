@@ -81,7 +81,7 @@ export default async function JourneyPage() {
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — sample data. AI replies are live but not clinically reviewed. No real health records, bookings or payments are connected.
+        This timeline is built from your own account activity. AI replies are AI-generated and not clinically reviewed — not for emergencies.
       </p>
     </div>
   );

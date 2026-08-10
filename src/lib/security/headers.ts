@@ -4,7 +4,9 @@
  * A strict, documented baseline. The CSP is intentionally conservative; when a
  * feature needs a new source it is added here with a comment, never loosened
  * globally. `'unsafe-inline'` for styles is required by the CSS-in-JS/inline
- * critical CSS approach; scripts use a nonce in production (wired in proxy.ts).
+ * critical CSS approach. proxy.ts does not currently supply a nonce, so
+ * production script-src falls back to `'self' 'unsafe-inline'` (the nonce
+ * branch below is ready if one is wired later).
  */
 
 export interface SecurityHeaderOptions {
@@ -14,6 +16,16 @@ export interface SecurityHeaderOptions {
   hsts?: boolean;
   /** Development mode — relaxes script-src so React dev tooling (which uses eval) works. */
   dev?: boolean;
+}
+
+/** The Supabase project origin (public URL), for CSP connect-src. */
+function supabaseOrigin(): string {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  try {
+    return url ? new URL(url).origin : '';
+  } catch {
+    return '';
+  }
 }
 
 export function buildContentSecurityPolicy(options: { nonce?: string; dev?: boolean } = {}): string {
@@ -29,8 +41,11 @@ export function buildContentSecurityPolicy(options: { nonce?: string; dev?: bool
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob: https:`,
     `font-src 'self' data:`,
-    // Supabase + Resend endpoints are added here when wired (Phase 2/3).
-    `connect-src 'self'`,
+    // Same-origin XHR/fetch PLUS the Supabase origin: the password-reset flow
+    // (forgot/reset forms) calls Supabase Auth from the browser via the
+    // anon-key client — without this the call is CSP-blocked and no reset
+    // email is ever dispatched (verified on production 2026-08-10).
+    `connect-src 'self'${supabaseOrigin() ? ` ${supabaseOrigin()}` : ''}`,
     `frame-ancestors 'none'`,
     `form-action 'self'`,
     `base-uri 'self'`,

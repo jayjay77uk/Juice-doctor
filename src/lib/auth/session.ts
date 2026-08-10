@@ -9,13 +9,14 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 /**
- * The session seam — production-shaped from day one.
+ * The session seam.
  *
- * `getSession()` is async + server-only. In the PROTOTYPE it resolves a canned
- * session (optionally hinted to a role so the member/admin shells can each show
- * their own persona). In PRODUCTION it reads the Supabase auth cookie
- * server-side, awaits token refresh, loads the profile (role + org + overrides),
- * and RLS enforces access independently. Only the body of `loadSession()` changes.
+ * `getSession()` is async + server-only. With Supabase configured (the deployed
+ * platform) it reads the Supabase auth cookie server-side, awaits token refresh,
+ * loads the profile (role + org + overrides), and RLS enforces access
+ * independently. Only when Supabase is NOT configured (local dev without keys)
+ * does it fall back to a canned persona (optionally hinted to a role so the
+ * member/admin shells can each still render).
  */
 
 export interface SessionUser {
@@ -33,7 +34,7 @@ export interface Session {
   user: SessionUser;
 }
 
-// ── Prototype canned personas ────────────────────────────────────────────────
+// ── Canned personas (used ONLY when Supabase is not configured) ──────────────
 const PROTOTYPE_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
 const CANNED: Record<AppRole, SessionUser> = {
@@ -76,9 +77,8 @@ const CANNED: Record<AppRole, SessionUser> = {
 };
 
 /**
- * The single place that knows how a session is obtained. Swap this body for the
- * Supabase implementation in Phase 2 — the rest of the app depends only on the
- * shape returned here.
+ * The single place that knows how a session is obtained — the rest of the app
+ * depends only on the shape returned here.
  */
 async function loadSession(roleHint: AppRole): Promise<Session | null> {
   // Local dev without Supabase keys: fall back to the canned persona so the app
@@ -135,9 +135,10 @@ async function loadSession(roleHint: AppRole): Promise<Session | null> {
 }
 
 /**
- * The current session, memoised per request. `roleHint` is a PROTOTYPE-ONLY
- * affordance so different shells can present different personas; production
- * ignores it entirely (the role comes from the authenticated profile).
+ * The current session, memoised per request. `roleHint` only matters in the
+ * unconfigured-Supabase local-dev fallback, where it picks the canned persona;
+ * with Supabase configured it is ignored entirely (the role comes from the
+ * authenticated profile).
  */
 export const getSession = cache(async (roleHint: AppRole = 'member'): Promise<Session | null> => {
   return loadSession(roleHint);

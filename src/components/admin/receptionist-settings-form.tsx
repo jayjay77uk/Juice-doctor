@@ -104,7 +104,7 @@ export function ReceptionistSettingsForm({ settings }: { settings: ReceptionistS
         )}
       </div>
       <p className="text-xs text-muted-foreground">
-        Prototype — these are temporary settings, not final approved rules.
+        These settings are saved to the platform database and drive the live receptionist. Wording is not yet final client-approved copy.
       </p>
     </form>
   );

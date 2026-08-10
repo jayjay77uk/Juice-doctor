@@ -17,7 +17,7 @@ interface Scope {
   desc: string;
 }
 
-// prototype mock — the six configurable memory scopes (no service query needed).
+// illustrative static list — the six configurable memory scopes (no service query needed).
 const SCOPES: Scope[] = [
   {
     scope: 'session',
@@ -91,7 +91,7 @@ export default async function MemoryCentrePage() {
           </Button>
         </div>
         <p className="mt-4 text-sm text-muted-foreground">
-          Prototype — mock data, served through the service layer. AI replies run on the live model (non-production); no real patient data.
+          This admin overview is illustrative and coming soon. Real member memory is live in the platform database; AI replies run on the live model and are not clinically reviewed.
         </p>
       </Panel>
 

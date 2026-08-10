@@ -39,12 +39,15 @@ material limitation so nothing is over-claimed during the demonstration.
   supplied final approved text.
 
 ## Functional scope (prototype-only behaviours)
-- Some member controls are demonstration-only and are clearly disabled/labelled (e.g. "Add goal",
-  "Mark all as read", "Edit profile", "Invite user"). The underlying data they display is real.
+- A few member/admin controls are demonstration-only and are clearly disabled/labelled (e.g.
+  "Edit profile", "Invite user"). The underlying data they display is real.
 - File attachments in chat are a stub (nothing is uploaded/stored).
 - A dedicated **practitioner console** is not built; the practitioner role uses the member dashboard
   with staff-level visibility.
-- Payments, bookings and email sending are **not** connected (no live payment processing).
+- Payments and email sending are **not** connected — no live payment provider (subscription
+  payments are recorded manually), and the only email the platform sends is the password-reset
+  message. Member bookings are stored as real records in the platform database, but no confirmation
+  email is sent; the public marketing booking form is a declared mock and sends nothing.
 - Usage limits and concurrency guards exist but are tuned for a prototype, not production scale.
 
 ## Environment

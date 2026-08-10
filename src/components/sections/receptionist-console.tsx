@@ -74,7 +74,7 @@ export function ReceptionistConsole({ settings }: { settings: ReceptionistConsol
       return;
     }
 
-    // Last answer — run the (mock) assessment.
+    // Last answer — run the live AI assessment on the server.
     const convo = [...turns, visitorTurn];
     setTurns((ts) => [...ts, visitorTurn]);
     setPhase('assessing');

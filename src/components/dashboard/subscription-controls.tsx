@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { customerCancelAction, customerChangePlanAction } from '@/services/subscription-actions';
 
 /**
- * Customer-facing controls for a single subscription (prototype). Lets the member
+ * Customer-facing controls for a single subscription. Lets the member
  * change/upgrade their plan or cancel access, then refreshes the server data.
  */
 export function SubscriptionControls({

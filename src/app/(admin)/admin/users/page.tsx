@@ -53,7 +53,7 @@ export default async function UsersPage() {
         description="Manage members, practitioners and staff."
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Users' }]}
         actions={
-          <Button size="sm" disabled title="User invitations are available in the production platform">
+          <Button size="sm" disabled title="User invitations are not yet available">
             <UserPlus className="size-4" /> Invite user
           </Button>
         }
@@ -82,7 +82,7 @@ export default async function UsersPage() {
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — mock data, served through the service layer. AI replies run on the live model (non-production); no real user data.
+        Live data from the platform database — real user accounts, including the fictional demonstration accounts.
       </p>
     </div>
   );

@@ -133,8 +133,8 @@ export default async function AgentsPage() {
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Every action here writes through the service layer. In this prototype the store is in-memory
-        and resets on restart; in production it is the <code className="rounded bg-surface-muted px-1.5 py-0.5 text-xs">ai_agents</code> table.
+        Every action here writes through the service layer to the{' '}
+        <code className="rounded bg-surface-muted px-1.5 py-0.5 text-xs">ai_agents</code> table — changes persist in the platform database.
       </p>
     </div>
   );

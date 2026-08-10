@@ -88,7 +88,7 @@ export default async function GoalsPage() {
       )}
 
       <p className="text-sm text-muted-foreground">
-        Prototype — sample data. AI replies are live but not clinically reviewed. No real health records, bookings or payments are connected.
+        Changes to your goals save to your account. AI replies are AI-generated and not clinically reviewed — not for emergencies.
       </p>
     </div>
   );

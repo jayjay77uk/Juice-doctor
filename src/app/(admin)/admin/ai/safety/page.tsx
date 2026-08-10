@@ -126,7 +126,7 @@ export default async function SafetyPage() {
       )}
 
       <p className="text-sm text-muted-foreground">
-        Prototype — mock data, served through the service layer. AI replies run on the live model (non-production); no real patient data.
+        Live safety policies from the platform database. AI replies run on the live model and are not clinically reviewed; not for emergencies.
       </p>
     </div>
   );

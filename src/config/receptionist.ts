@@ -1,5 +1,5 @@
 /**
- * Receptionist configuration — REPLACEABLE MOCK / admin-editable DEFAULTS.
+ * Receptionist configuration — admin-editable DEFAULTS.
  *
  * These are the DEFAULT settings the admin edits from the Receptionist AI page.
  * NONE of them are approved product rules: the greeting, tone, consultation
@@ -7,9 +7,10 @@
  * placeholders in clear English that the client will define and the admin will
  * edit at runtime (see `services/receptionist-settings.ts`).
  *
- * The recommendation logic that reads these values is a deterministic MOCK,
- * isolated behind the receptionist service so it can later be replaced with live
- * AI inference without touching the CRM or the frontend.
+ * The recommendation logic that reads these values performs LIVE AI inference
+ * (see `services/receptionist.ts`): the model assesses the visitor's answers,
+ * may only recommend from the active specialist roster, and escalates to the
+ * configured human target when confidence is low or the provider is unavailable.
  */
 
 export interface ReceptionistQuickReply {

@@ -48,7 +48,7 @@ export default function SpecialistsPage() {
             <span className="inline-flex items-center gap-2"><Globe className="size-4 text-[#c9a961]" /> Multiple languages</span>
             <span className="inline-flex items-center gap-2"><Globe className="size-4 text-[#c9a961]" /> Regional dialect support</span>
           </div>
-          <p className="mt-2 text-xs uppercase tracking-widest text-white/30">Voice & full language support — prototype / planned</p>
+          <p className="mt-2 text-xs uppercase tracking-widest text-white/30">Text conversations and language support are live — voice is planned</p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Button asChild size="lg" className="bg-[#c9a961] text-[#0a1420] hover:bg-[#d8bd7f]">

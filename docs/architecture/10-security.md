@@ -1,11 +1,14 @@
 # 10 — Security
 
-> **Phase 2, design only.** Everything in this document is production-shaped but
-> runs on typed mock providers and paper SQL. Every control below is *authored,
-> reviewed, and version-controlled*; almost none of it is *live*. There is no
-> real auth session, no connected database, no TLS terminated by us, no secrets
-> in the vault. The **shape** of the security posture is the deliverable — so
-> that going live is *configuration and a provider swap*, not a rewrite.
+> **Originally a Phase-2 design document; updated status 2026-08-10.** When first
+> written, everything here was production-shaped but ran on typed mock providers
+> and paper SQL. That is no longer the case: the platform now runs **live** —
+> real Supabase Auth sessions, a connected Supabase Postgres with the migrations
+> applied and RLS enforced, HTTPS on the Vercel production deployment, real
+> Anthropic inference, and append-only `audit_logs` written under the service
+> role. Controls that remain design-only are called out individually below
+> (field-level encryption, malware scanning, API-key auth, CSP script nonce,
+> MFA step-up). See §13 for the current live/not-live table.
 
 Security for Prototype AI is not a single module — it is a **posture**
 that runs through every layer. A member's profile is protected four
@@ -16,8 +19,8 @@ important — by the Row-Level Security policy in Postgres that would refuse the
 row even if every layer above it were bypassed. This is **defence in depth**:
 no control is trusted to be the only one.
 
-This document explains *why* each control exists, *where* it lives, and *what*
-changes when the prototype goes live.
+This document explains *why* each control exists, *where* it lives, and which
+controls are live today versus still design-only.
 
 **Canonical sources:**
 
@@ -138,11 +141,11 @@ future bug skips the guard. See
 
 Encryption is layered by *where the data is* and *how sensitive it is*.
 
-| Data state | Control | Status in Phase 2 |
+| Data state | Control | Status today |
 | --- | --- | --- |
-| **At rest** | Postgres/Supabase-managed disk + backup encryption (AES-256); Storage buckets encrypted at rest | Provisioned by Supabase in production; DB not connected in the prototype |
-| **In transit** | TLS 1.2+ everywhere; **HSTS** (`max-age=63072000; includeSubDomains; preload`) sent on HTTPS in production | HSTS emitted only when `isHttps && !isPrototype` — see below |
-| **Secrets** | Never in `NEXT_PUBLIC_*`; server-only env; provider selection off non-public `APP_MODE` | Enforced structurally today (§7) |
+| **At rest** | Postgres/Supabase-managed disk + backup encryption (AES-256); Storage buckets encrypted at rest | **Live** — provisioned by Supabase, which the platform runs on |
+| **In transit** | TLS 1.2+ everywhere; **HSTS** (`max-age=63072000; includeSubDomains; preload`) sent on HTTPS | **Live** — HSTS emitted on every HTTPS response — see below |
+| **Secrets** | Never in `NEXT_PUBLIC_*`; server-only env; server-only Supabase/Anthropic clients | Enforced structurally today (§7) |
 | **Field-level (sensitive)** | Application-level encryption of the most sensitive fields | **Future** — the RLS-hardened tables are the seam it plugs into |
 
 **At rest.** We do not roll our own storage encryption. Postgres data files,
@@ -151,18 +154,17 @@ objects (knowledge documents, avatars, CVs) inherit bucket-level encryption. Our
 job is to make sure the *right rows* are readable, which is RLS's problem, not
 the cipher's.
 
-**In transit.** All traffic is HTTPS; the platform terminates TLS. We reinforce
-it with HSTS so a browser that has once seen the site over HTTPS refuses to
-downgrade. HSTS is deliberately conditional in
+**In transit.** All traffic is HTTPS; the platform (Vercel) terminates TLS. We
+reinforce it with HSTS so a browser that has once seen the site over HTTPS
+refuses to downgrade. HSTS is gated on the request actually being HTTPS in
 [`src/proxy.ts`](../../src/proxy.ts):
 
 ```ts
-const headersToSet = securityHeaders({ hsts: isHttps && !appConfig.isPrototype, dev: isDev });
+const headersToSet = securityHeaders({ hsts: isHttps, dev: isDev });
 ```
 
-`preload` is a one-way commitment (browsers ship the domain in a hard-coded
-list), so it must never fire from a prototype or preview origin — hence the
-`!isPrototype` guard. The header itself is assembled in
+so plain-HTTP local development never receives the header. The header itself
+(including `preload`, a one-way commitment) is assembled in
 [`headers.ts`](../../src/lib/security/headers.ts).
 
 **Field-level, for the most sensitive data (future).** The most sensitive tables
@@ -171,10 +173,9 @@ list), so it must never fire from a prototype or preview origin — hence the
 already carry the *strictest* RLS: a row is visible only to its owner, a treating
 same-org practitioner/staff member (read-only), and org admins. Application-level
 field encryption — encrypting the most sensitive columns so that even a database
-operator with row access cannot read raw values — is a Phase-3 hardening step.
+operator with row access cannot read raw values — is a future hardening step.
 It is called out here rather than implemented because it changes read/write
-plumbing, and the honest prototype does not pretend to protect data it never
-stores.
+plumbing; documenting it honestly is better than pretending it exists.
 
 ---
 
@@ -212,34 +213,33 @@ forge, alter, or erase the trail. Writes happen server-side under the service
 role only. `activity_logs` (a lighter product-analytics stream) follows the same
 append-only pattern with a broader read scope (a user reads their own activity).
 
-**The recorder.** Call sites do not `INSERT` directly — they call the `audit`
-recorder in [`src/services/platform.ts`](../../src/services/platform.ts):
-
-```ts
-export const audit = {
-  async record(_entry: AuditEntry): Promise<void> {
-    // no-op in the prototype — nothing is stored.
-  },
-  // …
-};
-```
-
-`AuditEntry` already carries `actorId`, `action`, `entityType`, `entityId`,
-`before`, `after`, and `organisationId` — the full production shape. In the
-prototype `record` is an honest **no-op** (nothing is stored, and the doc says
-so). In production the body inserts one append-only row under the service role,
-enriched with `ip_address` and `user_agent` from the request. Because the shape
-is settled, wiring it up is a body swap, not a redesign. The `sensitive`-flagged
-permissions in §2 are the natural set of actions the recorder must never miss.
+**The recorder.** Call sites do not `INSERT` directly — privileged admin
+mutations record through `auditRepo.log` in
+[`src/services/repositories/audit-repo.ts`](../../src/services/repositories/audit-repo.ts),
+which inserts one append-only `audit_logs` row **under the service role** (RLS
+exposes no user-session insert path). The write is best-effort by design: an
+audit failure never blocks the underlying action, but every success path
+attempts one. The entry carries `actorId`, `action`, `entityType`, `entityId`,
+`before`/`after` snapshots and the organisation — the full shape designed in
+Phase 2. (The older `audit.record` shim in
+[`src/services/platform.ts`](../../src/services/platform.ts) remains a no-op
+left over from Phase 2; the live trail is written by the repository.) The
+`sensitive`-flagged permissions in §2 are the natural set of actions the
+recorder must never miss.
 
 ---
 
 ## 5. Rate limiting
 
 Rate limiting protects against credential-stuffing, contact-form spam, scraping,
-and — once inference exists — AI cost-abuse. The design goal is that the
-*call sites never change* between the prototype's in-memory limiter and a
-production distributed store.
+and AI cost-abuse. The shipped limiter is an **in-memory fixed-window store,
+per server instance** — real and enforced today on sign-in/registration and the
+public receptionist actions, but best-effort across instances (each serverless
+instance counts independently). The design goal is that the *call sites never
+change* when a distributed store (Redis/Upstash or Postgres) replaces it.
+Durable AI usage enforcement is separate and stronger: per-user daily/monthly
+caps are counted from `ai_run_logs` rows, and per-user concurrency is capped at
+three in-flight requests (`src/services/ai-usage.ts`).
 
 **The seam** ([`src/lib/security/rate-limit.ts`](../../src/lib/security/rate-limit.ts)).
 Everything hangs off one interface:
@@ -278,10 +278,11 @@ one place:
 | `auth` | 5 | 60 s | Login / credential endpoints (anti brute-force) |
 | `contact` | 3 | 60 s | Public contact form (anti-spam) |
 | `api` | 100 | 60 s | General authenticated API surface |
-| `ai` | 20 | 60 s | **Future** AI endpoints (cost + abuse control) |
+| `ai` | 20 | 60 s | Reserved preset — live AI cost/abuse control is enforced by the durable per-user usage caps and the concurrency gate described above, not this preset |
 
-The `ai` policy is defined ahead of the feature it guards — the inference
-surface is rate-limited *by design* before a single token is ever generated.
+The `auth` and `contact` policies are enforced today (sign-in/registration and
+the public receptionist actions respectively); the `api`/`ai` presets are named
+here so future endpoints adopt reviewed limits rather than magic numbers.
 
 ---
 
@@ -327,8 +328,11 @@ flowchart TB
    comparison (`safeEqual`) to avoid timing side-channels. The `__Host-` prefix
    forces the cookie to be secure, host-scoped, and path-`/`.
 
-Layers 1 and 2 cover the common case; layer 3 exists so the *custom-endpoint*
-gap is closed the moment such an endpoint is added.
+Layers 1 and 2 cover the common case — including today's custom mutating
+endpoint (the streaming conversation route under `/api/conversations`), which is
+session-authenticated and protected by the edge Origin check. Layer 3's
+utilities stand ready for endpoints those layers cannot cover (e.g. webhook
+receivers).
 
 ---
 
@@ -344,34 +348,38 @@ distinction is load-bearing:
 
 | Variable | Visibility | Purpose |
 | --- | --- | --- |
-| `NEXT_PUBLIC_APP_MODE` | **Public** (safe in the client bundle) | Cosmetic only — drives the "Prototype Environment" banner |
-| `APP_MODE` | **Server-only, non-public** | Selects the data provider (mock vs Supabase) inside `server-only` modules |
+| `NEXT_PUBLIC_APP_MODE` | **Public** (safe in the client bundle) | Cosmetic only — drives the demonstration banner |
+| `APP_MODE` | **Server-only, non-public** | Reserved server-only mode switch (`src/services/index.ts`) |
 
-Because the provider choice is made off the **non-public** `APP_MODE` inside
-`server-only` service modules, a Supabase client — and the keys it needs —
-**can never be tree-shaken into a client bundle**. `config.isPrototype` derives
-from the cosmetic public flag and is used *only* for UI affordances; no secret
-is ever gated on it. This is Rule 2 of the project philosophy expressed as a
-security control.
+All data access happens inside `server-only` service/repository modules, so a
+Supabase client — and the keys it needs — **can never be tree-shaken into a
+client bundle**. `config.isPrototype` derives from the cosmetic public flag and
+is used *only* for UI affordances; no secret is ever gated on it. This is Rule 2
+of the project philosophy expressed as a security control.
 
 **The secret surface** is enumerated in [`.env.example`](../../.env.example) and
-commented as Phase-2 (not used by the prototype):
+set on the deployed platform:
 
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — public by
   design (the anon key is safe only *because* RLS is on every table).
 - `SUPABASE_SERVICE_ROLE_KEY` — **never** `NEXT_PUBLIC_`; used only by
-  server-side, RLS-bypassing operations such as the audit recorder.
-- `RESEND_API_KEY`, `CONTACT_EMAIL` — server-only.
+  server-side, RLS-bypassing operations such as the audit repository.
+- `ANTHROPIC_API_KEY` — server-only; powers live inference.
 
-The prototype requires **no secrets to run**, which is itself a security
-property: there is nothing to leak from a demo deploy. In production these live
-in the platform's encrypted environment store (Vercel), never in the repo.
+The app still **degrades gracefully with no secrets** (keyless local dev renders
+in a preview mode), which keeps the leakable surface of a casual clone at zero.
+On the deployed platform the secrets live in Vercel's encrypted environment
+store, never in the repo.
 
 ---
 
 ## 8. API security
 
-The public/machine-to-machine API is designed but not exposed in Phase 2.
+The public/machine-to-machine API is designed but not yet exposed. The few
+`/api` routes that exist serve the app itself: `/api/conversations/*` is
+session-and-ownership-guarded and `/api/admin/*` requires the administrator
+role; `/api/health` is a deliberately public, unauthenticated readiness
+endpoint (commit SHA, configuration booleans and a DB round-trip — no secrets).
 
 **Keys are hashed, never stored in plaintext**
 ([`db/migrations/0004_auth_sessions_oauth.sql`](../../db/migrations/0004_auth_sessions_oauth.sql)):
@@ -425,7 +433,9 @@ not two.
 Uploads (knowledge documents, avatars, CV attachments) are a classic ingress
 vector, so [`file-validation.ts`](../../src/lib/security/file-validation.ts)
 **never trusts the client-supplied filename or MIME type alone** — it validates
-size *and* true content, and fails closed with a typed error.
+size *and* true content, and fails closed with a typed error. (Note: today no
+upload path actually stores files — knowledge ingestion accepts pasted text
+only — so this validator guards a surface that is designed but not yet live.)
 
 `validateUpload` runs four checks in order:
 
@@ -483,13 +493,14 @@ Every response carries a strict, documented header baseline, applied centrally i
 | `Permissions-Policy` | Deny all powerful features except `camera=(self)` for the Remote Selfie Scan |
 | `Cross-Origin-Opener-Policy` | `same-origin` |
 | `Cross-Origin-Resource-Policy` | `same-origin` |
-| `Strict-Transport-Security` | Sent only on HTTPS in production (§3) |
+| `Strict-Transport-Security` | Sent on HTTPS responses (§3) |
 
 **The CSP is conservative by default and loosened *per source, with a comment* —
 never globally.** `default-src 'self'`; `object-src 'none'`; `base-uri 'self'`;
 `form-action 'self'`; `frame-ancestors 'none'`; `upgrade-insecure-requests`.
-Supabase and Resend endpoints get added to `connect-src` *when they are wired*,
-not pre-opened.
+`connect-src` allows `'self'` plus the Supabase origin (the browser-side
+anon-key auth client needs it for the password-reset flow); further endpoints
+(e.g. an email provider) get added *when they are wired*, not pre-opened.
 
 **The one place strictness is intentionally relaxed is scripts in development.**
 React's dev tooling uses `eval`, which a strict CSP forbids, so the builder
@@ -505,10 +516,11 @@ const scriptSrc = dev
 
 - **Development** allows `'unsafe-inline' 'unsafe-eval'` so the dev server and
   fast-refresh work — this path is gated on `dev` and can never ship.
-- **Production** uses a **per-request nonce** with `'strict-dynamic'`, the modern
-  strong-CSP posture: only the nonce'd bootstrap script and what it loads run;
-  injected inline `<script>` does not. The nonce is minted per request and wired
-  in `proxy.ts`.
+- **Production** — the builder supports a **per-request nonce** with
+  `'strict-dynamic'` (the modern strong-CSP posture), but the middleware does
+  **not currently mint one**, so production ships the fallback
+  `script-src 'self' 'unsafe-inline'`. Wiring the nonce through `proxy.ts` is a
+  known future hardening step; the code path already exists in `headers.ts`.
 
 `style-src` keeps `'unsafe-inline'` in both modes — a documented, deliberate
 trade-off for the inline/critical-CSS approach, and a far weaker vector than
@@ -582,31 +594,27 @@ answer a regulator honestly.
 
 ---
 
-## 13. Prototype vs. production — what is live today
+## 13. What is live today vs. still design-only
 
-An honest security document says what is *not* yet real. The **shapes** are
-production-grade; the **enforcement** is partial by design.
+An honest security document says what is *not* yet real. As of 2026-08-10:
 
-| Control | Designed | Enforced in prototype | Becomes live by |
+| Control | Designed | Live today | Notes |
 | --- | --- | --- | --- |
-| RBAC engine + guards | ✅ | ✅ (against canned sessions) | Real session in [`session.ts`](../../src/lib/auth/session.ts) |
-| RLS on every table | ✅ | ❌ (DB not connected) | Running the migrations |
-| Security headers + CSP | ✅ | ✅ (applied on every response) | HSTS/nonce flip on in prod build |
-| CSRF Origin check | ✅ | ✅ (`proxy.ts` runs) | — |
-| CSRF double-submit | ✅ | n/a (no custom endpoints yet) | First non-Action endpoint |
-| Rate limiting | ✅ | in-memory limiter available | Distributed store swap |
-| Audit logging | ✅ (shape + recorder) | ❌ no-op recorder | Recorder body + service role |
-| Encryption at rest | ✅ (managed) | ❌ (no DB) | Supabase provisioning |
-| HSTS / TLS | ✅ | ❌ (gated off in prototype) | HTTPS + `!isPrototype` |
-| Field-level encryption | described | ❌ | Phase 3 |
-| Malware scanning | hook reserved | ❌ | Scanner integration |
-| API-key auth | ✅ (schema) | ❌ (API not exposed) | Public API phase |
-
-The route-protection block in `proxy.ts` is the clearest illustration: the
-production code path (read the Supabase auth cookie, redirect to `/login`) is
-*present and commented in*, gated behind `!appConfig.isPrototype`, and bypassed
-only because the prototype has no real auth cookie. Going live activates it — it
-was never deleted.
+| RBAC engine + guards | ✅ | ✅ | Enforced against **real Supabase Auth sessions**; `assertRole`/`assertSession` on every privileged Server Action |
+| RLS on every table | ✅ | ✅ | Migrations applied to the live Supabase Postgres; service-role writes are separated from user-session reads |
+| Security headers + CSP | ✅ | ✅ | Applied on every response; production `script-src` is `'self' 'unsafe-inline'` (nonce path built but not wired — §10) |
+| CSRF Origin check | ✅ | ✅ | `proxy.ts` rejects cross-origin mutations |
+| CSRF double-submit | ✅ | reserved | Current custom endpoints are session + Origin-check protected; utilities ready for webhooks |
+| Rate limiting | ✅ | ✅ (per-instance) | In-memory fixed-window on auth + public receptionist actions; durable per-user AI caps + concurrency from `ai_run_logs` |
+| Audit logging | ✅ | ✅ | Append-only `audit_logs` written via `auditRepo.log` under the service role |
+| Encryption at rest | ✅ (managed) | ✅ | Supabase-managed |
+| HSTS / TLS | ✅ | ✅ | Vercel HTTPS; HSTS on every HTTPS response |
+| Route protection at the edge | ✅ | ✅ | `/dashboard` + `/admin` redirect unauthenticated users to `/login` whenever Supabase is configured |
+| MFA / step-up on sensitive actions | flagged in catalogue | ❌ | Enforcement not yet wired |
+| Field-level encryption | described | ❌ | Future hardening |
+| Malware scanning | hook reserved | ❌ | Only pasted text is ingested today; no file uploads are stored |
+| API-key auth | ✅ (schema) | ❌ | M2M API not exposed |
+| Monitoring (Sentry/PostHog) | — | ❌ | Not integrated |
 
 ---
 

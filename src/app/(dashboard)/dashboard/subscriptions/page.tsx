@@ -125,7 +125,7 @@ export default async function MySubscriptionsPage() {
         )}
       </Panel>
 
-      <p className="text-sm text-muted-foreground">Prototype — no live payment provider is connected.</p>
+      <p className="text-sm text-muted-foreground">Plan changes and cancellations take effect on your account straight away. Payments are arranged with the team — no online payment is taken here.</p>
     </div>
   );
 }

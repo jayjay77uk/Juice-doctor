@@ -34,14 +34,16 @@ the outstanding client approvals.
 - **Exit:** real wearable trends flow through the same permission/consent model, replacing the mock.
 
 ## Phase 4 — Accounts, identity & practitioner console
-- Production authentication hardening (email verification, password reset, MFA options).
+- Production authentication hardening (email verification, MFA options — password reset already
+  works via the platform's auth email).
 - Build the dedicated **practitioner console** for human review, sign-off and case management.
 - Multi-organisation/tenant support if required.
 - **Exit:** members, practitioners and admins each have a production-grade surface.
 
 ## Phase 5 — Commerce & communications
 - Connect real subscriptions/payments (no live payment processing exists today).
-- Connect transactional email/notifications and booking flows.
+- Connect transactional email/notifications and wire them into the existing database-backed
+  booking flow.
 - **Exit:** the commercial lifecycle (subscribe → access → follow-up) runs on live services.
 
 ## Phase 6 — Voice (optional, if approved)

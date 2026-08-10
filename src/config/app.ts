@@ -5,9 +5,11 @@
  * Environment" banner and other client-visible prototype affordances. It is
  * safe to expose to the browser.
  *
- * The DATA-provider selection (mock vs Supabase) is made separately, in the
- * server-only service layer, off the non-public `APP_MODE` env — so a Supabase
- * client can never be tree-shaken into a client bundle. See `src/services/`.
+ * It does NOT select where data comes from: operational data (accounts, CRM,
+ * conversations, bookings, knowledge, …) always reads the live Supabase
+ * database via the server-only service layer, while marketing content is typed
+ * placeholder copy in `src/content/*` pending client-supplied wording. See
+ * `src/services/`.
  */
 export type AppMode = 'prototype' | 'production';
 
@@ -32,8 +34,9 @@ export const PROTOTYPE_BANNER_TEXT =
 export const PROTOTYPE_NOTICES: readonly string[] = [
   'Not for emergency use — if this is an emergency, contact your local emergency services.',
   'Not a replacement for a healthcare professional’s judgement.',
-  'No live patient records are used — all data is fictional or anonymised for demonstration.',
+  'No live patient records are used — demonstration accounts and seeded records are fictional.',
   'Wearable data is simulated (no live Thryve or device connection).',
+  'Payments are recorded manually — no live payment provider is connected.',
   'Voice capabilities are planned where not yet connected.',
   'Language output is AI-generated and not yet clinically human-reviewed.',
 ];

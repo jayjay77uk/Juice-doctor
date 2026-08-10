@@ -19,7 +19,7 @@ function SubmitButton() {
   );
 }
 
-/** Customer support request form (prototype — no message is actually sent). */
+/** Customer support request form — creates a real support ticket on the member's account (no email is sent; there is no email provider). */
 export function SupportForm() {
   const [state, formAction] = useActionState(createSupportTicketAction, idleAction);
 
@@ -65,7 +65,7 @@ export function SupportForm() {
 
       <div className="flex items-center gap-4">
         <SubmitButton />
-        <p className="text-xs text-muted-foreground">Prototype — no message is actually sent.</p>
+        <p className="text-xs text-muted-foreground">Your request is saved to your account. No email confirmation is sent.</p>
       </div>
     </form>
   );

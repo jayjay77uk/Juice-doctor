@@ -57,7 +57,7 @@ export default async function DashboardPage({
       ) : null}
       <AdminHeader
         title="Welcome back"
-        description="Week 3 of your account — here's where things stand."
+        description="Here's where things stand."
         actions={
           <Button asChild>
             <Link href="/dashboard/onboarding">Resume onboarding</Link>
@@ -152,7 +152,7 @@ export default async function DashboardPage({
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — sample data. AI replies are live but not clinically reviewed. No real health records, bookings or payments are connected.
+        This dashboard shows your own account data. AI replies are AI-generated and not clinically reviewed — not for emergencies.
       </p>
     </div>
   );

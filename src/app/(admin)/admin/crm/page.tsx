@@ -162,7 +162,7 @@ export default async function CrmLeadsPage({
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — mock data through the service layer. No live AI, payments or patient data.
+        Live data from the platform database — includes seeded demonstration leads. No payment provider is connected.
       </p>
     </div>
   );

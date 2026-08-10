@@ -37,7 +37,9 @@ account. Administrators also see an **"Admin dashboard →"** cross-link inside 
 ## Good to know during the demo
 - Live AI replies **stream in over a few seconds** — this is expected.
 - The **"Prototype Environment — For Demonstration Purposes Only"** banner is always visible.
-- No real emails, payments, bookings or patient records are connected.
+- No emails are sent (apart from the password-reset message) and no payments are processed. All
+  patient-style records are fictional demonstration data. Bookings made in the demo are stored as
+  real records in the platform database — no confirmation email or payment is attached.
 
 ## Security reminder
 These are shared demo credentials for a prototype. Do not reuse these passwords elsewhere, and

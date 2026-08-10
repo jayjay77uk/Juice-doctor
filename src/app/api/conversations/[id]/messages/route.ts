@@ -9,7 +9,7 @@ import { subscriptionsService } from '@/services/subscriptions';
 
 /**
  * Streaming specialist turn (NDJSON). The client POSTs { content }; we authenticate,
- * verify ownership, enforce prototype usage limits, persist the user turn, stream the
+ * verify ownership, enforce per-user usage limits, persist the user turn, stream the
  * grounded HERNE reply as it generates, then persist the assistant turn with its full
  * metadata (citations, escalation, cost, trace). Cancellation: the client aborting the
  * fetch aborts request.signal, which cancels the provider stream.
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!content) return NextResponse.json({ error: 'Please enter a message.' }, { status: 400 });
   if (content.length > 4000) return NextResponse.json({ error: 'Message is too long (max 4000 characters).' }, { status: 400 });
 
-  // Prototype usage limits (per-user daily/monthly).
+  // Per-user usage limits (daily/monthly, counted from ai_run_logs).
   const limit = await checkUsageLimit(userId);
   if (!limit.allowed) return NextResponse.json({ error: limit.message }, { status: 429 });
 

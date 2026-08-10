@@ -8,8 +8,8 @@ import { saveNotificationPrefsAction } from '@/services/member-actions';
 import type { NotificationPrefs } from '@/services/notification-prefs';
 
 const TOGGLES: { key: keyof NotificationPrefs; label: string; hint: string }[] = [
-  { key: 'emailCheckins', label: 'Email check-ins', hint: 'A short weekly note on how your programme is going.' },
-  { key: 'dailyNudges', label: 'Daily nudges', hint: 'Gentle reminders to stay on track.' },
+  { key: 'emailCheckins', label: 'Email check-ins', hint: 'Your preference for a short weekly progress note — email delivery is coming soon.' },
+  { key: 'dailyNudges', label: 'Daily nudges', hint: 'Your preference for gentle reminders — delivery is coming soon.' },
   { key: 'sharePractitioner', label: 'Share with practitioner', hint: 'Let your practitioner see your progress ahead of sessions.' },
 ];
 

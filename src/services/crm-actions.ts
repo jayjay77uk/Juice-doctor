@@ -8,7 +8,7 @@ import type { LeadFollowUp, LeadWhatsapp, LeadStatus } from '@/types/crm';
 
 /**
  * Admin Server Actions for the human-review / takeover workflow on a CRM lead.
- * Each mutates the in-process CRM store and revalidates the affected admin pages.
+ * Each writes to the live CRM tables (crm_leads / crm_lead_events) and revalidates the affected admin pages.
  */
 
 type ActionOk = { ok: true };

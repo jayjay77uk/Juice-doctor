@@ -1,8 +1,8 @@
 /**
- * Available AI models — DATA, selectable per agent. In production this is the
- * `ai_models` table (migration 0009) populated per provider; the admin never
- * hardcodes a model. Listed here so the prototype's model picker is populated.
- * Defaults reflect the latest Claude family.
+ * Available AI models — DATA, selectable per agent. The admin model picker is
+ * populated from this static list today; the `ai_models` table (migration 0009)
+ * can take over per-provider population later. The admin never hardcodes a
+ * model. Defaults reflect the latest Claude family.
  */
 
 export interface ModelOption {

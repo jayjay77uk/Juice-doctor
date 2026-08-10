@@ -124,5 +124,7 @@ the user dashboard (`/dashboard/care-plan`).
 
 - Contradiction detection is structural (shared plan + dedup + Makela reconciles),
   not semantic conflict analysis.
-- Consent is recorded as a field; a full consent-management surface is a follow-up.
-- Wearable summaries are placeholders until the wearable layer (next increment).
+- Consent on referrals is recorded as a field; wearable consent has its own managed,
+  revocable surface (doc 17), but a unified consent-management surface is a follow-up.
+- Wearable summaries are now supplied by the wearable layer (doc 17); its data source
+  remains a mock Thryve adapter with deterministic fixtures.

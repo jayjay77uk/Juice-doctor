@@ -1,6 +1,6 @@
 # 05 · AI Agent Framework
 
-> **Status:** Architecture only. **No inference runs in Phase 2.** This document describes the *data model and service seam* that lets the client stand up unlimited AI agents through configuration — never a code deploy. Phase 3 plugs a runtime into this shape without redesigning it.
+> **Status:** live. This framework shipped in Phase 2 as architecture-only ("agents-as-data", no inference); a real runtime now runs on it — **live Anthropic Claude inference** with streaming specialist replies, full prompt assembly, per-call run logging and safety checks (see [`13-ai-platform.md`](./13-ai-platform.md) and [`21-herne-live-ai.md`](./21-herne-live-ai.md)). This document remains the reference for the underlying data model: an agent is configuration, and the runtime only ever interprets it.
 
 **Canonical sources referenced by this document**
 
@@ -12,7 +12,7 @@
 | Read / registry service | [`src/services/agents.ts`](../../src/services/agents.ts) |
 | Prototype seam | [`src/config/app.ts`](../../src/config/app.ts) (`config.isPrototype`) |
 | Cross-domain: transcripts | [`db/migrations/0010_conversations.sql`](../../db/migrations/0010_conversations.sql) |
-| Cross-domain: memory | [`db/migrations/0011_memory.sql`](../../db/migrations/0011_memory.sql), [`src/services/memory.ts`](../../src/services/memory.ts) |
+| Cross-domain: memory | [`db/migrations/0011_memory.sql`](../../db/migrations/0011_memory.sql), [`src/services/repositories/memory-repo.ts`](../../src/services/repositories/memory-repo.ts) |
 | Cross-domain: knowledge | [`db/migrations/0012_knowledge.sql`](../../db/migrations/0012_knowledge.sql), [`src/services/knowledge.ts`](../../src/services/knowledge.ts) |
 
 ---
@@ -29,7 +29,7 @@ By modelling agents as data we get three properties that a code-per-agent design
 2. **Governance for free.** Because a prompt change is a database write, it is *auditable, versioned, diffable, and reversible* (see §5). A non-engineer editing the operative system prompt of a member-facing assistant is exactly the case where you want one-click rollback.
 3. **A stable seam for the runtime.** The Phase-3 inference engine loads an agent by reading its row and satellites. Adding, editing, or retiring agents never touches the runtime — the runtime only ever *interprets* configuration.
 
-> **Prototype reality.** In Phase 2 the "database" is a typed mock. `src/config/ai-agents.ts` holds the seed agents as `AiAgentDefinition[]`; `src/services/agents.ts` maps them to `AiAgent` records and exposes `list()` / `bySlug()` / `definitions()`. The service interface is **identical** to the one production will implement against `ai_agents` — swapping the provider (mock → Supabase) is a wiring change behind the server-only seam, not a rewrite. See §9.
+> **Implementation today.** The `ai_agents` table is the live source of truth: `src/services/agents.ts` reads and writes through `repositories/agents-repo.ts`, which idempotently seeds the roster — the Receptionist AI plus the eight HERNE specialists (seeded from the client pack by `services/herne/seed.ts`). `src/config/ai-agents.ts` holds the seed definitions as `AiAgentDefinition[]`. The Phase-2 mock provider is gone — exactly the wiring swap the seam was designed for. See §9.
 
 ---
 
@@ -138,7 +138,7 @@ interface AgentMemoryConfig {
 }
 ```
 
-The `session`, `user`, `conversation`, `agent`, `organisation`, and `global` scopes are isolated by RLS in `ai_memory`; `memory_config` is the agent's *opt-in* to each. This is why the three seed agents differ: the member assistant opts into user + conversation + organisation + global memory (rich personalisation), whereas the intake assistant deliberately uses only user + conversation memory (a focused, low-leakage intake), and the specialist copilot skips user memory entirely (it works on behalf of staff, not a member). See [`src/services/memory.ts`](../../src/services/memory.ts) for the uniform selector API the runtime will call.
+The `session`, `user`, `conversation`, `agent`, `organisation`, and `global` scopes are isolated by RLS in `ai_memory`; `memory_config` is the agent's *opt-in* to each. This is why the three original seed agents (§10) differed: the member assistant opted into user + conversation + organisation + global memory (rich personalisation), whereas the intake assistant deliberately used only user + conversation memory (a focused, low-leakage intake), and the specialist copilot skipped user memory entirely (it worked on behalf of staff, not a member). See [`src/services/repositories/memory-repo.ts`](../../src/services/repositories/memory-repo.ts) for the memory API the live runtime calls.
 
 ### 3.2 `safety_rules` — the fence around the agent
 
@@ -169,7 +169,7 @@ Tools live once in the `ai_tools` registry and are attached to agents via `ai_ag
 - **`input_schema` is JSON Schema.** It is the contract the model uses to produce a valid tool call — the same shape a Phase-3 runtime will hand to the model's tool-use API.
 - **`is_sensitive` gates dangerous tools.** Tools that mutate data or touch PHI are flagged so admins can require elevated approval before an agent is granted them. Indexed for fast auditing (`ai_tools_sensitive_idx`).
 
-In the prototype, an agent's tools are the string `keys` on `AiAgentDefinition.tools` (e.g. `['search_knowledge', 'book_consultation']`), which map to `ai_tools.key` and, on persist, become `ai_agent_tools` rows.
+In the seed definitions, an agent's tools are the string `keys` on `AiAgentDefinition.tools` (e.g. `['search_knowledge', 'book_consultation']`), which map to `ai_tools.key` and, on persist, become `ai_agent_tools` rows.
 
 ### 4.2 Knowledge binding (`ai_agent_knowledge_sources`)
 
@@ -178,7 +178,7 @@ Each row scopes what an agent may retrieve from the knowledge base (`0012`):
 - **`mode = 'include' | 'exclude'`** — includes widen the agent's readable scope; **excludes deny and take precedence** over broader includes. This lets an operator say "all of the Framework category *except* this one draft document."
 - **Soft references** (`category_id` / `document_id`) — as noted in §2, no hard FK, integrity enforced by the app, `CHECK` ensures at least one target is present.
 
-In the prototype these are the `knowledgeCategories` slugs on `AiAgentDefinition` (e.g. `['framework', 'category-one', 'category-two']`). The actual retrieval — chunking + embeddings — is a **Phase-3** concern; `knowledge_embeddings` is a placeholder until `pgvector` is enabled (§9).
+In the seed definitions these are the `knowledgeCategories` slugs on `AiAgentDefinition` (e.g. `['framework', 'category-one', 'category-two']`). Retrieval is **live** via chunking + ranked Postgres full-text search (migration `0018`); `knowledge_embeddings` remains a placeholder until `pgvector` is enabled (§9).
 
 ---
 
@@ -217,7 +217,7 @@ This is exactly the governance a regulated product needs: when a non-engineer ed
 
 ## 6. Safety rules and guardrails
 
-Safety is layered. The `safety_rules` blob (§3.2) is *configuration*; the enforcement is *architecture* that the Phase-3 runtime will implement. The intended layers:
+Safety is layered. The `safety_rules` blob (§3.2) is *configuration*; the layers below describe the intended enforcement architecture. (Live today: a regex pre-check blocks emergency/self-harm content *before* inference and records a real escalation, a post-check strips fabricated citations, and disclaimers/escalation boundaries are carried in the assembled prompts. The stored per-agent/policy configuration is not yet wired into inference — that wiring is still to come.)
 
 | Layer | Where | What it does |
 | --- | --- | --- |
@@ -284,26 +284,28 @@ Two subtleties worth calling out:
 
 ## 9. Phase 2 vs Phase 3: where the runtime plugs in
 
-**Phase 2 (now) — definitions only.**
+**Phase 2 (historical) — definitions only.**
 
-- Agents are the seed registry in `src/config/ai-agents.ts`; `src/services/agents.ts` is the read/registry seam. There is **no inference, no provider call, no token spend**.
-- The schema (`0009`), the types (`src/types/ai.ts`), and the RLS policies are all production-shaped, so Phase 3 is *additive*, not a redesign.
-- The prototype/production choice is made **server-side** off the non-public `APP_MODE` env, behind the single `config.isPrototype` seam (`src/config/app.ts`); `NEXT_PUBLIC_APP_MODE` is cosmetic only (the banner). A Supabase client can never be tree-shaken into a client bundle.
+- Agents were the seed registry in `src/config/ai-agents.ts`; `src/services/agents.ts` was the read/registry seam. There was **no inference, no provider call, no token spend**.
+- The schema (`0009`), the types (`src/types/ai.ts`), and the RLS policies were all production-shaped, so the runtime landed as an *additive* change, not a redesign.
+- The data-source choice is made **server-side** in `server-only` modules; `NEXT_PUBLIC_APP_MODE` is cosmetic only (the banner). A Supabase client can never be tree-shaken into a client bundle.
 
-**Phase 3 (later) — the runtime interprets the data.** To go live, the following plug into the *existing* shape without changing it:
+**Phase 3 (delivered) — the runtime interprets the data.** The following now run against the *existing* shape, unchanged (except where noted):
 
-1. **Provider selection**: `agents.list()` / `bySlug()` read `ai_agents` (mock → Supabase swap behind the server-only service). CRUD Server Actions write `ai_agents` + snapshot to `ai_agent_versions`.
-2. **An inference engine** loads an agent row, resolves its `default_model_id` → `ai_models` → `ai_model_providers` (+ vault secret), assembles the prompt from `system_prompt` + `personality`, injects memory per `memory_config` (from `ai_memory`, `0011`), retrieves knowledge per `ai_agent_knowledge_sources` (once `pgvector` fills `knowledge_embeddings` in `0012`), exposes tools per `ai_agent_tools` (`input_schema` + `handler_ref`), and enforces `safety_rules`.
-3. **Transcripts persist** to `conversations` / `messages` (`0010`) — which already **soft-reference** `ai_agents` by design, so agents can be versioned or swapped without cascading away a member's chat history.
-4. **Vector search** turns on when `pgvector` is enabled and the `embedding vector(N)` column is added to `knowledge_embeddings`.
+1. **Provider selection**: `agents.list()` / `bySlug()` read the live `ai_agents` table through `repositories/agents-repo.ts`. Admin Server Actions write `ai_agents` + snapshot to `ai_agent_versions`.
+2. **The inference engine** loads an agent row, assembles the prompt from `system_prompt` + `personality` (plus, for HERNE specialists, the shared DNA, roster, evidence, care plan and journey context), injects memory per `memory_config` (from `ai_memory`, `0011`), retrieves knowledge per the agent's knowledge scoping — today via **ranked full-text search** (`0018`; `pgvector` embeddings remain deferred) — and enforces safety checks. Every call is logged to `ai_run_logs` (tokens/cost/latency/trace).
+3. **Transcripts persist** to `conversations` / `messages` (`0010`) — which **soft-reference** `ai_agents` by design, so agents can be versioned or swapped without cascading away a member's chat history.
+4. **Vector search** (still deferred) turns on when `pgvector` is enabled and the `embedding vector(N)` column is added to `knowledge_embeddings`.
 
 The framework's promise holds end-to-end: **nothing about adding, editing, versioning, or retiring an agent ever requires a code change** — the runtime only ever interprets configuration.
 
 ---
 
-## 10. The three seed agents
+## 10. The original three seed agents (historical illustration)
 
-The seed registry proves the framework's claim: three genuinely different agents, expressed entirely as data, differing only in configuration. All three are seeded `status: 'draft'` (nothing is live in Phase 2) and owned by the system super-admin in the prototype org.
+> **Note (August 2026):** the live roster is now the **Receptionist AI plus the eight client-approved HERNE specialists** (Makela, Serena, Atlas, Aqua, Sage, Luca, Felix, Optimus), seeded from the client pack by `services/herne/seed.ts`. The three illustrative agents below were the Phase-2 seed set and are retained here as the original demonstration that genuinely different agents are expressible purely as data.
+
+The Phase-2 seed registry proved the framework's claim: three genuinely different agents, expressed entirely as data, differing only in configuration. All three were seeded `status: 'draft'` (nothing was live in Phase 2) and owned by the system super-admin in the prototype org.
 
 | Property | Assistant AI | Intake & Triage Assistant | Specialist Copilot |
 | --- | --- | --- | --- |

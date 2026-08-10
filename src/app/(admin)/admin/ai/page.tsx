@@ -39,7 +39,7 @@ export default async function AiDashboardPage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <AdminHeader
         title="AI Dashboard"
-        description="The control centre for every AI assistant. Everything here is configuration — build once, configure forever. Live inference runs only in the isolated Playground; production and customer traffic are not connected."
+        description="The control centre for every AI assistant. Everything here is configuration — build once, configure forever. Published agents, prompts and knowledge feed live inference across the platform; the Playground lets you test changes in isolation."
       />
 
       <StatGrid>
@@ -90,8 +90,8 @@ export default async function AiDashboardPage() {
       </div>
 
       <p className="rounded-xl bg-surface-muted px-5 py-4 text-sm text-muted-foreground">
-        Prototype — all figures and data are mock, served through the Phase-3 service framework. No
-        production AI, patient data, or payments are connected.
+        Live data from the platform database — figures are computed from real AI runs. AI replies
+        are AI-generated and not clinically reviewed. No payment provider is connected.
       </p>
     </div>
   );

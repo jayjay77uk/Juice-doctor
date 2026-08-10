@@ -244,8 +244,8 @@ export default async function KnowledgeDocumentPage({
       <Panel title="Preview" description="Rendered content preview.">
         <div className="rounded-lg border border-dashed border-border-strong bg-surface-muted/40 px-6 py-12 text-center">
           <p className="text-sm text-muted-foreground">
-            Document preview renders here in production; source files are stored
-            privately.
+            No rendered preview yet. Only pasted text is ingested and retrievable
+            — uploaded files are not stored.
           </p>
         </div>
       </Panel>
@@ -284,8 +284,9 @@ export default async function KnowledgeDocumentPage({
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — mock data, served through the service layer. AI replies run on
-        the live model (non-production); no real patient data.
+        Live data from the platform database. Only published, available documents
+        ground AI answers; AI replies run on the live model and are not clinically
+        reviewed.
       </p>
     </div>
   );

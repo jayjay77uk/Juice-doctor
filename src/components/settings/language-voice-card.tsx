@@ -22,8 +22,8 @@ function statusBadge(status: 'live' | 'prototype' | 'planned') {
 /**
  * Language & voice preference card. Lets a person choose the language (and, where
  * offered, a regional variety) their specialists reply in, and register interest in
- * voice. Honest throughout: language replies are labelled prototype (AI-generated,
- * not clinically reviewed); the voice toggle is disabled and labelled planned.
+ * voice. Honest throughout: replies are AI-generated and not clinically reviewed;
+ * the voice toggle is disabled and labelled planned.
  */
 export function LanguageVoiceCard({ initial }: { initial: LanguagePreference }) {
   const [language, setLanguage] = React.useState(initial.language);

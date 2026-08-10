@@ -1,9 +1,13 @@
 # 08 — Consultation workflow
 
-> **Phase 2, design only.** Everything in this document is production-shaped but
-> runs on typed mock providers and paper SQL. The consultation service returns
-> empty result sets; no live encounters, no AI inference, no scheduling engine.
-> The *shape* is the deliverable. Phase 3 fills it in.
+> **Status: live.** Originally a Phase-2 design running on mocks and unexecuted
+> SQL, this workflow now runs on real rows: members book appointments, staff
+> confirm/complete/cancel them from an admin queue, and consultations carry a
+> real append-only event timeline plus practitioner notes and
+> approve/request-changes actions — all on the applied `0007` schema. The
+> AI-review fields (`ai_summary`, `ai_review`) are not yet produced by a live AI
+> pass; seeded demonstration cases carry fictional `ai_review` text, labelled as
+> such.
 
 The consultation workflow is the clinical spine of the Prototype AI
 platform — the journey a member takes from first data capture to a durable
@@ -260,11 +264,14 @@ re-implementing "what comes next". Advancing a stage is a **write**, and in the
 production shape writes are Server Actions using the service role; `nextStage` is
 the pure decision those actions consult.
 
-> **Prototype behaviour.** The getters — `assessments.listForUser`,
-> `appointments.listForUser`, `records.listForUser` — return
-> `ok({ items: [], nextCursor: null })`. They already carry the async, paginated,
-> `Result`-typed shape (`Result<Page<T>>`) so that swapping in the Supabase
-> provider in Phase 3 changes no callers. `nextStage` is already real logic today.
+> **Implementation note.** Live consultation reads and writes go through
+> `src/services/repositories/consultations-repo.ts` (the applied `0007` tables),
+> with booking and admin-queue mutations in `booking-actions.ts`,
+> `appointment-admin-actions.ts` and `consultation-admin-actions.ts`. Nothing in
+> the live app imports `src/services/consultations.ts` today: its `listForUser`
+> getters are unused legacy stubs, and `nextStage` remains the documented
+> canonical ordering while the repository carries its own equivalent
+> `STAGE_ORDER` internally.
 
 ---
 
@@ -311,8 +318,11 @@ happened* without duplicating the scan payload.
 
 The `ai_review` stage sits deliberately **between** `assessment` and
 `practitioner_review`: the AI reads what was captured, produces a first-pass
-summary/triage, and hands a clinician a head-start rather than a blank page. In
-Phase 2 there is **no inference** — the seams exist and are wired to `null`:
+summary/triage, and hands a clinician a head-start rather than a blank page.
+This automated review pass is **not yet implemented** — live AI runs elsewhere
+on the platform (receptionist assessment, specialist replies), but no model
+populates these fields yet; seeded demonstration cases carry fictional
+`ai_review` text labelled as such:
 
 | Placeholder | Location | Phase-2 value | Phase-3 role |
 | --- | --- | --- | --- |
@@ -410,22 +420,20 @@ for everyone.**
 
 ---
 
-## 8. Prototype → production seam
+## 8. Prototype → production seam (exercised)
 
-Nothing above depends on being "hooked up" to be *designed*. In Phase 2:
+Phase 2 authored the design without hooking anything up: the **schema** (0007)
+in full with RLS, the **types** (`src/types/consultation.ts`), the **stage
+machine** (`nextStage`), and a read layer returning typed, paginated empty
+results.
 
-- the **schema** (0007) is authored in full, RLS included;
-- the **types** (`src/types/consultation.ts`) are the exact record + stage shapes;
-- the **stage machine** (`nextStage`) is real, tested logic;
-- the **read layer** (`src/services/consultations.ts`) returns typed, paginated
-  empty results through the same `Result<Page<T>>` contract every other service
-  uses, selected off the non-public `APP_MODE` seam.
-
-In Phase 3, a `consultations.supabase.ts` provider is added and selected off
-`APP_MODE`; the getters begin returning real rows and the write Server Actions
-begin appending real `consultation_events` and populating the `ai_review` /
-`ai_summary` placeholders. **Callers do not change** — they already consume the
-async, error-typed, paginated shapes defined here.
+That seam has since been exercised: the schema is applied to the live database,
+and the live data path goes through the repository layer —
+`repositories/consultations-repo.ts` for reads, with `booking-actions.ts`,
+`appointment-admin-actions.ts` and `consultation-admin-actions.ts` writing real
+rows and appending real `consultation_events`. **Callers did not change** —
+exactly as designed. The `ai_review` / `ai_summary` placeholders await the
+automated AI-review pass (§5).
 
 ---
 

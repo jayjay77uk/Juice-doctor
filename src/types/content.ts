@@ -1,9 +1,11 @@
 /**
  * Content model — the single source of truth for the shapes the UI consumes.
  *
- * These types are DERIVED FROM the paper database schema (`db/schema.sql`).
- * In the prototype they are satisfied by typed mock data in `src/content/*`;
- * in production the same shapes are returned by Supabase-backed services.
+ * These types are DERIVED FROM the database schema (`db/migrations/*`, applied
+ * to the live Supabase project).
+ * Marketing content is currently satisfied by typed placeholder content in
+ * `src/content/*` (pending client-supplied copy); operational data is served
+ * from the live database by Supabase-backed services returning the same shapes.
  * Components depend on these types, never on where the data came from.
  */
 

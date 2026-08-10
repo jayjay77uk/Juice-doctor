@@ -124,7 +124,7 @@ export default async function SpecialistsPage() {
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Prototype — mock data through the service layer. No live AI, payments or patient data.
+        Live data from the platform database. No payment provider is connected — payments are recorded manually.
       </p>
     </div>
   );

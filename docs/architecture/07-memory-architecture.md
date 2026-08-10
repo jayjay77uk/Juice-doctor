@@ -1,9 +1,9 @@
 # 07 · Memory Architecture
 
-> **Status:** Phase 2 — production-shaped design, no inference wired.
+> **Status:** live — `ai_memory` is a real table on the live database, and inference is wired: specialist replies read and write memory through it. (Originally designed in Phase 2, before any inference ran.)
 > **Scope of this document:** the persistent memory substrate for *Prototype AI*.
-> **Primary sources:** [`db/migrations/0011_memory.sql`](../../db/migrations/0011_memory.sql), [`src/types/memory.ts`](../../src/types/memory.ts), [`src/services/memory.ts`](../../src/services/memory.ts).
-> **Related:** [09 · AI Agents](./09-ai-agents.md), [10 · Conversations](./10-conversations.md), [03 · RBAC](./03-rbac.md), [02 · Multi-tenancy](./02-multi-tenancy.md).
+> **Primary sources:** [`db/migrations/0011_memory.sql`](../../db/migrations/0011_memory.sql), [`src/types/memory.ts`](../../src/types/memory.ts), [`src/services/repositories/memory-repo.ts`](../../src/services/repositories/memory-repo.ts) (+ [`src/services/memory-actions.ts`](../../src/services/memory-actions.ts) for member-facing controls).
+> **Related:** [05 · AI Agent Framework](./05-ai-agent-framework.md), [02 · Authorization & RBAC](./02-authorization-rbac.md), [03 · Database & tenancy](./03-database.md).
 
 ---
 
@@ -74,7 +74,7 @@ The arrows are the *only* legitimate widening directions. Nothing narrows: an or
 
 The instinct is to make six tables — `session_memory`, `user_memory`, and so on — one per scope. We deliberately did not. The single `ai_memory` table with a `scope` discriminator (mirrored in [`src/types/memory.ts`](../../src/types/memory.ts) as the `MemoryScope` union) wins on every axis that matters here.
 
-**1. The retrieval layer stays uniform.** An assistant assembling context does not want six code paths, six ranking rules, six embedding-reference conventions, and six "is this expired?" checks. With one table there is **one query shape**, one `importance` model, one `expires_at` sweeper, one `kind='embedding_ref'` convention. The `memory` service ([`src/services/memory.ts`](../../src/services/memory.ts)) exposes exactly three methods — `list`, `read`, `write` — that work identically across all six scopes.
+**1. The retrieval layer stays uniform.** An assistant assembling context does not want six code paths, six ranking rules, six embedding-reference conventions, and six "is this expired?" checks. With one table there is **one query shape**, one `importance` model, one `expires_at` sweeper, one `kind='embedding_ref'` convention. The live memory service ([`src/services/repositories/memory-repo.ts`](../../src/services/repositories/memory-repo.ts)) exposes one small API — `remember` (upsert), list/read helpers, `forget` — that works identically across the scopes.
 
 **2. Cross-scope retrieval is a single scan, not a six-way UNION.** When the agent needs "everything relevant to this turn" — a bit of session, a bit of user, the conversation summary, the agent's instructions, an org fact — that is one indexed pass over one table, ranked by `(scope, importance desc, created_at desc)`. Six tables would force a `UNION ALL` of six differently-shaped queries and hand-merged ranking.
 
@@ -137,7 +137,7 @@ create index ai_memory_expiry_idx     on public.ai_memory (expires_at) where exp
 Why these choices:
 
 - **Partial indexes keep each scope's working set small.** A lookup for a user's memory never has to page past organisation or global rows; the index for `scope = 'user'` physically excludes them. This matters as the table grows into the long tail of ephemeral session rows.
-- **`memory_key` is a namespaced retrieval key, unique *per scope owner*, not globally.** Two different users can both have `pref.units`; two agents can both have `instruction.tone`. Uniqueness is `(owner, memory_key)`, which is exactly what the composite partial unique indexes express. This is what lets the service treat a write as an upsert on `(selector, memoryKey)` — see the `write()` implementation in [`src/services/memory.ts`](../../src/services/memory.ts), which replaces an existing match rather than duplicating it.
+- **`memory_key` is a namespaced retrieval key, unique *per scope owner*, not globally.** Two different users can both have `pref.units`; two agents can both have `instruction.tone`. Uniqueness is `(owner, memory_key)`, which is exactly what the composite partial unique indexes express. This is what lets the service treat a write as an upsert on `(selector, memoryKey)` — see `remember()` in [`src/services/repositories/memory-repo.ts`](../../src/services/repositories/memory-repo.ts), which de-duplicates by (scope, owner, key) rather than duplicating.
 - **`conversation` is a stream, so its index is non-unique and time-ordered** `(conversation_id, created_at desc)`. A conversation may accumulate many memories (rolling summaries, extracted facts); there is no single "slot" to upsert into, so we index for "give me this conversation's memory, newest first."
 - **`global` is keyed by `memory_key` alone** — there is no owner, so the key *is* the identity.
 
@@ -167,7 +167,7 @@ This is the key ergonomic and safety win of the whole design: **the only way to 
 ### 6.2 One API, three methods, every scope
 
 ```ts
-// src/services/memory.ts  (server-only)
+// the Phase-2 service seam (since carried forward by repositories/memory-repo.ts — see §6.3)
 export const memory = {
   list(selector: MemorySelector): Promise<Result<MemoryRecord[]>>,
   read(selector: MemorySelector, memoryKey: string): Promise<Result<MemoryRecord | null>>,
@@ -177,13 +177,13 @@ export const memory = {
 
 The service is `import 'server-only'` — memory never crosses to the client bundle. Internally, `keysFromSelector()` projects the discriminated selector down to the flat scope-key columns (`organisationId`, `userId`, `agentId`, `conversationId`, `sessionId`), filling exactly the ones the arm carries and leaving the rest `null`. Every method then operates through that projection, so the three methods are genuinely scope-agnostic — the scope only ever enters as data, never as a branch in the caller's code.
 
-`write()` is an upsert: it locates an existing row matching the selector's keys **and** `memoryKey` and replaces it, otherwise inserts. That matches the partial unique indexes (§5) one-to-one, so the prototype's in-memory behaviour is identical to what `on conflict` will do against Postgres.
+The write is an upsert: it locates an existing row matching the scope keys **and** the memory key and replaces it, otherwise inserts. That matches the partial unique indexes (§5) one-to-one — in the live implementation, `memoryRepo.remember()` de-duplicates by (scope, user, agent, key) exactly as the indexes prescribe.
 
-### 6.3 Prototype vs. production — the seam
+### 6.3 From design seam to live implementation
 
-Consistent with the platform's single data seam (`config.isPrototype`, off the non-public `APP_MODE`), the prototype `memory` service backs onto a **non-persistent in-memory array** purely to exercise the interface end-to-end. Production swaps the implementation to read/write the `ai_memory` table where **RLS does the isolation** — the selector-to-keys projection and the method contracts are unchanged. No caller of `memory.list/read/write` needs to know which mode it is in; that is the point of the seam.
+The Phase-2 `memory` service backed onto a **non-persistent in-memory array** purely to exercise the interface end-to-end, with production planned as an implementation swap. That swap has happened: the live implementation ([`src/services/repositories/memory-repo.ts`](../../src/services/repositories/memory-repo.ts)) reads and writes the real `ai_memory` table, where **RLS does the isolation**, and member-facing controls (`forget`, `forget all`, memory on/off) run through [`src/services/memory-actions.ts`](../../src/services/memory-actions.ts). The `MemorySelector` type remains the model of which keys each scope requires.
 
-> **Phase-2 boundary.** There is **no inference** here. `kind='embedding_ref'` rows are *pointers* to vectors, not vectors — the embeddings store and pgvector are deferred to Phase 3 ([12 · Knowledge](./12-knowledge.md)). Memory in Phase 2 is the *substrate and its access rules*, fully shaped and fully guarded, waiting for a model to be wired in.
+> **Boundary note.** Inference is now wired in and uses this substrate — specialist replies read and write memory. `kind='embedding_ref'` rows remain *pointers* to vectors, not vectors: the embeddings store and pgvector are still deferred ([06 · Knowledge](./06-knowledge-architecture.md)).
 
 ---
 
@@ -260,7 +260,7 @@ Unlike the platform's append-only logs (`audit_logs`, `activity_logs`, `consulta
 This is a platform holding sensitive data. The failure modes are not abstract:
 
 - **A session note must never leak.** Session memory is a throwaway scratchpad — half-formed intake answers, transient reasoning. Pinning it to `session_id + user_id` and gating reads on `user_id = auth.uid()` means it dies with the session and is never visible to anyone else, ever. No amount of guessing a `session_id` reaches it.
-- **An org fact must never cross tenants.** `agent` and `organisation` memory is keyed on `organisation_id` and every read/write predicate is `organisation_id = app.current_org_id()`. Organisation A's operating notes are structurally invisible to Organisation B — the tenant boundary is the *same one* the whole multi-tenant schema uses ([02 · Multi-tenancy](./02-multi-tenancy.md)), not a bespoke rule that could rot.
+- **An org fact must never cross tenants.** `agent` and `organisation` memory is keyed on `organisation_id` and every read/write predicate is `organisation_id = app.current_org_id()`. Organisation A's operating notes are structurally invisible to Organisation B — the tenant boundary is the *same one* the whole multi-tenant schema uses ([03 · Database & tenancy](./03-database.md)), not a bespoke rule that could rot.
 - **Sensitive-data reads are justified, not open.** A member's durable `user` memory can be read by same-tenant staff (a practitioner needs context) but authored only by the member. That is the exact posture the platform's sensitive-data RLS takes elsewhere — owner + practitioner/staff + admin — applied to memory.
 - **The two guarantees are enforced twice.** The `MemorySelector` type stops scope confusion at the application boundary; the RLS OR-per-scope predicates stop it at the database boundary. Neither alone is trusted. This is the platform's standing defence-in-depth rule — **RBAC in the app and RLS in the DB, kept in lock-step** — applied to the memory substrate.
 
@@ -274,7 +274,7 @@ Clean scope separation is therefore not a tidiness preference. It is the mechani
 |---|---|
 | Schema, `CHECK`, indexes, RLS | [`db/migrations/0011_memory.sql`](../../db/migrations/0011_memory.sql) |
 | Row shape, `MemoryScope`, `MemoryKind`, `MemorySelector`, `MemoryWrite` | [`src/types/memory.ts`](../../src/types/memory.ts) |
-| `memory.list / read / write`, selector→keys projection, prototype store | [`src/services/memory.ts`](../../src/services/memory.ts) |
+| Live memory API (`remember` / list / `forget`) over `ai_memory` | [`src/services/repositories/memory-repo.ts`](../../src/services/repositories/memory-repo.ts) · [`src/services/memory-actions.ts`](../../src/services/memory-actions.ts) |
 | `Result<T>` / `ok()` service contract | [`src/services/result.ts`](../../src/services/result.ts) |
 | RLS helper functions (`current_org_id`, `is_staff`, `is_admin`, `is_super_admin`) | [`db/migrations/0001_extensions_and_helpers.sql`](../../db/migrations/0001_extensions_and_helpers.sql) |
 | Parent-thread ownership (`conversation` scope reaches through here) | [`db/migrations/0010_conversations.sql`](../../db/migrations/0010_conversations.sql) |

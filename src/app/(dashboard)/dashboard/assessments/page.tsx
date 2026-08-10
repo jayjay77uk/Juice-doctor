@@ -83,7 +83,7 @@ export default async function AssessmentsPage() {
       )}
 
       <p className="text-sm text-muted-foreground">
-        Prototype — sample data. AI replies are live but not clinically reviewed. No real records, bookings or payments are connected.
+        These are the assessment records on your account. AI replies are AI-generated and not clinically reviewed — not for emergencies.
       </p>
     </div>
   );

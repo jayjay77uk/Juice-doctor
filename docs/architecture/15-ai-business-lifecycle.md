@@ -9,7 +9,7 @@
 
 > **Scope.** How the platform was refocused from an *AI builder* into an *AI business*. The product we demonstrate is not "how to build AI models" — it is **how a client operates an AI business** with a Receptionist AI front door, Specialist AI subscription products, and an AI‑centric CRM. All the reusable infrastructure from Phases 2–3 (versioning, prompts, knowledge, safety, analytics, audit, configuration, publishing workflows, admin framework) is **preserved and reused**; only the *experience* is reorganised.
 
-> **Prototype status.** Everything below runs on mock services (in‑process stores) with **no live AI, payments or patient data**. The receptionist's recommendation is rule‑based; production swaps that one function for a model call and the stores for the `0015` tables.
+> **⚠️ Update (2026‑08‑10) — current status.** The seam described in §6 has been crossed. Today: the stores are **real Supabase Postgres tables**; the receptionist performs a **live AI structured assessment** (Anthropic Claude via `receptionist.assess()` — roster-constrained, confidence-thresholded, escalating honestly when it cannot recommend), rate-limited per visitor; specialist conversations stream live Claude replies; CRM leads/events, subscriptions and escalations are real rows. Public pages now exist for the specialists (`/specialists`, `/specialists/[slug]`) and the assistant entry (`/assistant`) — the 2026-07-13 bullets saying no such pages exist and that routing is "a replaceable mock" are superseded (routing is live AI; the *question script and threshold values* remain unapproved placeholders). Still true: **no payment provider** (subscription payments are manual records; pricing is "price on request"), the consultation questions/threshold are placeholder configuration pending client approval, seeded CRM leads/consultation cases are fictional demo data (labelled as such), and AI replies are AI-generated, not clinically reviewed, and not for emergencies.
 
 ---
 
@@ -38,21 +38,21 @@ Four stages, each a section of the admin portal: **Receptionist AI → Specialis
 
 ## 2. The Receptionist AI — the front door
 
-Every visitor starts with the receptionist (`/start`). It is a single agent (`kind='receptionist'`) that:
+Every visitor starts with the receptionist (`/assistant`). It is a single agent (`kind='receptionist'`) that:
 
-1. **Consults** — a short, data‑driven script (`receptionist.questions`, editable in admin).
-2. **Qualifies & recommends** — maps the answers to the best specialist with a **confidence score** (`receptionist.consult()`).
-3. **Creates a CRM lead** — capturing the assessment and recommendation.
+1. **Consults** — a short, data‑driven script (`receptionist.questions`, editable in admin; the questions are placeholder configuration pending client approval).
+2. **Qualifies & recommends** — a **live AI structured assessment** maps the answers to the best specialist with a **confidence score** (`receptionist.assess()`, constrained to the real roster).
+3. **Creates a CRM lead** — capturing the assessment and recommendation as real rows.
 4. **Hands off** — to a specialist subscription, to **WhatsApp**, or…
-5. **Escalates to the escalation target** — automatically when confidence is below `CONFIDENCE_THRESHOLD` (0.6) or a red‑flag case is mentioned.
+5. **Escalates to the escalation target** — automatically when confidence is below the threshold, a red‑flag case is mentioned, or the AI honestly cannot complete the assessment.
 
 | Concern | Where |
 | --- | --- |
-| Consultation script | `receptionist.questions` (data) |
-| Recommendation logic | `services/receptionist.ts` → `consult()` (rule‑based; prod = model call) |
-| Confidence threshold | `CONFIDENCE_THRESHOLD` |
-| Public flow | `components/receptionist/receptionist-console.tsx` + `/start` |
-| Server actions | `services/receptionist-actions.ts` (`consult`, `createLead`) |
+| Consultation script | `receptionist.questions` (data; defaults in `config/receptionist.ts`, stored settings editable in admin) |
+| Recommendation logic | `services/receptionist.ts` → `assess()` (live model call through the AI adapter) |
+| Confidence threshold | `confidenceThreshold` in receptionist settings (`CONFIDENCE_THRESHOLD` default) |
+| Public flow | `components/sections/receptionist-console.tsx` + `/assistant` |
+| Server actions | `services/receptionist-actions.ts` (`receptionistAssessAction`, `receptionistLeadAction`, `receptionistWhatsappAction`) — rate-limited per visitor |
 | Admin | `/admin/receptionist` (identity, script, routing, escalation queue) |
 
 The receptionist is still a normal agent, so its prompt, model, memory and safety are managed by the **same** agent editor and modules as any specialist — nothing bespoke.
@@ -73,7 +73,7 @@ Each specialist has its own:
 | Safety | safety policies (reused) |
 | **Subscriptions & customers** | `specialist_subscriptions` (new, 0015) |
 | **Business analytics** | `specialists.analytics()` (subscribers, MRR, churn, satisfaction) |
-| **Conversation history** | `conversations`/`messages` scoped by `agent_id` (Phase‑next AI) |
+| **Conversation history** | `conversations`/`messages` scoped by `agent_id` (live — real member conversations with streaming AI replies) |
 
 - Public: `/specialists` (catalogue) + `/specialists/[slug]` (product page, subscribe CTA).
 - Admin: `/admin/specialists` (products) + `/admin/specialists/[id]` (Overview · Subscribers · Analytics · Conversations, linking to the shared capability modules).
@@ -113,6 +113,6 @@ plus an **append‑only activity timeline** (`crm_lead_events`).
 
 ---
 
-## 6. The prototype → production seam
+## 6. The prototype → production seam (now crossed)
 
-Unchanged in spirit from earlier phases: services are server‑only and return the production shapes; the mock stores swap for the `0015` tables, and `receptionist.consult()` swaps for a real model call behind the same signature. The confidence threshold, consultation script, routing rules, specialist products and safety policies are all **data**, so the client tunes the business without a deploy — *build once, configure forever.*
+Unchanged in spirit from earlier phases — and since **completed**: services are server‑only and return the production shapes; the mock stores were swapped for the real `0015` tables, and the receptionist's rule‑based recommendation was swapped for a real model call behind the same signature (`receptionist.assess()`). The confidence threshold, consultation script, routing rules, specialist products and safety policies are all **data**, so the client tunes the business without a deploy — *build once, configure forever.*
