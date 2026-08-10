@@ -6,6 +6,9 @@ import { StatGrid, StatCard } from '@/components/admin/stat-card';
 import { EmptyState } from '@/components/admin/empty-state';
 import { getSession } from '@/services/auth';
 import { wearableDashboard } from '@/services/herne/wearable/store';
+import { getConnection } from '@/services/herne/wearable/connections';
+import { isWearableProviderConfigured } from '@/services/herne/wearable/provider';
+import { WearableConnectionControls } from '@/components/dashboard/wearable-connection-controls';
 
 export const metadata = createMetadata({ title: 'Connected health', path: '/dashboard/connected-health' });
 export const dynamic = 'force-dynamic';
@@ -16,25 +19,43 @@ function DirectionIcon({ d }: { d: string }) {
   return <Minus className="size-4 text-muted-foreground" />;
 }
 
+const CONNECTION_LABELS: Record<string, string> = {
+  active: 'Connected',
+  pending: 'Authorisation pending',
+  revoked: 'Disconnected',
+};
+
 export default async function ConnectedHealthPage() {
   const session = await getSession();
   const userId = session?.user.id;
-  const data = userId ? await wearableDashboard(userId) : { consent: false, categories: [], lastSyncAt: null, trends: [], qualityFlags: 0 };
+  const [data, connection] = await Promise.all([
+    userId ? wearableDashboard(userId) : Promise.resolve({ consent: false, categories: [], lastSyncAt: null, trends: [], qualityFlags: 0 }),
+    userId ? getConnection(userId) : Promise.resolve(null),
+  ]);
+  const providerConfigured = isWearableProviderConfigured();
+  const connectionLabel = connection ? (CONNECTION_LABELS[connection.status] ?? connection.status) : 'Not connected';
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8">
       <AdminHeader
         title="Connected health"
-        description="Your wearable trends will inform your HERNE team — with your consent, and only what each specialist is permitted to see."
+        description="Your wearable trends inform your HERNE team — with your consent, and only what each specialist is permitted to see."
       />
 
-      <div className="rounded-xl border border-border bg-surface-muted px-4 py-3 text-sm text-muted-foreground">
-        Wearable device connections are not available yet. When the device integration launches you will be able to
-        connect a device here, choose what to share, and see your trends inform your care plan.
-      </div>
+      <Panel title="Device connection" description="Connect a wearable device, or disconnect at any time — disconnecting revokes consent and deletes your stored data.">
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-foreground">
+            Status: <span className="font-medium">{connectionLabel}</span>
+            {connection?.lastSyncAt && (
+              <span className="text-muted-foreground"> · last sync {new Date(connection.lastSyncAt).toLocaleString('en-GB')}</span>
+            )}
+          </p>
+          <WearableConnectionControls status={connection?.status ?? null} providerConfigured={providerConfigured} />
+        </div>
+      </Panel>
 
       <StatGrid>
-        <StatCard label="Connection" value={data.consent ? 'Connected' : 'Not connected'} icon={ShieldCheck} />
+        <StatCard label="Connection" value={connectionLabel} icon={ShieldCheck} />
         <StatCard label="Shared categories" value={data.consent ? data.categories.length : 0} icon={Activity} />
         <StatCard label="Trends tracked" value={data.trends.length} icon={HeartPulse} />
         <StatCard label="Data quality notices" value={data.qualityFlags} icon={AlertTriangle} />
@@ -46,7 +67,7 @@ export default async function ConnectedHealthPage() {
             <EmptyState
               icon={Moon}
               title="No trends yet"
-              description="Once wearable connections launch and your device has synced, your trends will appear here."
+              description="Once the device provider is connected and your device has synced, your trends will appear here."
             />
           </div>
         ) : (

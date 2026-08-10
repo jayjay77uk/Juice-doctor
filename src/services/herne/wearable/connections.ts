@@ -1,9 +1,11 @@
 import 'server-only';
 
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { HERNE_ORG } from '../records';
 import { wearableConsent } from './store';
-import { getWearableProvider } from './provider';
+import { getWearableProvider, thryveConfig } from './provider';
+import { ingestMeasurements } from './ingest';
 import { auditRepo } from '../../repositories/audit-repo';
 
 /**
@@ -104,6 +106,108 @@ export async function disconnectWearable(userId: string): Promise<{ ok: boolean;
     after: { label: `Consent revoked; ${count ?? 0} measurement(s) deleted` },
   });
   return { ok: true, deleted: count ?? 0 };
+}
+
+/**
+ * Signed state for the provider authorisation callback — HMAC over the user id
+ * and an expiry, keyed with the webhook secret. Null until the provider is
+ * credentialed: no secret, no state, no callback.
+ */
+const CONNECT_STATE_TTL_MS = 15 * 60_000;
+
+export function createConnectState(userId: string): string | null {
+  const config = thryveConfig();
+  if (!config) return null;
+  const expires = Date.now() + CONNECT_STATE_TTL_MS;
+  const payload = `${userId}.${expires}`;
+  const sig = createHmac('sha256', config.webhookSecret).update(payload).digest('hex');
+  return `${payload}.${sig}`;
+}
+
+export function verifyConnectState(state: string): string | null {
+  const config = thryveConfig();
+  if (!config) return null;
+  const parts = state.split('.');
+  if (parts.length !== 3) return null;
+  const [userId, expiresRaw, sig] = parts as [string, string, string];
+  const expires = Number(expiresRaw);
+  if (!Number.isFinite(expires) || expires < Date.now()) return null;
+  const expected = createHmac('sha256', config.webhookSecret).update(`${userId}.${expiresRaw}`).digest('hex');
+  const a = Buffer.from(sig, 'utf8');
+  const b = Buffer.from(expected, 'utf8');
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  return userId;
+}
+
+/** Mark the member's pending connection active (authorisation callback). */
+export async function markConnectionActive(userId: string): Promise<boolean> {
+  const sb = createAdminClient();
+  if (!sb) return false;
+  const { data, error } = await sb
+    .from('user_wearable_connections')
+    .update({ status: 'active', connected_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle();
+  if (!error && data) {
+    await auditRepo.log({ actorId: userId, action: 'wearable.connected', entityType: 'user_wearable_connections', entityId: String(data.id) });
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Pull-and-ingest for one member — admin resync and scheduled sync both use
+ * this. Honest failure until the provider is credentialed; every run goes
+ * through the consent-checked, idempotent ingest engine.
+ */
+export async function resyncForUser(userId: string): Promise<{ ok: boolean; stored: number; error?: string }> {
+  const provider = getWearableProvider();
+  if (!provider) {
+    return { ok: false, stored: 0, error: 'The wearable provider is not connected — resync requires live Thryve credentials.' };
+  }
+  const connection = await getConnection(userId);
+  if (!connection || connection.status !== 'active') {
+    return { ok: false, stored: 0, error: 'This member has no active wearable connection.' };
+  }
+  try {
+    const since = connection.lastSyncAt ?? undefined;
+    const measurements = await provider.fetchMeasurements(userId, since);
+    const result = await ingestMeasurements(userId, measurements, `${provider.key}:resync`);
+    const sb = createAdminClient();
+    if (sb) {
+      await sb.from('user_wearable_connections').update({ last_sync_at: new Date().toISOString() }).eq('user_id', userId).eq('status', 'active');
+    }
+    return { ok: true, stored: result.stored };
+  } catch (e) {
+    return { ok: false, stored: 0, error: e instanceof Error ? e.message.slice(0, 200) : 'Resync failed.' };
+  }
+}
+
+/** Admin list of member connections (operational metadata only). */
+export async function listConnections(limit = 50): Promise<{ userId: string; email: string; status: string; connectedAt: string | null; lastSyncAt: string | null }[]> {
+  const sb = createAdminClient();
+  if (!sb) return [];
+  const { data } = await sb
+    .from('user_wearable_connections')
+    .select('user_id, status, connected_at, last_sync_at')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  const rows = data ?? [];
+  const userIds = [...new Set(rows.map((r) => String(r.user_id)))];
+  const emails = new Map<string, string>();
+  if (userIds.length) {
+    const { data: profiles } = await sb.from('profiles').select('id, email').in('id', userIds);
+    for (const p of profiles ?? []) emails.set(String(p.id), String(p.email ?? ''));
+  }
+  return rows.map((r) => ({
+    userId: String(r.user_id),
+    email: emails.get(String(r.user_id)) || '(unknown)',
+    status: String(r.status),
+    connectedAt: (r.connected_at as string | null) ?? null,
+    lastSyncAt: (r.last_sync_at as string | null) ?? null,
+  }));
 }
 
 /** Admin roll-up of connection + sync state (all real rows). */

@@ -7,8 +7,9 @@ import { Panel } from '@/components/admin/panel';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, type Column } from '@/components/admin/data-table';
 import { EmptyState } from '@/components/admin/empty-state';
-import { connectionStats } from '@/services/herne/wearable/connections';
+import { connectionStats, listConnections } from '@/services/herne/wearable/connections';
 import { isWearableProviderConfigured } from '@/services/herne/wearable/provider';
+import { WearableResyncButton } from '@/components/admin/wearable-resync-button';
 import {
   listWearableCatalog, listConsents, listAiAccessLogs,
   type AdminWearableMetric, type AdminConsent, type AdminAiAccessLog,
@@ -19,11 +20,12 @@ export const metadata: Metadata = createMetadata({ title: 'HERNE wearable data' 
 export const dynamic = 'force-dynamic';
 
 export default async function HerneWearablePage() {
-  const [catalog, consents, aiLogs, connStats, providerConfigured] = await Promise.all([
+  const [catalog, consents, aiLogs, connStats, connections, providerConfigured] = await Promise.all([
     listWearableCatalog(),
     listConsents(25),
     listAiAccessLogs(25),
     connectionStats(),
+    listConnections(25),
     Promise.resolve(isWearableProviderConfigured()),
   ]);
   const connectionSummary = Object.entries(connStats.byStatus)
@@ -89,6 +91,31 @@ export default async function HerneWearablePage() {
           disconnect-with-deletion are ready; measurements flow only once the provider is credentialed. Nothing is
           simulated.
         </p>
+      </Panel>
+
+      <Panel title="Member connections" description="Each member's device connection with staff resync (pull-and-ingest through the consent-checked engine)." padded={false}>
+        {connections.length === 0 ? (
+          <div className="p-8">
+            <EmptyState icon={Watch} title="No member connections yet" description="Connections appear when members connect a device (requires the provider to be credentialed)." />
+          </div>
+        ) : (
+          <ul className="divide-y divide-border">
+            {connections.map((c) => (
+              <li key={c.userId} className="flex flex-wrap items-center justify-between gap-3 px-6 py-3 text-sm">
+                <span className="min-w-0">
+                  <span className="text-foreground">{c.email}</span>
+                  <span className="ml-3 text-xs text-muted-foreground">
+                    {c.lastSyncAt ? `last sync ${new Date(c.lastSyncAt).toLocaleString('en-GB')}` : 'never synced'}
+                  </span>
+                </span>
+                <span className="flex items-center gap-3">
+                  <Badge tone={c.status === 'active' ? 'secondary' : 'outline'}>{c.status}</Badge>
+                  {c.status === 'active' && <WearableResyncButton userId={c.userId} />}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </Panel>
 
       <Panel title={`Metric catalogue — ${catalog.length}`} description="Client-supplied metrics, permitted use and limitations" padded={false}>
