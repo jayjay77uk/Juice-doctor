@@ -134,6 +134,34 @@ export const conversationsRepo = {
     return ok({ content: String(msg.content), agentId: conv.agent_id ? String(conv.agent_id) : null });
   },
 
+  /** Admin view: recent conversations with one specialist (metadata only). */
+  async listByAgent(agentId: string, limit = 25): Promise<Result<(Conversation & { messageCount: number })[]>> {
+    const sb = createAdminClient();
+    if (!sb) return err({ code: 'unavailable', message: 'Conversation store unavailable.' });
+    const { data, error } = await sb
+      .from('conversations')
+      .select('*')
+      .eq('agent_id', agentId)
+      .neq('status', 'deleted')
+      .order('last_message_at', { ascending: false, nullsFirst: false })
+      .limit(limit);
+    if (error) return err({ code: 'unavailable', message: error.message });
+    const conversations = (data ?? []).map(rowToConversation);
+    const counts = new Map<string, number>();
+    if (conversations.length) {
+      const { data: messages } = await sb
+        .from('messages')
+        .select('conversation_id')
+        .in('conversation_id', conversations.map((c) => c.id))
+        .limit(5000);
+      for (const m of messages ?? []) {
+        const key = String(m.conversation_id);
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+    }
+    return ok(conversations.map((c) => ({ ...c, messageCount: counts.get(c.id) ?? 0 })));
+  },
+
   async create(input: { userId: string; agentId: string; title?: string }): Promise<Result<Conversation>> {
     const sb = createAdminClient();
     if (!sb) return err({ code: 'unavailable', message: 'Conversation store unavailable.' });

@@ -1,0 +1,96 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+import { assertRole } from '@/lib/auth/authorize';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { auditRepo } from './repositories/audit-repo';
+import { sendTemplateMail } from './mail';
+
+/**
+ * User invitations (admin). Creates the real account, sets its role, and
+ * generates a one-time password-setup link (Supabase recovery link — no
+ * password ever passes through an admin's hands). The link is shown ONCE to
+ * the admin to share; the invitation email is queued in the outbox and only
+ * sends once the email provider is connected — the UI says exactly that.
+ */
+
+const INVITABLE_ROLES = ['member', 'practitioner', 'staff', 'administrator'] as const;
+
+const inviteSchema = z.object({
+  email: z.string().email('Enter a valid email address.').max(254),
+  role: z.enum(INVITABLE_ROLES),
+  fullName: z.string().max(120).optional().or(z.literal('')),
+});
+
+export interface InviteResult {
+  ok: boolean;
+  error?: string;
+  /** One-time password-setup link — displayed once, never stored by the app. */
+  setupUrl?: string;
+  emailQueued?: boolean;
+}
+
+export async function inviteUserAction(_prev: InviteResult, formData: FormData): Promise<InviteResult> {
+  let actorId: string;
+  try {
+    actorId = (await assertRole('administrator')).user.id;
+  } catch {
+    return { ok: false, error: 'Not authorised.' };
+  }
+  const parsed = inviteSchema.safeParse({
+    email: formData.get('email'),
+    role: formData.get('role'),
+    fullName: formData.get('fullName'),
+  });
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the fields.' };
+
+  const sb = createAdminClient();
+  if (!sb) return { ok: false, error: 'User management is not available right now.' };
+
+  const email = parsed.data.email.toLowerCase();
+  const { data: created, error: createError } = await sb.auth.admin.createUser({ email, email_confirm: true });
+  if (createError || !created.user) {
+    return { ok: false, error: createError?.message.includes('already') ? 'An account with that email already exists.' : 'Could not create the account.' };
+  }
+
+  // Role + name on the profile (created by the registration trigger).
+  await sb
+    .from('profiles')
+    .update({ role: parsed.data.role, ...(parsed.data.fullName ? { full_name: parsed.data.fullName } : {}) })
+    .eq('id', created.user.id);
+
+  // One-time password-setup link (Supabase recovery link, generated — not emailed by Supabase).
+  const { data: link, error: linkError } = await sb.auth.admin.generateLink({ type: 'recovery', email });
+  const setupUrl = !linkError ? (link.properties?.action_link ?? '') : '';
+
+  await auditRepo.log({
+    actorId,
+    action: 'user.invited',
+    entityType: 'profiles',
+    entityId: created.user.id,
+    after: { role: parsed.data.role },
+  });
+
+  let emailQueued = false;
+  if (setupUrl) {
+    try {
+      const delivery = await sendTemplateMail({
+        to: email,
+        template: 'account.invitation',
+        params: { role: parsed.data.role, setupUrl },
+        dedupeKey: `invite:${created.user.id}`,
+      });
+      emailQueued = delivery.delivered || delivery.recorded;
+    } catch {
+      emailQueued = false;
+    }
+  }
+
+  revalidatePath('/admin/users');
+  return {
+    ok: true,
+    ...(setupUrl ? { setupUrl } : {}),
+    emailQueued,
+  };
+}

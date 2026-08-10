@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Users, UserPlus, ShieldCheck, Stethoscope, User } from 'lucide-react';
+import { Users, ShieldCheck, Stethoscope, User } from 'lucide-react';
 import { createMetadata } from '@/config/metadata';
 import { AdminHeader } from '@/components/admin/admin-header';
 import { Panel } from '@/components/admin/panel';
@@ -7,7 +7,7 @@ import { StatGrid, StatCard } from '@/components/admin/stat-card';
 import { DataTable, type Column } from '@/components/admin/data-table';
 import { StatusBadge } from '@/components/admin/status-badge';
 import { EmptyState } from '@/components/admin/empty-state';
-import { Button } from '@/components/ui/button';
+import { InviteUserForm } from '@/components/admin/invite-user-form';
 import { admin } from '@/services/admin';
 import type { Profile } from '@/types/identity';
 
@@ -52,11 +52,7 @@ export default async function UsersPage() {
         title="Users"
         description="Manage members, practitioners and staff."
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Users' }]}
-        actions={
-          <Button size="sm" disabled title="User invitations are not yet available">
-            <UserPlus className="size-4" /> Invite user
-          </Button>
-        }
+        actions={<InviteUserForm />}
       />
 
       <StatGrid>

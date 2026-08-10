@@ -33,7 +33,14 @@ export const env = {
   aiDailyUserLimit: num(process.env.AI_DAILY_USER_LIMIT, 50),
   aiMonthlyUserLimit: num(process.env.AI_MONTHLY_USER_LIMIT, 500),
 
-  siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3011',
+  // Canonical origin, fully domain-agnostic: the client's final domain is a
+  // single env change (NEXT_PUBLIC_SITE_URL). Until then Vercel's production
+  // URL applies automatically; localhost only in local dev.
+  siteUrl:
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined) ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ??
+    'http://localhost:3011',
 } as const;
 
 // Provider-gating checks read process.env PER CALL (matching thryveConfig in

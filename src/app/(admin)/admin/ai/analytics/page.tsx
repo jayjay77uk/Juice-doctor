@@ -60,9 +60,9 @@ export default async function AnalyticsPage() {
       </Panel>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Popular questions (coming soon)" description="Question clustering is not built yet — nothing is shown until it is." padded={false}>
+        <Panel title="Popular questions" description="Real clusters of member questions from the last 30 days (a cluster needs at least two similar questions)." padded={false}>
           {questions.length === 0 && (
-            <p className="px-6 py-6 text-sm text-muted-foreground">Coming soon — no question clusters yet.</p>
+            <p className="px-6 py-6 text-sm text-muted-foreground">No recurring questions yet — clusters appear as real usage accumulates.</p>
           )}
           <ol className="divide-y divide-border">
             {questions.map((q, i) => (

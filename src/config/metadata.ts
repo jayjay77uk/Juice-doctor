@@ -5,9 +5,14 @@ import { site } from '@/content/site';
  * SEO defaults. Per-route pages extend these via `createMetadata()`.
  * Indexing stays off until the client approves public launch (see `app/robots.ts`).
  */
-// The deployed origin; override with NEXT_PUBLIC_SITE_URL when the client's
-// final domain goes live.
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://prototypeai-rose.vercel.app';
+// The deployed origin — domain-agnostic. The client's final domain is a
+// single env change (NEXT_PUBLIC_SITE_URL); until then Vercel's production
+// URL applies automatically. Canonical/OG URLs, sitemaps and auth redirects
+// all derive from this.
+export const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined) ??
+  'http://localhost:3011';
 
 const TITLE_DEFAULT = `${site.name} — Wellbeing Specialist Platform`;
 

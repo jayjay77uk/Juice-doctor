@@ -11,10 +11,10 @@ import { StatusBadge } from '@/components/admin/status-badge';
 import { EmptyState } from '@/components/admin/empty-state';
 import { Tabs } from '@/components/admin/tabs';
 import { Button } from '@/components/ui/button';
-import { ComingSoon } from '@/components/sections/coming-soon';
 import { specialists } from '@/services/specialists';
 import { agents } from '@/services/agents';
 import { knowledge } from '@/services/knowledge';
+import { conversationsRepo } from '@/services/repositories/conversations-repo';
 import type { SpecialistSubscription } from '@/types/crm';
 
 export const metadata = createMetadata({ title: 'Specialist AI' });
@@ -39,17 +39,19 @@ export default async function SpecialistDetailPage({
   if (!spResult.ok) notFound();
   const sp = spResult.data;
 
-  const [subsResult, analyticsResult, knowledgeResult, versionsResult] = await Promise.all([
+  const [subsResult, analyticsResult, knowledgeResult, versionsResult, conversationsResult] = await Promise.all([
     specialists.subscriptions(sp.slug),
     specialists.analytics(sp.slug),
     knowledge.documents.forSpecialist(sp.slug),
     agents.versions(sp.id),
+    conversationsRepo.listByAgent(sp.id),
   ]);
 
   const subscriptions = subsResult.ok ? subsResult.data : [];
   const analytics = analyticsResult.ok ? analyticsResult.data : null;
   const knowledgeDocs = knowledgeResult.ok ? knowledgeResult.data : [];
   const promptVersions = versionsResult.ok ? versionsResult.data : [];
+  const conversations = conversationsResult.ok ? conversationsResult.data : [];
 
   const memoryItems: { label: string; enabled: boolean }[] = [
     { label: 'Personal memory (per customer)', enabled: sp.memoryConfig.useUserMemory },
@@ -362,18 +364,30 @@ export default async function SpecialistDetailPage({
             value: 'conversations',
             label: 'Conversations & feedback',
             content: (
-              <Panel title="Conversations & feedback">
-                <div className="flex flex-col gap-4">
-                  <p className="text-sm text-muted-foreground">
-                    Conversations and satisfaction feedback for {sp.name} are collected per customer.
-                    Today, each customer’s conversation history lives in the member dashboard
-                    rather than here.
-                  </p>
-                  <ComingSoon
-                    title="Conversation history"
-                    body="Subscriber conversations are already stored in the platform database — a searchable per-specialist view here is coming soon."
-                  />
-                </div>
+              <Panel title="Conversation history" description={`Recent conversations with ${sp.name} — metadata for oversight; message content stays in the member's own dashboard.`} padded={false}>
+                {conversations.length === 0 ? (
+                  <div className="p-6">
+                    <EmptyState icon={MessageSquare} title="No conversations yet" description={`Conversations appear here as members talk to ${sp.name}.`} />
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {conversations.map((c) => (
+                      <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 px-6 py-3 text-sm">
+                        <span className="min-w-0">
+                          <span className="truncate font-medium text-foreground">{c.title}</span>
+                          <span className="ml-3 font-mono text-xs text-muted-foreground">member {c.userId.slice(0, 8)}…</span>
+                        </span>
+                        <span className="flex shrink-0 items-center gap-3">
+                          <span className="tabular-nums text-muted-foreground">{c.messageCount} message(s)</span>
+                          <StatusBadge status={c.status} />
+                          <span className="text-xs tabular-nums text-muted-foreground">
+                            {c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleString('en-GB') : '—'}
+                          </span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </Panel>
             ),
           },

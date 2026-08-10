@@ -90,9 +90,52 @@ export const analytics = {
     );
   },
 
-  /** Coming soon — question clustering is not yet built. Never fabricated. */
-  async popularQuestions(): Promise<Result<PopularQuestion[]>> {
-    return ok([]);
+  /**
+   * Popular questions — REAL clustering over the last 30 days of member
+   * inputs in ai_run_logs (non-playground). Deterministic normalisation
+   * (lowercase, punctuation stripped, stop-words removed, first eight
+   * significant words as the cluster key); a cluster needs at least two
+   * occurrences, and the shortest member question represents it. Empty until
+   * real usage accumulates — never fabricated.
+   */
+  async popularQuestions(limit = 10): Promise<Result<PopularQuestion[]>> {
+    const sb = createAdminClient();
+    if (!sb) return ok([]);
+    const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    const { data } = await sb
+      .from('ai_run_logs')
+      .select('input')
+      .eq('is_playground', false)
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(1000);
+    const STOP = new Set(['i', 'a', 'an', 'the', 'is', 'are', 'am', 'do', 'my', 'me', 'to', 'of', 'and', 'or', 'for', 'in', 'on', 'it', 'you', 'can', 'what', 'how', 'with', 'have', 'has', 'be', 'this', 'that', 'please']);
+    const clusters = new Map<string, { count: number; representative: string }>();
+    for (const row of data ?? []) {
+      const raw = String(row.input ?? '').trim();
+      if (raw.length < 10 || raw.length > 600) continue;
+      const words = raw
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+        .split(/\s+/)
+        .filter((w) => w.length > 1 && !STOP.has(w));
+      if (words.length < 2) continue;
+      const key = words.slice(0, 8).join(' ');
+      const existing = clusters.get(key);
+      if (existing) {
+        existing.count += 1;
+        if (raw.length < existing.representative.length) existing.representative = raw;
+      } else {
+        clusters.set(key, { count: 1, representative: raw });
+      }
+    }
+    return ok(
+      [...clusters.values()]
+        .filter((c) => c.count >= 2)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, limit)
+        .map((c) => ({ question: c.representative.slice(0, 160), count: c.count })),
+    );
   },
 
   /** Real retrieval counts aggregated from each AI call's retrieved evidence. */
