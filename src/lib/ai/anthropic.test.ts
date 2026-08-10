@@ -154,3 +154,33 @@ describe('Anthropic provider — safe logging', () => {
     expect(logged).not.toContain('SECRET_RESPONSE_TEXT');
   });
 });
+
+describe('Anthropic provider — timeout vs user-abort classification', () => {
+  it('classifies a timer-driven abort as a retryable timeout, not a cancellation', async () => {
+    const { classify } = await import('./anthropic');
+    const abortErr = new ((await import('@anthropic-ai/sdk')).default as unknown as { APIUserAbortError: new () => Error }).APIUserAbortError();
+    const timedOut = classify(abortErr, 'ai_test', true);
+    expect(timedOut.kind).toBe('timeout');
+    expect(timedOut.retryable).toBe(true);
+    const aborted = classify(abortErr, 'ai_test', false);
+    expect(aborted.kind).toBe('aborted');
+    expect(aborted.retryable).toBe(false);
+  });
+
+  it('withTimeout reports timedOut only when the timer fired', async () => {
+    const { withTimeout } = await import('./anthropic');
+    // Timer fires → timedOut() true.
+    const t = withTimeout(undefined, 10);
+    await new Promise((r) => setTimeout(r, 30));
+    expect(t.signal.aborted).toBe(true);
+    expect(t.timedOut()).toBe(true);
+    t.cleanup();
+    // Caller aborts first → timedOut() false.
+    const caller = new AbortController();
+    const c = withTimeout(caller.signal, 10_000);
+    caller.abort();
+    expect(c.signal.aborted).toBe(true);
+    expect(c.timedOut()).toBe(false);
+    c.cleanup();
+  });
+});

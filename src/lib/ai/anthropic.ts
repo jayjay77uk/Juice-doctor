@@ -26,6 +26,10 @@ import { newTraceId, logAiTrace } from './trace';
 const DEFAULT_MAX_TOKENS = env.aiMaxOutputTokens;
 const REQUEST_TIMEOUT_MS = env.aiRequestTimeoutMs;
 const MAX_RETRIES = 2;
+// The SDK's timeout is PER ATTEMPT; our outer timer bounds TOTAL wall time.
+// It must leave room for the SDK's automatic retries (429/overload/5xx) or
+// they can never run — bound total at attempts × per-attempt + backoff slack.
+const TOTAL_TIMEOUT_MS = REQUEST_TIMEOUT_MS * (MAX_RETRIES + 1) + 5_000;
 
 function firstText(content: Anthropic.Messages.ContentBlock[]): string {
   const block = content.find((b): b is Anthropic.Messages.TextBlock => b.type === 'text');
@@ -38,14 +42,23 @@ function mentionsTemperature(cause: unknown): boolean {
   return /temperature/i.test(msg);
 }
 
-/** Map an SDK/transport error to our typed, categorised provider error. */
-function classify(cause: unknown, traceId: string): AiProviderError {
+/**
+ * Map an SDK/transport error to our typed, categorised provider error.
+ * `timedOut` distinguishes OUR timeout timer firing from a genuine caller
+ * cancellation — both surface from the SDK as APIUserAbortError because the
+ * timer aborts the merged signal, but a timeout is retryable and a user
+ * cancellation is not.
+ */
+export function classify(cause: unknown, traceId: string, timedOut = false): AiProviderError {
   const status = cause instanceof Anthropic.APIError ? cause.status ?? null : null;
   const name = cause instanceof Error ? cause.name : '';
   let kind: AiErrorKind = 'unknown';
   let retryable = false;
 
-  if (cause instanceof Anthropic.APIUserAbortError || name === 'AbortError') {
+  if (timedOut && (cause instanceof Anthropic.APIUserAbortError || name === 'AbortError' || name === 'TimeoutError')) {
+    kind = 'timeout';
+    retryable = true;
+  } else if (cause instanceof Anthropic.APIUserAbortError || name === 'AbortError') {
     kind = 'aborted';
   } else if (cause instanceof Anthropic.APIConnectionTimeoutError || /timeout/i.test(name)) {
     kind = 'timeout';
@@ -78,17 +91,26 @@ function classify(cause: unknown, traceId: string): AiProviderError {
   return new AiProviderError(messages[kind], { kind, status, retryable, traceId, cause });
 }
 
-/** Combine the caller's signal with a timeout into one signal + cleanup. */
-function withTimeout(signal: AbortSignal | undefined, ms: number): { signal: AbortSignal; cleanup: () => void } {
+/**
+ * Combine the caller's signal with a timeout into one signal + cleanup.
+ * `timedOut()` reports whether the TIMER (not the caller) caused the abort,
+ * so errors can be classified as timeout (retryable) vs aborted (not).
+ */
+export function withTimeout(signal: AbortSignal | undefined, ms: number): { signal: AbortSignal; cleanup: () => void; timedOut: () => boolean } {
   const controller = new AbortController();
+  let timerFired = false;
   const onAbort = () => controller.abort((signal as AbortSignal | undefined)?.reason);
-  const timer = setTimeout(() => controller.abort(new DOMException('Request timed out', 'TimeoutError')), ms);
+  const timer = setTimeout(() => {
+    timerFired = true;
+    controller.abort(new DOMException('Request timed out', 'TimeoutError'));
+  }, ms);
   if (signal) {
     if (signal.aborted) controller.abort(signal.reason);
     else signal.addEventListener('abort', onAbort, { once: true });
   }
   return {
     signal: controller.signal,
+    timedOut: () => timerFired,
     cleanup: () => {
       clearTimeout(timer);
       signal?.removeEventListener('abort', onAbort);
@@ -112,7 +134,7 @@ export function createAnthropicProvider(): AiProvider {
     const traceId = newTraceId();
     const started = Date.now();
     const model = req.model ?? env.aiModel;
-    const { signal, cleanup } = withTimeout(req.signal, REQUEST_TIMEOUT_MS);
+    const { signal, cleanup, timedOut } = withTimeout(req.signal, TOTAL_TIMEOUT_MS);
     const base = baseParams(req);
     try {
       let res: Anthropic.Messages.Message;
@@ -133,7 +155,7 @@ export function createAnthropicProvider(): AiProvider {
       logAiTrace({ traceId, provider: 'anthropic', model: res.model, status: 'ok', latencyMs, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, costUsd, op: req.op });
       return { text: firstText(res.content), model: res.model, usage, latencyMs, costUsd, traceId, stopReason: res.stop_reason ?? null };
     } catch (cause) {
-      const err = classify(cause, traceId);
+      const err = classify(cause, traceId, timedOut());
       logAiTrace({ traceId, provider: 'anthropic', model, status: err.kind === 'aborted' ? 'aborted' : 'error', latencyMs: Date.now() - started, errorKind: err.kind, op: req.op });
       throw err;
     } finally {
@@ -145,7 +167,7 @@ export function createAnthropicProvider(): AiProvider {
     const traceId = newTraceId();
     const started = Date.now();
     const model = req.model ?? env.aiModel;
-    const { signal, cleanup } = withTimeout(req.signal, REQUEST_TIMEOUT_MS);
+    const { signal, cleanup, timedOut } = withTimeout(req.signal, TOTAL_TIMEOUT_MS);
     const base = baseParams(req);
     let inputTokens = 0;
     let outputTokens = 0;
@@ -183,7 +205,7 @@ export function createAnthropicProvider(): AiProvider {
       logAiTrace({ traceId, provider: 'anthropic', model: resolvedModel, status: 'ok', latencyMs, inputTokens, outputTokens, costUsd, op: req.op });
       yield { type: 'final', result: { text, model: resolvedModel, usage, latencyMs, costUsd, traceId, stopReason } };
     } catch (cause) {
-      const err = classify(cause, traceId);
+      const err = classify(cause, traceId, timedOut());
       logAiTrace({ traceId, provider: 'anthropic', model, status: err.kind === 'aborted' ? 'aborted' : 'error', latencyMs: Date.now() - started, errorKind: err.kind, op: req.op });
       throw err;
     } finally {

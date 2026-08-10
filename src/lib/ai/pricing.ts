@@ -17,6 +17,13 @@ export interface ModelRate {
 
 /** Approximate list prices. Matched by longest-prefix so dated model ids resolve. */
 const RATES: Record<string, ModelRate> = {
+  'claude-fable-5': { inputPerMTok: 10, outputPerMTok: 50 },
+  // Opus 4.5+ moved to $5/$25; the bare 'claude-opus-4' prefix keeps the older
+  // 4.0/4.1 models on their $15/$75 list price (longest-prefix wins).
+  'claude-opus-4-8': { inputPerMTok: 5, outputPerMTok: 25 },
+  'claude-opus-4-7': { inputPerMTok: 5, outputPerMTok: 25 },
+  'claude-opus-4-6': { inputPerMTok: 5, outputPerMTok: 25 },
+  'claude-opus-4-5': { inputPerMTok: 5, outputPerMTok: 25 },
   'claude-opus-4': { inputPerMTok: 15, outputPerMTok: 75 },
   'claude-sonnet-5': { inputPerMTok: 3, outputPerMTok: 15 },
   'claude-sonnet-4': { inputPerMTok: 3, outputPerMTok: 15 },

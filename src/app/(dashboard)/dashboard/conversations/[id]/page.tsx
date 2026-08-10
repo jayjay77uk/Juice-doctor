@@ -15,11 +15,12 @@ export default async function ConversationThreadPage({ params }: { params: Promi
   const session = await getSession();
   const convo = await conversations_service.byId(id);
   // Only the owner may view a thread (defence in depth alongside the actions).
-  if (!convo.ok || (session && convo.data.userId !== session.user.id)) notFound();
+  // No session means no owner match — never fail open when unauthenticated.
+  if (!session?.user.id || !convo.ok || convo.data.userId !== session.user.id) notFound();
 
   const [messagesResult, rememberedResult] = await Promise.all([
     conversations_service.messages(id),
-    session?.user.id ? conversations_service.remembered(session.user.id) : Promise.resolve({ ok: true as const, data: [] as string[] }),
+    conversations_service.remembered(session.user.id),
   ]);
 
   let agentName = 'Specialist AI';

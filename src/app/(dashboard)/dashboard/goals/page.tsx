@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/admin/status-badge';
 import { EmptyState } from '@/components/admin/empty-state';
 import { Button } from '@/components/ui/button';
 import { AddGoalForm } from '@/components/dashboard/add-goal-form';
+import { UpdateGoalForm } from '@/components/dashboard/update-goal-form';
 import { member } from '@/services/member';
 
 export const metadata = createMetadata({ title: 'My goals', path: '/dashboard/goals' });
@@ -71,6 +72,14 @@ export default async function GoalsPage() {
                     </span>
                     {goal.targetDate && <span>By {goal.targetDate}</span>}
                   </div>
+
+                  <UpdateGoalForm
+                    goalId={goal.id}
+                    progress={pct}
+                    currentValue={goal.currentValue}
+                    status={goal.status}
+                    unit={goal.unit}
+                  />
                 </div>
               </Panel>
             );

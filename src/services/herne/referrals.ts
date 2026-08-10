@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { HERNE_ORG } from './records';
 import { carePlan, timeline } from './care-plan';
 import { herneProfile } from '@/data/herne/specialist-profiles';
-import { loadReferralMatrix, isHumanEscalation } from './referral-matrix';
+import { loadReferralMatrix, isHumanEscalation, normalizeSpecialistRef, isWildcardRef } from './referral-matrix';
 
 export { isHumanEscalation } from './referral-matrix';
 
@@ -99,14 +99,32 @@ export const referralEngine = {
     const plan = await carePlan.getOrCreate(input.userId);
     const rules = await referralRules.list();
 
-    // Informational validation: is there a matrix rule that authorises this handoff?
+    // Informational validation: is there a matrix rule that authorises this
+    // handoff? Names are normalised to slugs and wildcards ('Any', 'Any
+    // specialist', 'Relevant specialist') only match on their own side — a rule
+    // must genuinely cover this from→to pair to count.
+    const fromSlug = normalizeSpecialistRef(input.fromSpecialist);
+    const toSlug = normalizeSpecialistRef(input.toSpecialist);
     const matchedRule = rules.some((r) => {
-      const from = r.fromSpecialist.toLowerCase();
-      const to = r.toSpecialist.toLowerCase();
-      const fromOk = from === input.fromSpecialist.toLowerCase() || from === 'any' || from === 'makela';
-      const toOk = to.includes(input.toSpecialist.toLowerCase()) || to.includes('any') || to.includes('relevant') || (human && r.isHumanEscalation);
+      const fromOk = isWildcardRef(r.fromSpecialist) || normalizeSpecialistRef(r.fromSpecialist) === fromSlug;
+      const toOk = human
+        ? r.isHumanEscalation
+        : !r.isHumanEscalation && (isWildcardRef(r.toSpecialist) || normalizeSpecialistRef(r.toSpecialist) === toSlug);
       return fromOk && toOk;
     });
+
+    // Dedupe: a still-open referral for the same from→to pair is returned, not
+    // re-inserted (the live conversation path may detect the same handoff on
+    // consecutive turns).
+    const dupQuery = sb
+      .from('herne_referrals')
+      .select('id')
+      .eq('user_id', input.userId)
+      .eq('from_specialist', input.fromSpecialist)
+      .eq('status', 'open')
+      .limit(1);
+    const { data: existing } = await (human ? dupQuery.eq('to_human_role', input.toSpecialist) : dupQuery.eq('to_specialist', input.toSpecialist));
+    if (existing?.length) return { referralId: String(existing[0]!.id), matchedRule, context: {} };
 
     const fromName = herneProfile(input.fromSpecialist)?.name ?? input.fromSpecialist;
     const toName = human ? input.toSpecialist : herneProfile(input.toSpecialist)?.name ?? input.toSpecialist;

@@ -15,7 +15,9 @@ import { languageDirective, HERNE_DEFAULT_PREFERENCE, type LanguagePreference } 
 import { getLanguagePreferenceFor } from './language-store';
 import { carePlan, timeline, type CarePlan, type CarePlanAction, type TimelineEvent } from './care-plan';
 import { buildWearableContext, type WearableContext } from './wearable/store';
-import { referralRules, escalationEngine, type ReferralRule } from './referrals';
+import { referralRules, escalationEngine, referralEngine, type ReferralRule } from './referrals';
+import { normalizeSpecialistRef, isWildcardRef } from './referral-matrix';
+import { windowHistory } from '@/lib/ai/history';
 import { activePrompt, type ActivePrompt } from './prompt-version';
 import { precheckInput, postcheckOutput, type SafetyCategory } from './safety-eval';
 import { isMemoryEnabled } from '../memory-prefs';
@@ -209,6 +211,7 @@ interface PreparedTurn {
   profile: HerneSpecialistProfile;
   specialistName: string;
   started: number;
+  rules: ReferralRule[];
 }
 
 /**
@@ -260,7 +263,12 @@ async function prepareTurn(agent: AiAgent, history: ChatMessage[], query: string
 
   const planActions = plan ? await carePlan.actions(plan.id) : [];
   const objective = ctx?.goal ?? (plan?.goals.length ? plan.goals.join('; ') : null);
-  const referralBoundaries = rules.filter((r) => r.fromSpecialist === agent.slug);
+  // Rules are seeded with display names ('Aqua') while agent identity is the
+  // slug ('aqua') — normalise before comparing, and include wildcard ('Any')
+  // rules such as the emergency escalation that applies to every specialist.
+  const referralBoundaries = rules.filter(
+    (r) => isWildcardRef(r.fromSpecialist) || normalizeSpecialistRef(r.fromSpecialist) === agent.slug,
+  );
 
   const system =
     assembleSystemPrompt({
@@ -271,16 +279,49 @@ async function prepareTurn(agent: AiAgent, history: ChatMessage[], query: string
     }) +
     (memory.length ? `\n\nWHAT YOU REMEMBER ABOUT THIS PERSON (respect it):\n${memory.map((m) => `- ${m.content}`).join('\n')}` : '');
 
-  const messages: ChatMessage[] = [...history.slice(-8), { role: 'user', content: query }];
-  return { kind: 'ready', provider, system, messages, retrieved, activeVer: active, pre, pref, profile, specialistName, started };
+  // windowHistory trims a leading assistant turn — the API 400s on one.
+  const messages: ChatMessage[] = [...windowHistory(history, 8), { role: 'user', content: query }];
+  return { kind: 'ready', provider, system, messages, retrieved, activeVer: active, pre, pref, profile, specialistName, started, rules };
 }
 
-interface RawResult { text: string; usage: AiUsage | null; model: string | null; costUsd: number; latencyMs: number; traceId: string | null }
+interface RawResult { text: string; usage: AiUsage | null; model: string | null; costUsd: number; latencyMs: number; traceId: string | null; stopReason: string | null }
 
-/** Shared post-inference finalisation: post-check, logging, escalation, memory, reply. */
+/**
+ * Detect a colleague handoff in the reply: a referral-matrix rule from this
+ * specialist whose named target is mentioned in the answer text. Deterministic
+ * and conservative — wildcard targets and human escalations are excluded
+ * (humans are handled by the escalation engine).
+ */
+function detectColleagueReferral(
+  slug: string,
+  text: string,
+  rules: ReferralRule[],
+): { toSlug: string; toName: string; rule: ReferralRule } | null {
+  const lower = text.toLowerCase();
+  for (const rule of rules) {
+    if (rule.isHumanEscalation || isWildcardRef(rule.toSpecialist)) continue;
+    if (!(isWildcardRef(rule.fromSpecialist) || normalizeSpecialistRef(rule.fromSpecialist) === slug)) continue;
+    const toSlug = normalizeSpecialistRef(rule.toSpecialist);
+    const toProfile = herneProfile(toSlug);
+    if (!toProfile || toSlug === slug) continue;
+    if (new RegExp(`\\b${toProfile.name.toLowerCase()}\\b`).test(lower)) {
+      return { toSlug, toName: toProfile.name, rule };
+    }
+  }
+  return null;
+}
+
+/** Shared post-inference finalisation: post-check, logging, escalation, referral, memory, reply. */
 async function finalizeTurn(t: PreparedTurn, agent: AiAgent, query: string, ctx: HerneCtx | undefined, raw: RawResult): Promise<HerneReply> {
   const { retrieved, activeVer, pre, pref, specialistName } = t;
   const post = postcheckOutput(raw.text.trim(), retrieved.map((r) => r.recordId));
+  // stopReason handling: a max_tokens cut-off must not read as a finished
+  // answer, and a refusal must never surface as empty text.
+  if (raw.stopReason === 'max_tokens') {
+    post.text = `${post.text}\n\n(I had to pause there — say “continue” and I’ll pick up exactly where I left off.)`;
+  } else if (raw.stopReason === 'refusal' && !post.text.trim()) {
+    post.text = 'I’m sorry — I can’t help with that particular request. If it concerns your wellbeing, I can connect you with a member of our human team.';
+  }
   const citations = retrieved.map((r) => ({ recordId: r.recordId, sourceTitle: r.sourceTitle, sourceUrl: r.sourceUrl }));
 
   await runLogRepo.log({
@@ -304,6 +345,29 @@ async function finalizeTurn(t: PreparedTurn, agent: AiAgent, query: string, ctx:
     const reason = pre.reason ?? 'Response required unsupported-claim review.';
     await tryEscalate({ userId: ctx?.userId, conversationId: ctx?.conversationId, trigger: pre.trigger ?? 'clinical_review', reason, specialist: agent.slug, urgency: pre.urgency });
     referralSuggestion = { toRole: 'human clinical review', reason, urgency: pre.urgency ?? 'routine' };
+  }
+
+  // Live specialist-to-specialist referral: when the reply introduces a
+  // colleague covered by a matrix rule, record the real referral (herne_referrals
+  // + care plan + timeline) so the receiving specialist has the full context.
+  // Best-effort — a referral write must never block the user's answer.
+  if (!referralSuggestion && ctx?.userId) {
+    const detected = detectColleagueReferral(agent.slug, post.text, t.rules);
+    if (detected) {
+      try {
+        await referralEngine.refer({
+          userId: ctx.userId,
+          fromSpecialist: agent.slug,
+          toSpecialist: detected.toSlug,
+          trigger: detected.rule.trigger,
+          reason: `${specialistName} recommended ${detected.toName} during a conversation.`,
+          ...(detected.rule.urgency ? { urgency: detected.rule.urgency } : {}),
+        });
+        referralSuggestion = { toRole: detected.toName, reason: detected.rule.trigger, urgency: detected.rule.urgency ?? 'Routine' };
+      } catch {
+        // best-effort
+      }
+    }
   }
 
   if (ctx?.userId) {
@@ -339,8 +403,8 @@ export async function herneSpecialistReply(agent: AiAgent, history: ChatMessage[
   const prep = await prepareTurn(agent, history, query, ctx);
   if (prep.kind === 'blocked') return prep.reply;
   try {
-    const res = await prep.provider.chat({ system: prep.system, messages: prep.messages, maxTokens: 900, op: 'herne:reply' });
-    return finalizeTurn(prep, agent, query, ctx, { text: res.text, usage: res.usage, model: res.model, costUsd: res.costUsd, latencyMs: res.latencyMs, traceId: res.traceId });
+    const res = await prep.provider.chat({ system: prep.system, messages: prep.messages, maxTokens: 900, op: 'herne:reply', ...(ctx?.signal ? { signal: ctx.signal } : {}) });
+    return finalizeTurn(prep, agent, query, ctx, { text: res.text, usage: res.usage, model: res.model, costUsd: res.costUsd, latencyMs: res.latencyMs, traceId: res.traceId, stopReason: res.stopReason });
   } catch {
     await runLogRepo.log({ agentId: agent.id, actorId: ctx?.userId ?? null, input: query, output: '', latencyMs: Date.now() - prep.started, status: 'error' });
     return {
@@ -362,14 +426,14 @@ export async function* streamHerneReply(agent: AiAgent, history: ChatMessage[], 
     return;
   }
   let text = '';
-  let raw: RawResult = { text: '', usage: null, model: null, costUsd: 0, latencyMs: 0, traceId: null };
+  let raw: RawResult = { text: '', usage: null, model: null, costUsd: 0, latencyMs: 0, traceId: null, stopReason: null };
   try {
     for await (const chunk of prep.provider.stream({ system: prep.system, messages: prep.messages, maxTokens: 900, op: 'herne:stream', ...(ctx?.signal ? { signal: ctx.signal } : {}) })) {
       if (chunk.type === 'delta') {
         text += chunk.text;
         yield { type: 'delta', text: chunk.text };
       } else {
-        raw = { text, usage: chunk.result.usage, model: chunk.result.model, costUsd: chunk.result.costUsd, latencyMs: chunk.result.latencyMs, traceId: chunk.result.traceId };
+        raw = { text, usage: chunk.result.usage, model: chunk.result.model, costUsd: chunk.result.costUsd, latencyMs: chunk.result.latencyMs, traceId: chunk.result.traceId, stopReason: chunk.result.stopReason };
       }
     }
     const reply = await finalizeTurn(prep, agent, query, ctx, raw);

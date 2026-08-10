@@ -9,9 +9,12 @@ import {
   registerSchema,
   signInSchema,
 } from '@/lib/validation';
+import { headers } from 'next/headers';
 import { isSupabaseConfigured } from '@/lib/env';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createInMemoryRateLimiter, enforceRateLimit, RATE_LIMIT_POLICIES } from '@/lib/security/rate-limit';
+import { RateLimitError } from '@/lib/security/errors';
 import type { ActionResult } from './result';
 
 /** Post-auth landing resolver path (see src/app/continue/route.ts). */
@@ -20,14 +23,30 @@ function continuePath(next: FormDataEntryValue | null): string {
 }
 
 /**
- * Write path — Server Actions. The MOCK implementation lives behind the
- * `'use server'` boundary, so switching to production (Resend email + Supabase
- * insert) is a body swap, not a component rewrite. Client forms call these via
- * `useActionState` and already get real pending/error/success wiring.
- *
- * Prototype guarantee: NOTHING is sent or stored. Every action validates and
- * returns a typed, friendly success.
+ * Write path — Server Actions. Auth (sign-in / register / sign-out) is REAL
+ * Supabase Auth and rate-limited per visitor. The marketing forms (contact,
+ * newsletter, booking) remain declared mocks until an email provider is wired:
+ * they validate and return a typed, honest "(Prototype: …)" success.
  */
+
+const authLimiter = createInMemoryRateLimiter(RATE_LIMIT_POLICIES.auth);
+
+/** Best-effort visitor key for rate limiting (per serverless instance). */
+async function visitorKey(): Promise<string> {
+  const h = await headers();
+  const fwd = h.get('x-forwarded-for');
+  return fwd?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown';
+}
+
+async function authRateLimited(scope: string): Promise<boolean> {
+  try {
+    await enforceRateLimit(authLimiter, `${scope}:${await visitorKey()}`);
+    return false;
+  } catch (e) {
+    if (e instanceof RateLimitError) return true;
+    throw e;
+  }
+}
 
 function fieldErrorsFrom(error: z.ZodError): Record<string, string[]> {
   const flat = error.flatten().fieldErrors;
@@ -91,6 +110,9 @@ export async function signIn(_prev: ActionResult, formData: FormData): Promise<A
       fieldErrors: fieldErrorsFrom(parsed.error),
     };
   }
+  if (await authRateLimited('signin')) {
+    return { status: 'error', message: 'Too many sign-in attempts. Please wait a minute and try again.' };
+  }
   const next = formData.get('next');
   if (!isSupabaseConfigured()) {
     await simulateLatency();
@@ -115,6 +137,9 @@ export async function register(_prev: ActionResult, formData: FormData): Promise
       message: 'Please check the highlighted fields.',
       fieldErrors: fieldErrorsFrom(parsed.error),
     };
+  }
+  if (await authRateLimited('register')) {
+    return { status: 'error', message: 'Too many attempts. Please wait a minute and try again.' };
   }
   const next = formData.get('next');
   if (!isSupabaseConfigured()) {

@@ -20,7 +20,6 @@ import { ok, err, type Result } from '../result';
  */
 
 const ORG = '00000000-0000-0000-0000-000000000001';
-const NIL_UUID = '00000000-0000-0000-0000-000000000000';
 
 export interface RetrievedChunk {
   documentId: string;
@@ -32,7 +31,12 @@ export interface RetrievedChunk {
 type Row = Record<string, unknown>;
 
 let cachedOwner: string | null = null;
-async function systemOwnerId(sb: SupabaseClient): Promise<string> {
+/**
+ * The profile that owns system-created documents (owner_id is NOT NULL with an
+ * auth.users FK). Returns null when no profile exists — callers must fail with
+ * an honest error rather than inserting an invalid owner.
+ */
+async function systemOwnerId(sb: SupabaseClient): Promise<string | null> {
   if (cachedOwner) return cachedOwner;
   const admin = await sb.from('profiles').select('id').eq('role', 'administrator').limit(1).maybeSingle();
   let id = admin.data?.id as string | undefined;
@@ -41,12 +45,13 @@ async function systemOwnerId(sb: SupabaseClient): Promise<string> {
     id = any.data?.id as string | undefined;
   }
   if (id) cachedOwner = id;
-  return id ?? NIL_UUID;
+  return id ?? null;
 }
 
+/** Unique slug: normalised title + random suffix (slugs are unique per org). */
 function slugify(s: string): string {
   const base = s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 48);
-  return `${base || 'doc'}-${Date.now().toString(36)}`;
+  return `${base || 'doc'}-${globalThis.crypto.randomUUID().slice(0, 8)}`;
 }
 
 /** Split text into ~size-char chunks on word boundaries. */
@@ -81,6 +86,7 @@ export const knowledgeRepo = {
     if (!chunks.length) return err({ code: 'invalid', message: 'There is no text to ingest.' });
 
     const owner = await systemOwnerId(sb);
+    if (!owner) return err({ code: 'unavailable', message: 'No administrator profile exists to own the document yet.' });
     const { data: doc, error: docErr } = await sb
       .from('knowledge_documents')
       .insert({
@@ -124,31 +130,51 @@ export const knowledgeRepo = {
     return (data ?? []).map((r: Row) => r.document_id).filter((v): v is string => typeof v === 'string');
   },
 
-  /** Retrieve the top-k knowledge chunks for an agent via ranked full-text search. */
+  /**
+   * Retrieve the top-k knowledge chunks for an agent via RANKED full-text
+   * search (ts_rank, migration 0029), restricted to published + available
+   * documents — archived or paused documents never ground a live answer.
+   */
   async retrieve(agentId: string, query: string, k = 4): Promise<RetrievedChunk[]> {
     const sb = createAdminClient();
     if (!sb || !query.trim()) return [];
-    const docIds = await knowledgeRepo.assignedDocumentIds(sb, agentId);
-    if (!docIds.length) return [];
 
     // OR-match the query's significant terms (a single chunk rarely contains
-    // every word of a natural-language question). Raw to_tsquery via textSearch.
+    // every word of a natural-language question).
     const terms = [...new Set(query.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [])];
     if (!terms.length) return [];
     const tsquery = terms.join(' | ');
-    const { data, error } = await sb
-      .from('knowledge_chunks')
-      .select('document_id, content, chunk_index')
-      .in('document_id', docIds)
-      .textSearch('content_tsv', tsquery, { config: 'english' })
-      .limit(k);
-    if (error) return [];
-    const chunks = (data ?? []) as Row[];
-    if (!chunks.length) return [];
 
-    const titles = await sb.from('knowledge_documents').select('id, title').in('id', docIds);
-    const titleMap = new Map((titles.data ?? []).map((d: Row) => [String(d.id), String(d.title)]));
-    return chunks.map((c) => ({
+    const docIds = await knowledgeRepo.assignedDocumentIds(sb, agentId);
+    if (!docIds.length) return [];
+    // Only published + available documents may ground answers.
+    const { data: docRows } = await sb
+      .from('knowledge_documents')
+      .select('id, title')
+      .in('id', docIds)
+      .eq('publish_status', 'published')
+      .eq('index_state', 'available');
+    const titleMap = new Map((docRows ?? []).map((d: Row) => [String(d.id), String(d.title)]));
+    if (!titleMap.size) return [];
+
+    // Ranked path (SQL function applies ts_rank ordering + the same state
+    // filter); falls back to unranked matching over the pre-filtered document
+    // set if the function is missing, so retrieval never hard-fails.
+    let chunks: Row[];
+    const { data: ranked, error: rankErr } = await sb.rpc('search_knowledge_chunks', { p_agent: agentId, p_query: tsquery, p_k: k });
+    if (!rankErr && Array.isArray(ranked)) {
+      chunks = (ranked as Row[]).filter((c) => titleMap.has(String(c.document_id)));
+    } else {
+      const { data, error } = await sb
+        .from('knowledge_chunks')
+        .select('document_id, content, chunk_index')
+        .in('document_id', [...titleMap.keys()])
+        .textSearch('content_tsv', tsquery, { config: 'english' })
+        .limit(k);
+      if (error) return [];
+      chunks = (data ?? []) as Row[];
+    }
+    return chunks.slice(0, k).map((c) => ({
       documentId: String(c.document_id),
       documentTitle: titleMap.get(String(c.document_id)) ?? 'Document',
       content: String(c.content),
@@ -242,18 +268,22 @@ export const knowledgeRepo = {
   }): Promise<KnowledgeDocument | null> {
     const sb = createAdminClient();
     if (!sb) return null;
-    const slugBase = input.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'document';
+    // owner_id is NOT NULL — a metadata-only insert without it always failed.
+    const owner = await systemOwnerId(sb);
+    if (!owner) return null;
     const { data, error } = await sb
       .from('knowledge_documents')
       .insert({
         organisation_id: ORG,
         title: input.title.trim(),
-        slug: `${slugBase}-${Math.abs(input.title.length * 7919 % 9973)}`,
+        slug: slugify(input.title),
         description: input.description?.trim() || null,
         source_type: input.sourceType,
         category_id: input.categoryId,
         publish_status: 'draft',
         index_state: 'uploaded',
+        visibility: 'organisation',
+        owner_id: owner,
       })
       .select('*')
       .single();
@@ -378,7 +408,9 @@ function rowToDocument(r: Row, slugMap: Map<string, string>): KnowledgeDocument 
     currentVersion: Number(r.current_version) || 1,
     publishStatus: String(r.publish_status) as PublishStatus,
     indexState,
-    active: indexState !== 'archived',
+    // A document is active in the brain only when retrievable — matches the
+    // retrieval filter and makes setActive(false) ('indexed') really pause it.
+    active: indexState === 'available',
     errorMessage: null,
     visibility: String(r.visibility) as KnowledgeVisibility,
     ownerId: String(r.owner_id),

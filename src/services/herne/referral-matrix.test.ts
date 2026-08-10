@@ -27,3 +27,29 @@ describe('HERNE referral matrix', () => {
     expect(rules.some((r) => r.from_specialist === 'Makela')).toBe(true);
   });
 });
+
+describe('specialist reference normalisation', () => {
+  it('maps display names to runtime slugs case-insensitively', async () => {
+    const { normalizeSpecialistRef } = await import('./referral-matrix');
+    expect(normalizeSpecialistRef('Aqua')).toBe('aqua');
+    expect(normalizeSpecialistRef('SAGE')).toBe('sage');
+    expect(normalizeSpecialistRef('makela')).toBe('makela');
+  });
+
+  it('identifies wildcard references', async () => {
+    const { isWildcardRef } = await import('./referral-matrix');
+    expect(isWildcardRef('Any')).toBe(true);
+    expect(isWildcardRef('Any specialist')).toBe(true);
+    expect(isWildcardRef('Relevant specialist')).toBe(true);
+    expect(isWildcardRef('Sage')).toBe(false);
+  });
+
+  it('every named from_specialist in the matrix resolves to a real slug', async () => {
+    const { normalizeSpecialistRef, isWildcardRef, loadReferralMatrix } = await import('./referral-matrix');
+    const { herneProfile } = await import('@/data/herne/specialist-profiles');
+    for (const rule of loadReferralMatrix()) {
+      if (isWildcardRef(rule.from_specialist)) continue;
+      expect(herneProfile(normalizeSpecialistRef(rule.from_specialist)), rule.from_specialist).toBeTruthy();
+    }
+  });
+});

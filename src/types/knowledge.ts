@@ -28,15 +28,17 @@ export type KnowledgeSourceType =
   | 'audio_transcript';
 
 /** The upload kinds offered in the admin, mapped to a source type + label. */
+// Only values of the DB enum knowledge_source_type — anything else fails the
+// insert (image/audio/video are not in the enum and were removed).
 export const KNOWLEDGE_UPLOAD_KINDS: { value: KnowledgeSourceType; label: string }[] = [
   { value: 'pdf', label: 'PDF' },
   { value: 'docx', label: 'Word document' },
   { value: 'txt', label: 'Text file' },
-  { value: 'image', label: 'Image' },
-  { value: 'audio', label: 'Audio' },
-  { value: 'video', label: 'Video' },
+  { value: 'csv', label: 'Spreadsheet (CSV)' },
+  { value: 'markdown', label: 'Markdown' },
   { value: 'url', label: 'Website content' },
   { value: 'manual', label: 'Structured notes' },
+  { value: 'audio_transcript', label: 'Audio transcript' },
 ];
 
 export type KnowledgeVisibility = 'private' | 'organisation' | 'public';

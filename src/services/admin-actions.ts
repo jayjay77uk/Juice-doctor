@@ -236,7 +236,8 @@ export async function transitionDocumentAction(formData: FormData): Promise<void
 
 const uploadSchema = z.object({
   title: z.string().min(2, 'Give the document a title.'),
-  sourceType: z.enum(['pdf', 'docx', 'txt', 'csv', 'markdown', 'url', 'manual', 'ocr', 'image', 'audio', 'video', 'audio_transcript']),
+  // Exactly the DB enum knowledge_source_type — wider values fail the insert.
+  sourceType: z.enum(['pdf', 'docx', 'txt', 'csv', 'markdown', 'url', 'manual', 'ocr', 'audio_transcript']),
   assignedSpecialistSlug: z.string().min(1, 'Assign this to a specialist.'),
   categoryId: z.string().optional().or(z.literal('')),
   description: z.string().optional().or(z.literal('')),

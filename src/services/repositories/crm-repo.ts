@@ -15,6 +15,7 @@ import type {
 } from '@/types/crm';
 import { LEAD_STATUS_ORDER } from '@/types/crm';
 import { ESCALATION_TARGET } from '@/config/receptionist';
+import { sanitizeIlikeTerm } from '@/lib/security/sanitize';
 
 /**
  * Production CRM repository over crm_leads + crm_lead_events. Real rows, real
@@ -114,8 +115,10 @@ export const crmRepo = {
     if (filter?.followUp) q = q.eq('follow_up_status', filter.followUp);
     if (filter?.assigned) q = q.eq('responsible_admin_name', filter.assigned);
     if (filter?.search) {
-      const s = filter.search.replaceAll('%', '\\%').replaceAll(',', ' ');
-      q = q.or(`name.ilike.%${s}%,email.ilike.%${s}%,assessment_summary.ilike.%${s}%`);
+      // Whitelist-sanitised: raw input could otherwise inject into the
+      // PostgREST .or() expression (runs on the service-role client).
+      const s = sanitizeIlikeTerm(filter.search);
+      if (s) q = q.or(`name.ilike.%${s}%,email.ilike.%${s}%,assessment_summary.ilike.%${s}%`);
     }
     const { data, error } = await q;
     if (error) return err({ code: 'unavailable', message: 'Could not load leads.' });

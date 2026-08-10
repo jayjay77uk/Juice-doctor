@@ -138,6 +138,7 @@ export const conversationsRepo = {
     if (!sb) return err({ code: 'unavailable', message: 'Conversation store unavailable.' });
     const conv = await conversationsRepo.byId(conversationId);
     if (!conv.ok) return conv;
+    if (conv.data.status !== 'active') return err({ code: 'invalid', message: 'This conversation is archived. Start a new conversation to continue.' });
     if (!content.trim()) return err({ code: 'invalid', message: 'Please enter a message.' });
 
     await sb.from('messages').insert({ conversation_id: conversationId, role: 'user', content: content.trim() });
@@ -250,9 +251,16 @@ export const conversationsRepo = {
   async feedback(messageId: string, userId: string, rating: FeedbackRating): Promise<Result<{ id: string }>> {
     const sb = createAdminClient();
     if (!sb) return err({ code: 'unavailable', message: 'Conversation store unavailable.' });
+    // The service-role client bypasses RLS, so ownership is enforced here: the
+    // message must belong to a conversation owned by the rating user.
+    const { data: msg } = await sb.from('messages').select('id, conversation_id').eq('id', messageId).maybeSingle();
+    if (!msg) return err({ code: 'not_found', message: 'Message not found.' });
+    const conv = await conversationsRepo.byId(String(msg.conversation_id));
+    if (!conv.ok || conv.data.userId !== userId) return err({ code: 'not_found', message: 'Message not found.' });
+    // One vote per (message, user); re-rating replaces the previous vote.
     const { data, error } = await sb
       .from('message_feedback')
-      .insert({ message_id: messageId, user_id: userId, rating })
+      .upsert({ message_id: messageId, user_id: userId, rating }, { onConflict: 'message_id,user_id' })
       .select('id')
       .single();
     if (error || !data) return err({ code: 'unavailable', message: error?.message ?? 'Could not record feedback.' });

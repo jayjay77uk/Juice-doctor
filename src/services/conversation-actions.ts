@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { conversations_service } from './conversations';
+import { agents } from './agents';
+import { subscriptionsService } from './subscriptions';
 import { assertSession } from '@/lib/auth/authorize';
 import type { Message, FeedbackRating } from '@/types/conversation';
 
@@ -76,6 +78,17 @@ export async function startConversationAction(
     userId = session.user.id;
   } catch {
     return { ok: false, error: MSG_RES };
+  }
+  // Subscription access: a specialist chat requires an active subscription
+  // covering that specialist (mirrored in the streaming message route).
+  const byId = await agents.byId(agentId);
+  const bySlug = byId.ok ? null : await agents.bySlug(agentId.replace(/^agent_/, ''));
+  const agent = byId.ok ? byId.data : bySlug?.ok ? bySlug.data : null;
+  if (agent && agent.kind === 'specialist') {
+    const access = await subscriptionsService.memberAccess(userId);
+    if (!access.ok || !access.data.includes(agent.slug)) {
+      return { ok: false, error: 'Your plan does not include this specialist yet. Please review your subscription.' };
+    }
   }
   const result = await conversations_service.create({ agentId, userId });
   if (!result.ok) return { ok: false, error: result.error.message };

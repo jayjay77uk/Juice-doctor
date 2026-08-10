@@ -93,6 +93,24 @@ export const memberRepo = {
     return { ok: true };
   },
 
+  /** Update a goal's progress/status/current value — scoped to the owner. */
+  async updateGoal(
+    userId: string,
+    goalId: string,
+    patch: { progress?: number; status?: Goal['status']; currentValue?: number | null },
+  ): Promise<{ ok: boolean; error?: string }> {
+    const sb = createAdminClient();
+    if (!sb) return { ok: false, error: 'Not available right now.' };
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.progress !== undefined) update.progress = patch.progress;
+    if (patch.status !== undefined) update.status = patch.status;
+    if (patch.currentValue !== undefined) update.current_value = patch.currentValue;
+    const { error, count } = await sb.from('goals').update(update, { count: 'exact' }).eq('id', goalId).eq('user_id', userId);
+    if (error) return { ok: false, error: 'Could not update the goal. Please try again.' };
+    if (!count) return { ok: false, error: 'Goal not found.' };
+    return { ok: true };
+  },
+
   async healthProfile(userId: string): Promise<HealthProfile | null> {
     const sb = createAdminClient();
     if (!sb) return null;

@@ -53,3 +53,48 @@ export async function createGoalAction(input: {
   }
   return result;
 }
+
+const GOAL_STATUSES = ['active', 'achieved', 'paused', 'abandoned'] as const;
+
+/** Update the signed-in member's own goal (progress %, status, current value). */
+export async function updateGoalAction(input: {
+  goalId: string;
+  progress?: number;
+  status?: string;
+  currentValue?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  let userId: string;
+  try {
+    userId = (await assertSession()).user.id;
+  } catch {
+    return { ok: false, error: 'Please sign in.' };
+  }
+  if (!isSupabaseAdminConfigured()) return { ok: false, error: 'Not available in preview mode.' };
+  if (!input.goalId) return { ok: false, error: 'Goal not found.' };
+
+  const patch: { progress?: number; status?: (typeof GOAL_STATUSES)[number]; currentValue?: number | null } = {};
+  if (input.progress !== undefined) {
+    const p = Math.round(Number(input.progress));
+    if (!Number.isFinite(p) || p < 0 || p > 100) return { ok: false, error: 'Progress must be between 0 and 100.' };
+    patch.progress = p;
+    // Reaching 100% marks the goal achieved unless a status was chosen.
+    if (p === 100 && input.status === undefined) patch.status = 'achieved';
+  }
+  if (input.status !== undefined) {
+    if (!(GOAL_STATUSES as readonly string[]).includes(input.status)) return { ok: false, error: 'Please choose a valid status.' };
+    patch.status = input.status as (typeof GOAL_STATUSES)[number];
+  }
+  if (input.currentValue !== undefined) {
+    const v = input.currentValue.trim() === '' ? null : Number(input.currentValue);
+    if (v !== null && (!Number.isFinite(v) || v < 0)) return { ok: false, error: 'Please enter a valid current value.' };
+    patch.currentValue = v;
+  }
+  if (Object.keys(patch).length === 0) return { ok: false, error: 'Nothing to update.' };
+
+  const result = await memberRepo.updateGoal(userId, input.goalId, patch);
+  if (result.ok) {
+    revalidatePath('/dashboard/goals');
+    revalidatePath('/dashboard');
+  }
+  return result;
+}
