@@ -62,6 +62,35 @@ export const appointmentsAdminRepo = {
     return !error && Boolean(data);
   },
 
+  /** Confirmed appointments starting within the next N hours, with member emails (reminder job). */
+  async confirmedWithin(hours: number): Promise<{ id: string; memberEmail: string; serviceSlug: string; scheduledStart: string; locationType: string }[]> {
+    const sb = createAdminClient();
+    if (!sb) return [];
+    const now = new Date();
+    const { data } = await sb
+      .from('appointments')
+      .select('id, member_id, service_slug, scheduled_start, location_type')
+      .eq('organisation_id', ORG)
+      .eq('status', 'confirmed')
+      .gte('scheduled_start', now.toISOString())
+      .lte('scheduled_start', new Date(now.getTime() + hours * 3_600_000).toISOString())
+      .limit(200);
+    const rows = data ?? [];
+    const memberIds = [...new Set(rows.map((r) => String(r.member_id)))];
+    const emails = new Map<string, string>();
+    if (memberIds.length) {
+      const { data: profiles } = await sb.from('profiles').select('id, email').in('id', memberIds);
+      for (const p of profiles ?? []) emails.set(String(p.id), String(p.email ?? ''));
+    }
+    return rows.map((r) => ({
+      id: String(r.id),
+      memberEmail: emails.get(String(r.member_id)) ?? '',
+      serviceSlug: String(r.service_slug ?? 'consultation'),
+      scheduledStart: String(r.scheduled_start),
+      locationType: String(r.location_type ?? 'video'),
+    }));
+  },
+
   /** Facts needed to email the member about an appointment. Null when unknown. */
   async mailFacts(appointmentId: string): Promise<{ memberEmail: string; serviceSlug: string; scheduledStart: string; locationType: string } | null> {
     const sb = createAdminClient();
