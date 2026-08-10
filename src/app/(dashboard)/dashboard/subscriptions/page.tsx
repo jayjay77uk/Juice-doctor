@@ -1,4 +1,4 @@
-import { CreditCard, CalendarClock } from 'lucide-react';
+import { CreditCard, CalendarClock, ReceiptText } from 'lucide-react';
 import { createMetadata } from '@/config/metadata';
 import { AdminHeader } from '@/components/admin/admin-header';
 import { Panel } from '@/components/admin/panel';
@@ -8,6 +8,9 @@ import { SubscriptionControls } from '@/components/dashboard/subscription-contro
 import { member } from '@/services/member';
 import { subscriptionsService } from '@/services/subscriptions';
 import { specialists } from '@/services/specialists';
+import { assertSession } from '@/lib/auth/authorize';
+import { paymentsRepo } from '@/services/repositories/payments-repo';
+import { payments, formatAmount } from '@/services/payments';
 
 export const metadata = createMetadata({ title: 'My subscriptions' });
 
@@ -18,11 +21,14 @@ const SCOPE_LABEL: Record<string, string> = {
 };
 
 export default async function MySubscriptionsPage() {
-  const [subsResult, plansResult, followUpsResult, specialistsResult] = await Promise.all([
+  const session = await assertSession();
+  const [subsResult, plansResult, followUpsResult, specialistsResult, myPayments, myPlans] = await Promise.all([
     member.mySubscriptions(),
     subscriptionsService.plans.list(),
     member.myFollowUps(),
     specialists.all(),
+    paymentsRepo.forMember(session.user.id),
+    paymentsRepo.instalments.list({ memberId: session.user.id }),
   ]);
 
   const subscriptions = subsResult.ok ? subsResult.data : [];
@@ -101,6 +107,60 @@ export default async function MySubscriptionsPage() {
             );
           })}
         </div>
+      )}
+
+      <Panel title="Payment history" description="Payments the team has recorded against your account." padded={false}>
+        {myPayments.length === 0 ? (
+          <div className="px-6 py-6">
+            <EmptyState icon={ReceiptText} title="No payments recorded" description="Payments are arranged with the team and appear here once recorded." />
+          </div>
+        ) : (
+          <ul className="divide-y divide-border">
+            {myPayments.map((p) => (
+              <li key={p.id} className="flex items-center justify-between gap-3 px-6 py-3 text-sm">
+                <span className="min-w-0">
+                  <span className="font-mono text-xs text-muted-foreground">{p.reference}</span>
+                  <span className="ml-3 truncate text-foreground">{p.description}</span>
+                </span>
+                <span className="flex shrink-0 items-center gap-3">
+                  <span className="tabular-nums text-foreground">{formatAmount(p.amountMinor, p.currency)}</span>
+                  <StatusBadge status={p.status} />
+                  <span className="text-xs tabular-nums text-muted-foreground">{new Date(p.createdAt).toLocaleDateString('en-GB')}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+
+      {myPlans.available && myPlans.plans.length > 0 && (
+        <Panel title="Instalment schedule" description="Agreed instalments and what remains outstanding." padded={false}>
+          <ul className="divide-y divide-border">
+            {myPlans.plans.map((plan) => {
+              const balance = payments.outstanding(plan);
+              return (
+                <li key={plan.id} className="flex flex-col gap-2 px-6 py-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span className="font-medium text-foreground">{plan.description}</span>
+                    <span className="text-xs text-muted-foreground">
+                      Paid {formatAmount(balance.paidMinor, plan.currency)} · Outstanding {formatAmount(balance.dueMinor, plan.currency)}
+                    </span>
+                  </div>
+                  <ul className="flex flex-col gap-1">
+                    {plan.instalments.map((item) => (
+                      <li key={item.id} className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>
+                          #{item.sequence} · {formatAmount(item.amountMinor, plan.currency)} due {new Date(item.dueDate).toLocaleDateString('en-GB')}
+                        </span>
+                        <StatusBadge status={item.status} />
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              );
+            })}
+          </ul>
+        </Panel>
       )}
 
       <Panel title="Follow-up items" description="Suggested next steps to get the most from your plan.">

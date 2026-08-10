@@ -34,6 +34,7 @@ import {
   Watch,
   Inbox,
   Plug,
+  Banknote,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -65,6 +66,7 @@ const NAV: Record<NavVariant, ShellNavSection[]> = {
       items: [
         { label: 'Specialists', href: '/admin/specialists', icon: Bot },
         { label: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
+        { label: 'Payments', href: '/admin/payments', icon: Banknote },
       ],
     },
     {
