@@ -7,6 +7,8 @@ import { Panel } from '@/components/admin/panel';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, type Column } from '@/components/admin/data-table';
 import { EmptyState } from '@/components/admin/empty-state';
+import { connectionStats } from '@/services/herne/wearable/connections';
+import { isWearableProviderConfigured } from '@/services/herne/wearable/provider';
 import {
   listWearableCatalog, listConsents, listAiAccessLogs,
   type AdminWearableMetric, type AdminConsent, type AdminAiAccessLog,
@@ -17,7 +19,16 @@ export const metadata: Metadata = createMetadata({ title: 'HERNE wearable data' 
 export const dynamic = 'force-dynamic';
 
 export default async function HerneWearablePage() {
-  const [catalog, consents, aiLogs] = await Promise.all([listWearableCatalog(), listConsents(25), listAiAccessLogs(25)]);
+  const [catalog, consents, aiLogs, connStats, providerConfigured] = await Promise.all([
+    listWearableCatalog(),
+    listConsents(25),
+    listAiAccessLogs(25),
+    connectionStats(),
+    Promise.resolve(isWearableProviderConfigured()),
+  ]);
+  const connectionSummary = Object.entries(connStats.byStatus)
+    .map(([status, count]) => `${status}: ${count}`)
+    .join(' · ');
 
   const catalogColumns: Column<AdminWearableMetric>[] = [
     { header: 'Metric', cell: (m) => <span className="font-medium text-foreground">{m.name}</span> },
@@ -50,9 +61,35 @@ export default async function HerneWearablePage() {
         </Link>
         <AdminHeader
           title="Wearable data"
-          description="The client metric catalogue, per-specialist access permissions, consents and the AI access log. No wearable device integration is connected yet — no measurements are being synchronised."
+          description="The client metric catalogue, per-specialist access permissions, consents and the AI access log."
         />
       </div>
+
+      <Panel title="Provider connection" description="Live state of the device-provider integration and member connections.">
+        <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex flex-col gap-1">
+            <dt className="text-sm text-muted-foreground">Provider (Thryve)</dt>
+            <dd className="font-medium text-foreground">{providerConfigured ? 'Configured' : 'Not configured — requires THRYVE_API_KEY, THRYVE_APP_ID, THRYVE_WEBHOOK_SECRET'}</dd>
+          </div>
+          <div className="flex flex-col gap-1">
+            <dt className="text-sm text-muted-foreground">Member connections</dt>
+            <dd className="font-medium text-foreground">{connectionSummary || 'None'}</dd>
+          </div>
+          <div className="flex flex-col gap-1">
+            <dt className="text-sm text-muted-foreground">Sync jobs (30d)</dt>
+            <dd className="font-medium tabular-nums text-foreground">{connStats.syncJobs30d}</dd>
+          </div>
+          <div className="flex flex-col gap-1">
+            <dt className="text-sm text-muted-foreground">Last sync</dt>
+            <dd className="font-medium text-foreground">{connStats.lastSyncAt ? new Date(connStats.lastSyncAt).toLocaleString('en-GB') : 'Never'}</dd>
+          </div>
+        </dl>
+        <p className="mt-4 text-sm text-muted-foreground">
+          The ingest engine (consent-checked, validated, duplicate-safe), webhook endpoint, consent ledger and
+          disconnect-with-deletion are ready; measurements flow only once the provider is credentialed. Nothing is
+          simulated.
+        </p>
+      </Panel>
 
       <Panel title={`Metric catalogue — ${catalog.length}`} description="Client-supplied metrics, permitted use and limitations" padded={false}>
         <DataTable
