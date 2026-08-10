@@ -121,6 +121,8 @@ export interface AdminEscalation {
   specialist: string | null;
   destination: string | null;
   urgency: string | null;
+  conversationId: string | null;
+  userId: string | null;
   createdAt: string;
 }
 
@@ -135,6 +137,8 @@ export async function listEscalations(limit = 25): Promise<AdminEscalation[]> {
     specialist: (r.specialist as string | null) ?? null,
     destination: (r.destination as string | null) ?? null,
     urgency: (r.urgency as string | null) ?? null,
+    conversationId: (r.conversation_id as string | null) ?? null,
+    userId: (r.user_id as string | null) ?? null,
     createdAt: String(r.created_at),
   }));
 }

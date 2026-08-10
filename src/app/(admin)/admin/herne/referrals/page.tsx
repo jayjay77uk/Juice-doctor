@@ -9,6 +9,7 @@ import { DataTable, type Column } from '@/components/admin/data-table';
 import { EmptyState } from '@/components/admin/empty-state';
 import { referralRules, type ReferralRule } from '@/services/herne/referrals';
 import { listReferrals, listEscalations, type AdminReferral, type AdminEscalation } from '@/services/herne/admin';
+import { CareTeamMessageForm } from '@/components/admin/care-team-message-form';
 
 export const metadata: Metadata = createMetadata({ title: 'HERNE referrals' });
 export const dynamic = 'force-dynamic';
@@ -40,10 +41,20 @@ export default async function HerneReferralsPage() {
 
   const escalationColumns: Column<AdminEscalation>[] = [
     { header: 'Trigger', cell: (r) => <span className="font-medium text-foreground">{r.trigger}</span> },
+    { header: 'Reason', cell: (r) => <span className="block max-w-xs truncate text-muted-foreground" title={r.reason ?? ''}>{r.reason ?? '—'}</span> },
     { header: 'Specialist', cell: (r) => <span className="capitalize">{r.specialist ?? '—'}</span> },
-    { header: 'Destination', cell: (r) => <span className="text-muted-foreground">{r.destination ?? '—'}</span> },
     { header: 'Urgency', cell: (r) => urgencyBadge(r.urgency) },
-    { header: 'When', align: 'right', cell: (r) => <span className="text-muted-foreground tabular-nums">{new Date(r.createdAt).toLocaleDateString('en-GB')}</span> },
+    { header: 'When', cell: (r) => <span className="text-muted-foreground tabular-nums">{new Date(r.createdAt).toLocaleDateString('en-GB')}</span> },
+    {
+      header: 'Takeover',
+      align: 'right',
+      cell: (r) =>
+        r.conversationId ? (
+          <CareTeamMessageForm conversationId={r.conversationId} />
+        ) : (
+          <span className="text-xs text-muted-foreground">No linked conversation</span>
+        ),
+    },
   ];
 
   return (
@@ -76,7 +87,11 @@ export default async function HerneReferralsPage() {
         />
       </Panel>
 
-      <Panel title="Escalations" description="Low confidence, out of scope, emergencies and human review" padded={false}>
+      <Panel
+        title="Escalations"
+        description="Low confidence, out of scope, emergencies and human review. Escalated members are also flagged in the CRM human-review queue for assignment, notes and resolution; use Takeover to reply directly into the member's conversation."
+        padded={false}
+      >
         <DataTable
           columns={escalationColumns}
           rows={escalations}

@@ -77,11 +77,13 @@ export default async function CrmLeadsPage({
   if (search) listFilter.search = search;
   if (statusFilter) listFilter.status = statusFilter;
 
-  const [leadsResult, pipelineResult, escalationResult] = await Promise.all([
+  const [leadsResult, pipelineResult, escalationResult, remindersResult] = await Promise.all([
     crm.list(listFilter),
     crm.pipeline(),
     crm.escalationQueue(),
+    crm.dueReminders(),
   ]);
+  const dueReminders = remindersResult.ok ? remindersResult.data : [];
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
@@ -91,6 +93,30 @@ export default async function CrmLeadsPage({
       />
 
       <CrmFilters q={search} status={statusFilter ?? ''} />
+
+      {dueReminders.length > 0 && (
+        <Panel
+          title={`Follow-ups due (${dueReminders.length})`}
+          description="Leads whose reminder date has arrived and whose follow-up is not yet done."
+          padded={false}
+        >
+          <ul className="divide-y divide-border">
+            {dueReminders.map((lead) => (
+              <li key={lead.id} className="flex items-center justify-between gap-4 px-6 py-3.5">
+                <div className="min-w-0">
+                  <Link href={`/admin/crm/${lead.id}`} className="font-medium text-foreground hover:underline">
+                    {lead.name}
+                  </Link>
+                  <p className="truncate text-sm text-muted-foreground">{lead.email}</p>
+                </div>
+                <span className="shrink-0 text-sm tabular-nums text-warning">
+                  Due {lead.reminderAt ? new Date(lead.reminderAt).toLocaleDateString('en-GB') : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
 
       <Panel title="Pipeline">
         {pipelineResult.ok ? (

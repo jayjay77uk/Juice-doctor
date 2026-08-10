@@ -13,7 +13,7 @@ import type {
   LeadHumanReview,
   LeadEventType,
 } from '@/types/crm';
-import { LEAD_STATUS_ORDER } from '@/types/crm';
+import { LEAD_STATUS_ORDER, LEAD_STATUS_PROGRESS } from '@/types/crm';
 import { ESCALATION_TARGET } from '@/config/receptionist';
 import { sanitizeIlikeTerm } from '@/lib/security/sanitize';
 
@@ -33,6 +33,7 @@ function rowToLead(r: Record<string, unknown>): CrmLead {
   return {
     id: String(r.id),
     organisationId: String(r.organisation_id),
+    userId: (r.user_id as string | null) ?? null,
     name: String(r.name),
     email: String(r.email),
     phone: (r.phone as string | null) ?? null,
@@ -51,7 +52,8 @@ function rowToLead(r: Record<string, unknown>): CrmLead {
     followUpStatus: (r.follow_up_status as LeadFollowUp) ?? 'none',
     whatsappStatus: (r.whatsapp_status as LeadWhatsapp) ?? 'none',
     subscriptionStatus: (r.subscription_status as CrmLead['subscriptionStatus']) ?? 'none',
-    progress: Number(r.progress ?? 0),
+    // Derived deterministically from status — never a stored/fabricated figure.
+    progress: LEAD_STATUS_PROGRESS[(r.status as LeadStatus) ?? 'new'] ?? 0,
     escalated: Boolean(r.escalated),
     escalatedTo: (r.escalated_to_name as string | null) ?? null,
     responsibleAdmin: (r.responsible_admin_name as string | null) ?? null,
@@ -162,6 +164,118 @@ export const crmRepo = {
     return ok(LEAD_STATUS_ORDER.map((status) => ({ status, count: rows.filter((r) => r.status === status).length })));
   },
 
+  /**
+   * The most recent OPEN lead for a member (by linked account first, else by
+   * email) — the anchor for continuing an existing journey instead of creating
+   * duplicate leads.
+   */
+  async findOpenForMember(userId: string | null, email: string | null): Promise<Result<CrmLead | null>> {
+    const sb = createAdminClient();
+    if (!sb) return noDb();
+    const open = LEAD_STATUS_ORDER.filter((s) => s !== 'closed' && s !== 'inactive');
+    const base = () =>
+      sb.from('crm_leads').select('*').eq('organisation_id', ORG).in('status', open).order('created_at', { ascending: false }).limit(1);
+    if (userId) {
+      const { data } = await base().eq('user_id', userId);
+      if (data?.length) return ok(rowToLead(data[0] as Record<string, unknown>));
+    }
+    if (email) {
+      const { data } = await base().eq('email', email);
+      if (data?.length) return ok(rowToLead(data[0] as Record<string, unknown>));
+    }
+    return ok(null);
+  },
+
+  /**
+   * Refresh an existing open lead with a NEW receptionist consultation —
+   * the same member continuing their journey must update their lead, never
+   * spawn a duplicate.
+   */
+  async updateConsultation(
+    id: string,
+    input: {
+      conversation: ConversationTurn[];
+      assessmentSummary: string;
+      assessment: Record<string, string>;
+      recommendedSpecialistSlug: string | null;
+      recommendedSpecialistName: string | null;
+      recommendationConfidence: number;
+      alternativeMatches: { slug: string; name: string }[];
+      escalated: boolean;
+      userId?: string | null;
+    },
+  ): Promise<Result<CrmLead>> {
+    const sb = createAdminClient();
+    if (!sb) return noDb();
+    const fields: Record<string, unknown> = {
+      conversation: input.conversation,
+      assessment_summary: input.assessmentSummary,
+      assessment: input.assessment,
+      recommended_specialist_slug: input.recommendedSpecialistSlug,
+      recommended_specialist_name: input.recommendedSpecialistName,
+      recommendation_confidence: input.recommendationConfidence,
+      alternative_matches: input.alternativeMatches,
+    };
+    if (input.userId) fields.user_id = input.userId;
+    if (input.escalated) {
+      fields.escalated = true;
+      fields.human_review_status = 'pending';
+      fields.status = 'human_review';
+      fields.review_closed = false;
+      fields.escalated_to_name = ESCALATION_TARGET.name;
+    }
+    return patch(sb, id, fields, {
+      type: 'consultation',
+      title: input.escalated ? 'New consultation — escalated for human review' : 'New consultation recorded',
+      detail: input.assessmentSummary.slice(0, 500),
+      actor: 'Receptionist AI',
+    });
+  },
+
+  /** Link a lead to a member account (idempotent). */
+  async linkUser(id: string, userId: string): Promise<Result<CrmLead>> {
+    const sb = createAdminClient();
+    if (!sb) return noDb();
+    return patch(sb, id, { user_id: userId }, { type: 'note', title: 'Linked to member account', actor: 'System' });
+  },
+
+  /** Flag an existing lead as escalated for human review (specialist-raised). */
+  async escalateLead(id: string, reason: string, specialist?: string | null): Promise<Result<CrmLead>> {
+    const sb = createAdminClient();
+    if (!sb) return noDb();
+    return patch(
+      sb,
+      id,
+      {
+        escalated: true,
+        human_review_status: 'pending',
+        status: 'human_review',
+        review_closed: false,
+        escalated_to_name: ESCALATION_TARGET.name,
+      },
+      { type: 'escalation', title: `Escalated to ${ESCALATION_TARGET.name}`, detail: reason.slice(0, 500), actor: specialist ? `Specialist (${specialist})` : 'System' },
+    );
+  },
+
+  /** Leads whose follow-up reminder is due (and not already done/closed). */
+  async dueReminders(): Promise<Result<CrmLead[]>> {
+    const sb = createAdminClient();
+    if (!sb) return noDb();
+    const open = LEAD_STATUS_ORDER.filter((s) => s !== 'closed' && s !== 'inactive');
+    const { data, error } = await sb
+      .from('crm_leads')
+      .select('*')
+      .eq('organisation_id', ORG)
+      .in('status', open)
+      .not('reminder_at', 'is', null)
+      .lte('reminder_at', new Date().toISOString())
+      .neq('follow_up_status', 'done')
+      .order('reminder_at', { ascending: true })
+      .limit(50);
+    if (error) return err({ code: 'unavailable', message: 'Could not load reminders.' });
+    return ok((data ?? []).map(rowToLead));
+  },
+
   async create(input: {
     name: string;
     email: string;
@@ -175,6 +289,7 @@ export const crmRepo = {
     alternativeMatches?: { slug: string; name: string }[];
     escalated: boolean;
     source?: CrmLead['source'];
+    userId?: string | null;
   }): Promise<Result<CrmLead>> {
     const sb = createAdminClient();
     if (!sb) return noDb();
@@ -182,6 +297,7 @@ export const crmRepo = {
       .from('crm_leads')
       .insert({
         organisation_id: ORG,
+        user_id: input.userId ?? null,
         name: input.name,
         email: input.email,
         whatsapp: input.whatsapp ?? null,

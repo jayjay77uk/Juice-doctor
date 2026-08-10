@@ -35,6 +35,24 @@ export const LEAD_STATUS_ORDER: LeadStatus[] = [
   'closed',
 ];
 
+/**
+ * Journey progress derived deterministically from the lead's status — never a
+ * stored/fabricated number. 'inactive' is 0 (journey stalled); 'closed' is 100
+ * (journey concluded, whatever the outcome).
+ */
+export const LEAD_STATUS_PROGRESS: Record<LeadStatus, number> = {
+  new: 5,
+  consultation: 15,
+  human_review: 25,
+  recommended: 40,
+  awaiting_subscription: 55,
+  subscribed: 70,
+  active: 85,
+  follow_up: 95,
+  inactive: 0,
+  closed: 100,
+};
+
 export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   new: 'New lead',
   consultation: 'Consultation in progress',
@@ -71,6 +89,8 @@ export interface ConsultAnswer {
 export interface CrmLead {
   id: string;
   organisationId: string;
+  /** The linked member account, when the lead belongs to a signed-in member. */
+  userId: string | null;
   name: string;
   email: string;
   phone: string | null;

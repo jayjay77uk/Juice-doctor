@@ -23,7 +23,7 @@ type Phase = 'chat' | 'assessing' | 'contact' | 'done';
 
 const now = () => new Date().toISOString();
 
-export function ReceptionistConsole({ settings }: { settings: ReceptionistConsoleSettings }) {
+export function ReceptionistConsole({ settings, signedIn = false }: { settings: ReceptionistConsoleSettings; signedIn?: boolean }) {
   const [turns, setTurns] = React.useState<ConversationTurn[]>(() => {
     const list: ConversationTurn[] = [{ role: 'receptionist', text: settings.greeting, at: now() }];
     const first = settings.questions[0];
@@ -162,7 +162,17 @@ export function ReceptionistConsole({ settings }: { settings: ReceptionistConsol
         {phase === 'assessing' && <Bubble role="receptionist" text="Thinking…" />}
 
         {(phase === 'contact' || phase === 'done') && recommendation && (
-          <RecommendationCard recommendation={recommendation} />
+          <>
+            <RecommendationCard recommendation={recommendation} />
+            {signedIn && !recommendation.escalate && (
+              <a
+                href="/dashboard/specialists"
+                className="mx-auto inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+              >
+                Continue with {recommendation.specialistName} in your dashboard →
+              </a>
+            )}
+          </>
         )}
       </div>
 

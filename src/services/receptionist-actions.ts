@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 import { z } from 'zod';
 import { receptionist } from './receptionist';
 import { crm } from './crm';
+import { getSession } from './auth';
 import { createInMemoryRateLimiter, enforceRateLimit, RATE_LIMIT_POLICIES } from '@/lib/security/rate-limit';
 import { RateLimitError } from '@/lib/security/errors';
 import type { ReceptionistRecommendation, ConsultAnswer, ConversationTurn } from '@/types/crm';
@@ -145,10 +146,13 @@ export async function receptionistLeadAction(input: {
     if (a.answer.trim()) assessment[a.prompt] = a.answer.trim();
   }
 
-  const created = await crm.create({
-    name: parsed.data.name,
-    email: parsed.data.email,
-    whatsapp: parsed.data.whatsapp || null,
+  // A signed-in member's lead is linked to their account; a member (or the
+  // same email) continuing their journey UPDATES their open lead — the
+  // receptionist never spawns duplicate leads for one ongoing journey.
+  const session = await getSession();
+  const userId = session?.user.id ?? null;
+  const existing = await crm.findOpenForMember(userId, parsed.data.email);
+  const consultation = {
     conversation: conversationOk.data.conversation,
     assessmentSummary: String(input.summary ?? '').slice(0, 4000),
     assessment,
@@ -157,7 +161,20 @@ export async function receptionistLeadAction(input: {
     recommendationConfidence: rec.confidence,
     alternativeMatches: rec.alternatives,
     escalated: rec.escalate,
+  };
+  if (existing.ok && existing.data) {
+    const updated = await crm.updateConsultation(existing.data.id, { ...consultation, userId });
+    if (!updated.ok) return { ok: false, error: updated.error.message };
+    return { ok: true, leadId: updated.data.id, escalated: rec.escalate };
+  }
+
+  const created = await crm.create({
+    name: parsed.data.name,
+    email: parsed.data.email,
+    whatsapp: parsed.data.whatsapp || null,
+    ...consultation,
     source: 'receptionist',
+    userId,
   });
   if (!created.ok) return { ok: false, error: created.error.message };
   return { ok: true, leadId: created.data.id, escalated: rec.escalate };

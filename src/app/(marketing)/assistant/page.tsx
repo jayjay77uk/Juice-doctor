@@ -3,6 +3,7 @@ import { createMetadata } from '@/config/metadata';
 import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
 import { receptionist } from '@/services/receptionist';
+import { getSession } from '@/services/auth';
 import { ReceptionistConsole } from '@/components/sections/receptionist-console';
 
 export const metadata: Metadata = createMetadata({
@@ -12,7 +13,7 @@ export const metadata: Metadata = createMetadata({
 });
 
 export default async function AssistantPage() {
-  const settingsResult = await receptionist.settings();
+  const [settingsResult, session] = await Promise.all([receptionist.settings(), getSession()]);
   const settings = settingsResult.ok ? settingsResult.data : null;
 
   return (
@@ -25,6 +26,7 @@ export default async function AssistantPage() {
       <Section tone="default" spacing="lg" containerSize="narrow">
         {settings ? (
           <ReceptionistConsole
+            signedIn={Boolean(session)}
             settings={{
               active: settings.active,
               greeting: settings.greeting,
