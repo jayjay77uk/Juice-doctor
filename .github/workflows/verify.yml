@@ -2,12 +2,12 @@ name: Verify
 
 on:
   push:
-    branches: [main]
+    branches: [main, security-cleanup]
   pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -15,18 +15,26 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Dependency audit report
-        continue-on-error: true
+      - name: Refresh vulnerable lockfile on cleanup branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/security-cleanup' && github.actor != 'github-actions[bot]'
         run: |
-          echo '=== Production dependencies ==='
-          npm audit --omit=dev
-          echo '=== Full dependency tree ==='
-          npm audit
+          npm audit fix --package-lock-only
+          if ! git diff --quiet -- package-lock.json; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add package-lock.json
+            git commit -m 'Update dependency lockfile security fixes'
+            git push origin HEAD:security-cleanup
+          fi
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
