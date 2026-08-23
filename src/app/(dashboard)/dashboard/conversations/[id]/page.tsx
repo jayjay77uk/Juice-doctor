@@ -3,7 +3,9 @@ import { createMetadata } from '@/config/metadata';
 import { AdminHeader } from '@/components/admin/admin-header';
 import { SpecialistChat } from '@/components/dashboard/specialist-chat';
 import { ConversationToolbar } from '@/components/dashboard/conversation-toolbar';
+import { ConversationAttachments } from '@/components/dashboard/conversation-attachments';
 import { conversations_service } from '@/services/conversations';
+import { conversationAttachmentsRepo } from '@/services/repositories/conversation-attachments-repo';
 import { agents } from '@/services/agents';
 import { getSession } from '@/services/auth';
 import { voiceStatus } from '@/services/voice';
@@ -19,9 +21,10 @@ export default async function ConversationThreadPage({ params }: { params: Promi
   // No session means no owner match — never fail open when unauthenticated.
   if (!session?.user.id || !convo.ok || convo.data.userId !== session.user.id) notFound();
 
-  const [messagesResult, rememberedResult] = await Promise.all([
+  const [messagesResult, rememberedResult, attachments] = await Promise.all([
     conversations_service.messages(id),
     conversations_service.remembered(session.user.id),
+    conversationAttachmentsRepo.list(id, session.user.id),
   ]);
 
   let agentName = 'Specialist AI';
@@ -50,6 +53,7 @@ export default async function ConversationThreadPage({ params }: { params: Promi
         remembered={rememberedResult.ok ? rememberedResult.data : []}
         voice={voiceStatus()}
       />
+      <ConversationAttachments conversationId={id} attachments={attachments} />
     </div>
   );
 }
