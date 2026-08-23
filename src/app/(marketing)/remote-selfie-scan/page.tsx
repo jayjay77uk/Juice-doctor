@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { createMetadata } from '@/config/metadata';
 import { selfieScan } from '@/content/features';
+import { selfieScanProviderStatus } from '@/services/selfie-scan/provider';
+import { SelfieScanLaunchCard } from '@/components/selfie-scan/selfie-scan-launch-card';
 import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
 import { SectionHeading } from '@/components/sections/section-heading';
@@ -10,27 +12,22 @@ import { CtaSection } from '@/components/sections/cta-section';
 
 export const metadata: Metadata = createMetadata({
   title: 'Remote selfie scan',
-  description:
-    'This is placeholder text written in clear English. Final approved wording will be supplied later.',
+  description: 'Remote Selfie Scan assessment pathway. Availability depends on the approved scan provider being connected.',
   path: '/remote-selfie-scan',
 });
 
 export default function SelfieScanPage() {
+  const provider = selfieScanProviderStatus();
   return (
     <>
       <PageHero
         eyebrow="Remote selfie scan"
         title="Remote selfie scan"
-        lede="This is placeholder text written in clear English. Final approved wording will be supplied later."
+        lede="Complete a remote scan through the approved provider when the service is connected."
       />
 
       <Section tone="default" spacing="lg" containerSize="narrow">
-        <div className="rounded-2xl border border-border bg-surface-muted px-6 py-8 text-center">
-          <p className="font-serif text-xl text-foreground">The Remote Selfie Scan is not yet available.</p>
-          <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
-            This assessment is being built. When it launches you will be able to complete it here.
-          </p>
-        </div>
+        <SelfieScanLaunchCard configured={provider.configured} provider={provider.provider} />
       </Section>
 
       <Section tone="sage" spacing="lg">
