@@ -25,12 +25,12 @@ describe('monitoring redaction', () => {
     expect(safe).toEqual({ specialistSlug: 'serena', confidence: 0.82, escalate: true });
   });
 
-  it('analytics identifiers are one-way hashes, never the raw user id', () => {
+  it('analytics identifiers are one-way hashes, never the raw user id', async () => {
     const raw = '11111111-2222-3333-4444-555555555555';
-    const hashed = analyticsId(raw);
+    const hashed = await analyticsId(raw);
     expect(hashed).not.toContain(raw.slice(0, 8));
     expect(hashed).toHaveLength(24);
-    expect(analyticsId(raw)).toBe(hashed);
+    expect(await analyticsId(raw)).toBe(hashed);
   });
 
   it('bounds error summaries', () => {
