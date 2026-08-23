@@ -65,16 +65,19 @@ export async function uploadKnowledgeDocumentAction(_prev: ActionResult, formDat
   let fileExt: 'pdf' | 'docx' | 'txt' | 'csv' | null = null;
 
   if (file) {
-    const validation = await validateUpload(file, UPLOAD_CONSTRAINTS.knowledgeDocument);
-    if (!validation.ok) return { status: 'error', message: validation.error };
-    fileExt = extension(file.name);
-    if (!fileExt) return { status: 'error', message: 'Unsupported knowledge file type.' };
     try {
+      const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+      validateUpload(
+        { filename: file.name, mimeType: file.type, size: file.size, head },
+        UPLOAD_CONSTRAINTS.knowledgeDocument,
+      );
+      fileExt = extension(file.name);
+      if (!fileExt) return { status: 'error', message: 'Unsupported knowledge file type.' };
       text = await extractDocumentText(file);
       sourceType = fileExt;
       fileBytes = new Uint8Array(await file.arrayBuffer());
     } catch (error) {
-      return { status: 'error', message: error instanceof Error ? error.message : 'The file text could not be extracted.' };
+      return { status: 'error', message: error instanceof Error ? error.message : 'The file could not be validated or extracted.' };
     }
   }
 
