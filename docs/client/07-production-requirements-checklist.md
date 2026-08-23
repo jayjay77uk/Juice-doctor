@@ -33,7 +33,7 @@ engineering team, never in client-facing documents.
 ## Identity, accounts & access
 - [ ] Production authentication (email verification, optional MFA — password reset already works)
 - [ ] Role-based access verified for member / practitioner / administrator (+ any others)
-- [ ] Practitioner console built (human review + case management)
+- [x] Practitioner console built (assigned-case human review + case management; assignment checked server-side)
 - [ ] Multi-organisation/tenant support (if required)
 - [ ] Operational admin credentials rotated (the former fictional accounts are already deleted)
 
@@ -60,11 +60,21 @@ engineering team, never in client-facing documents.
 - [ ] Zoho mailboxes created on the final domain; the four business addresses set via env
 - [x] Database migration **0031** applied 2026-08-23 (mail outbox, contact/newsletter storage,
       instalment schedules, webhook events, job runs) — verified live
+- [ ] Database migration **0032** applied (private knowledge + conversation-attachment storage,
+      attachment metadata/RLS and provider-neutral Remote Selfie Scan session lifecycle)
 - [ ] `CRON_SECRET` set so the daily background-job run (reminders, outbox delivery, syncs)
       activates
 - [ ] Voice keys supplied if voice is wanted at launch (`DEEPGRAM_API_KEY`,
       `ELEVENLABS_API_KEY`, `ELEVENLABS_DEFAULT_VOICE_ID`; per-specialist voices are set on
       /admin/integrations)
+
+## Provider-dependent capabilities
+- [ ] Approved Remote Selfie Scan provider selected and official API/webhook contract supplied;
+      the application lifecycle and verified-provider seam are already built
+- [ ] Embedding provider selected if vector retrieval is required; current ranked full-text
+      retrieval remains live and production-functional without embeddings
+- [ ] OCR provider selected if scanned/image-only knowledge PDFs must be ingested directly;
+      text-based PDF/DOCX/TXT/CSV upload ingestion is already built
 
 ## Content & localisation
 - [ ] Final approved marketing copy applied across the public site
@@ -82,11 +92,13 @@ engineering team, never in client-facing documents.
 
 ---
 
-### Already in place from the initial build (verify, don't rebuild)
+### Already in place from the application build (verify, don't rebuild)
 Provider-neutral AI layer with streaming/cancellation/retry/typed errors · one shared evidence
-base + multi-factor retrieval · runtime prompt assembly · safety pre/post checks · 15-rule referral
-matrix · shared care-plan state machine · Thryve-ready wearable model with permissions/consent/AI
-access log · consent-gated memory with user controls · per-call token/cost/trace telemetry · full
-admin portal (specialists, evidence, prompts, DNA, referrals, wearable, care plans, escalations,
-Playground, usage/cost). Exactly **eight specialists** are enforced, with a generic multi-agent
-framework so more can be added from the admin backend.
+base + multi-factor retrieval · runtime prompt assembly · fixed safety pre/post checks + enforced
+admin-managed safety policies · 15-rule referral matrix · shared care-plan state machine ·
+Thryve-ready wearable model with permissions/consent/AI access log · consent-gated memory with user
+controls + audited admin governance · per-call token/cost/trace telemetry · secure knowledge file
+extraction/indexing · private conversation-attachment application flow · dedicated practitioner
+console · full admin portal (specialists, evidence, prompts, DNA, referrals, wearable, care plans,
+escalations, Playground, usage/cost). Exactly **eight specialists** are enforced, with a generic
+multi-agent framework so more can be added from the admin backend.
