@@ -20,6 +20,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Dependency audit report
+        continue-on-error: true
+        run: |
+          echo '=== Production dependencies ==='
+          npm audit --omit=dev
+          echo '=== Full dependency tree ==='
+          npm audit
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
