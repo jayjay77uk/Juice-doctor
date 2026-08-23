@@ -1,7 +1,7 @@
 import { AppError } from './errors';
 
 /**
- * File-upload validation. Uploads (knowledge documents, avatars, CV attachments)
+ * File-upload validation. Uploads (knowledge documents, avatars, chat files)
  * are validated on BOTH the size and the true content type — never trusting the
  * client-supplied filename or MIME alone. Magic-number sniffing catches renamed
  * files. A `future: malware scan` hook marks where ClamAV / a scanning service
@@ -34,6 +34,19 @@ export const UPLOAD_CONSTRAINTS = {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'text/plain',
       'text/csv',
+    ],
+  },
+  chatAttachment: {
+    maxBytes: 10 * 1024 * 1024,
+    extensions: ['pdf', 'docx', 'txt', 'csv', 'png', 'jpg', 'jpeg', 'webp'],
+    mimeTypes: [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+      'text/csv',
+      'image/png',
+      'image/jpeg',
+      'image/webp',
     ],
   },
   avatar: {
