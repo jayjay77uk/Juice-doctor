@@ -1,6 +1,9 @@
-# Storage layout (reference design)
+# Storage layout
 
-Designed so media references in the content model (`ImageRef.src`, `PodcastEpisode.audioUrl`) map cleanly onto real buckets later. **Not yet provisioned** — the app renders graded placeholders from `ImageRef.tone` until media hosting is set up.
+Storage is split by trust boundary. Marketing assets remain public-content concerns; knowledge and
+conversation uploads use private buckets and short-lived signed URLs. Migration `0032` provisions
+the two private buckets used by the application and must be applied to the Ask Juice Doctor Supabase
+project before those upload paths can operate at runtime.
 
 ## Buckets
 
@@ -11,11 +14,28 @@ Designed so media references in the content model (`ImageRef.src`, `PodcastEpiso
 | `podcast` | public | Episode artwork; audio when self-hosted | `podcast/<slug>/cover.webp`, `podcast/<slug>/audio.mp3` |
 | `documents` | private | Downloadable guides / lead magnets (signed URLs) | `documents/<slug>.pdf` |
 | `avatars` | public | Profile / practitioner avatars | `avatars/<user_id>.webp` |
-| `knowledge` | private | Knowledge source files (PDF/DOCX/TXT/CSV/audio) backing `knowledge_documents.source_uri`; served to staff/agents via signed URLs only | `knowledge/<document_id>/v<version>.<ext>` |
+| `knowledge` | private | Approved knowledge source files (PDF/DOCX/TXT/CSV) backing `knowledge_documents.source_uri`; staff-only application ingestion | `knowledge/<document_id>/v<version>.<ext>` |
+| `conversation-attachments` | private | Member conversation files; not automatically passed to AI | `<user_id>/<conversation_id>/<uuid>-<safe-name>` |
 
-## Rules
+## Upload security
 
-- **Public buckets** are read-only to anonymous users; writes require an admin session (mirrors the `is_admin()` RLS pattern in `rls.sql`).
-- **Private buckets** are never publicly listable; access is via short-lived signed URLs issued server-side.
-- Images are served through `next/image` with explicit dimensions; `remotePatterns` for the Supabase Storage host are added to `next.config.ts` when the buckets are provisioned.
-- The platform currently stores **no** user uploads — knowledge ingestion accepts pasted text only, and the Remote Selfie Scan is not yet available.
+- Knowledge files are capped at **25 MB** and conversation attachments at **10 MB**.
+- The server checks extension, declared MIME and binary magic bytes where a reliable signature exists;
+  renamed binary files are rejected before storage.
+- Browser code never receives a service-role key. Upload mutation runs in authenticated server actions
+  after role/ownership checks.
+- Knowledge originals and conversation attachments are private and never publicly listable.
+- Conversation downloads are short-lived signed URLs issued only after the server verifies the signed-in
+  user owns the parent conversation.
+- Attachment metadata has RLS for conversation owners and organisation staff, but direct browser writes
+  are intentionally not granted.
+- Knowledge ingestion extracts/indexes approved text; scanned/image-only PDFs are rejected honestly until
+  an OCR provider is selected. Conversation attachments are **not** silently ingested into HERNE context.
+- A future malware-scanning provider can be inserted at the existing upload-validation seam before
+  acceptance without changing the storage model.
+
+## Other media
+
+Public marketing buckets remain independently provisionable because the final client imagery and media
+hosting choices are still pending. Images are served through `next/image` with explicit dimensions;
+remote patterns are configured when a remote media host is finalised.
