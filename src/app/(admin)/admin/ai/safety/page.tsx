@@ -18,13 +18,12 @@ export default async function SafetyPage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <AdminHeader
         title="Safety Centre"
-        description="Guardrail policies stored in the database. The runtime safety checks (emergency block, medication boundary, citation stripping) are live and enforced in code; wiring these configurable policies into inference is coming soon."
+        description="Live database-managed guardrail policies. Active organisation policies and explicitly assigned specialist policies are injected into HERNE inference in both streaming and standard chat, alongside the fixed emergency, medication, diagnosis and citation safety floor."
         breadcrumbs={[{ label: 'AI', href: '/admin/ai' }, { label: 'Safety' }]}
       />
 
       <p className="text-sm text-muted-foreground">
-        Every field below — topics, medical boundaries, escalation rules and thresholds — is fully
-        configurable per policy in production.
+        Every field below — topics, medical boundaries, escalation rules and thresholds — is configurable. Managed rules can add restrictions but cannot disable the platform&apos;s fixed safety checks.
       </p>
 
       {policies.length === 0 ? (
