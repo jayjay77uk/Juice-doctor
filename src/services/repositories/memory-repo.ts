@@ -23,6 +23,23 @@ export interface MemoryItem {
   importance: number;
 }
 
+export interface AdminMemoryItem {
+  id: string;
+  scope: string;
+  kind: string;
+  key: string;
+  content: string;
+  source: string;
+  importance: number;
+  userId: string | null;
+  memberName: string | null;
+  memberEmail: string | null;
+  conversationId: string | null;
+  agentId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface RememberInput {
   scope: 'session' | 'user' | 'conversation' | 'agent' | 'organisation' | 'global';
   kind: 'fact' | 'summary' | 'preference' | 'instruction';
@@ -118,6 +135,84 @@ export const memoryRepo = {
       .order('created_at', { ascending: false })
       .limit(100);
     return (data ?? []).map((r) => ({ id: String(r.id), kind: String(r.kind), content: String(r.content), source: String(r.source ?? 'system'), createdAt: String(r.created_at) }));
+  },
+
+  /**
+   * Privacy-sensitive admin view. Callers MUST be administrator-gated and audit
+   * the access. The repository returns only memory metadata/content needed for
+   * governance — never hidden auth/session data.
+   */
+  async adminList(limit = 100): Promise<AdminMemoryItem[]> {
+    const sb = createAdminClient();
+    if (!sb) return [];
+    const { data, error } = await sb
+      .from('ai_memory')
+      .select('id, scope, kind, memory_key, content, source, importance, user_id, conversation_id, agent_id, created_at, updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(Math.min(Math.max(limit, 1), 250));
+    if (error) return [];
+    const rows = data ?? [];
+    const userIds = [...new Set(rows.map((r) => r.user_id).filter((id): id is string => typeof id === 'string'))];
+    const profileMap = new Map<string, { name: string | null; email: string | null }>();
+    if (userIds.length) {
+      const { data: profiles } = await sb.from('profiles').select('id, full_name, display_name, email').in('id', userIds);
+      for (const p of profiles ?? []) {
+        profileMap.set(String(p.id), {
+          name: (p.display_name as string | null) ?? (p.full_name as string | null) ?? null,
+          email: (p.email as string | null) ?? null,
+        });
+      }
+    }
+    return rows.map((r) => {
+      const uid = (r.user_id as string | null) ?? null;
+      const profile = uid ? profileMap.get(uid) : undefined;
+      return {
+        id: String(r.id),
+        scope: String(r.scope),
+        kind: String(r.kind),
+        key: String(r.memory_key),
+        content: String(r.content ?? ''),
+        source: String(r.source ?? 'system'),
+        importance: Number(r.importance ?? 0),
+        userId: uid,
+        memberName: profile?.name ?? null,
+        memberEmail: profile?.email ?? null,
+        conversationId: (r.conversation_id as string | null) ?? null,
+        agentId: (r.agent_id as string | null) ?? null,
+        createdAt: String(r.created_at),
+        updatedAt: String(r.updated_at),
+      };
+    });
+  },
+
+  /** Administrator-only deletion target. Guard + audit live in the server action. */
+  async adminForget(id: string): Promise<AdminMemoryItem | null> {
+    const sb = createAdminClient();
+    const mid = uuidOrNull(id);
+    if (!sb || !mid) return null;
+    const { data, error } = await sb
+      .from('ai_memory')
+      .delete()
+      .eq('id', mid)
+      .select('id, scope, kind, memory_key, content, source, importance, user_id, conversation_id, agent_id, created_at, updated_at')
+      .maybeSingle();
+    if (error || !data) return null;
+    return {
+      id: String(data.id),
+      scope: String(data.scope),
+      kind: String(data.kind),
+      key: String(data.memory_key),
+      content: String(data.content ?? ''),
+      source: String(data.source ?? 'system'),
+      importance: Number(data.importance ?? 0),
+      userId: (data.user_id as string | null) ?? null,
+      memberName: null,
+      memberEmail: null,
+      conversationId: (data.conversation_id as string | null) ?? null,
+      agentId: (data.agent_id as string | null) ?? null,
+      createdAt: String(data.created_at),
+      updatedAt: String(data.updated_at),
+    };
   },
 
   /** Delete one of a person's own memories (ownership enforced by the user filter). */
