@@ -1,7 +1,8 @@
 # Current Limitations
 
-The platform is live, but a number of capabilities are deliberately not yet connected, planned,
-or interim. This document lists every material limitation so nothing is over-claimed.
+The platform is live, but a number of capabilities are deliberately not yet connected, depend on
+client/provider decisions, or require production-governance work. This document lists every material
+limitation so nothing is over-claimed.
 
 ---
 
@@ -14,9 +15,10 @@ or interim. This document lists every material limitation so nothing is over-cla
   model, grounded in the approved evidence base, but have **not** been reviewed by a clinician.
 - **Emergency & self-harm wording is interim.** The safety pathway works (it triggers before any AI
   runs), but the exact wording shown is placeholder copy pending client-approved clinical language.
-- **Safety-policy records are stored, not yet enforced at inference.** Admin-managed safety
-  policies are persisted, but wiring them into live inference is outstanding; the built-in
-  pre/post safety checks are what runs today.
+- **Admin-managed safety policies are now enforced at inference.** Active organisation policies and
+  explicitly assigned specialist policies are injected into both normal and streaming HERNE turns.
+  They are additive to the fixed emergency, diagnosis, medication and evidence safety floor, so an
+  admin policy cannot disable those hard checks.
 
 ## Wearables
 - **No wearable device integration is connected.** The live **Thryve** connection is **not**
@@ -51,22 +53,32 @@ or interim. This document lists every material limitation so nothing is over-cla
   newsletter welcome, account welcome, invitations, appointment lifecycle + reminders,
   follow-up alerts, escalation alerts, subscription changes, payment receipts) composes and
   records into a mail outbox; nothing sends — and nothing claims to have sent — until Resend is
-  connected. The public contact/newsletter forms now store submissions (migration 0031 is
-  applied) and show a genuine success message; the email copy waits in the outbox.
+  connected. The public contact/newsletter forms store submissions and the email copy waits in the
+  outbox.
 - **No payments provider.** The payment ledger, refund states and instalment-schedule
   architecture are live application-side, but every payment is an admin-recorded manual entry;
   no online payment is taken and nothing is ever marked paid automatically.
 - **Database migration 0031 is applied** (2026-08-23) — mail outbox, contact/newsletter storage,
-  instalment schedules, webhook-event storage and job-run history are all live.
-- **Remote Selfie Scan is not yet available** — the page says so honestly.
-- **Knowledge ingestion is pasted text only.** File-upload ingestion and vector embeddings are
-  not implemented (retrieval runs on ranked full-text search). Popular-question clustering is
-  live (deterministic clustering over real usage).
-- **Admin memory browsing** remains counts-only. User invitations ARE now available (account +
-  one-time password-setup link; the invitation email queues until Resend is connected).
-- File attachments in chat are not supported (nothing is uploaded/stored).
-- A dedicated **practitioner console** is not built; practitioner-facing review happens through
-  the roadmap's later phases.
+  instalment schedules, webhook-event storage and job-run history are live.
+- **Remote Selfie Scan is application-complete but provider-unconnected.** The provider-neutral
+  session lifecycle, authenticated launcher and signature-verifying webhook seam are implemented.
+  No vendor contract is invented; the launcher remains disabled until an approved provider adapter
+  is connected.
+- **Knowledge file ingestion is implemented** for text-based PDF, DOCX, TXT and CSV files, with
+  server-side type/signature validation and immediate retrieval indexing. Scanned/image-only PDFs
+  still require an OCR provider or approved pasted text. Retrieval remains ranked full-text search;
+  vector embeddings require a separate embedding-provider decision.
+- **Admin memory governance is live.** Administrators can inspect recent stored memories and remove
+  an incorrect/inappropriate memory; browse/delete actions are audit-logged without retaining a copy
+  of deliberately erased content. Member self-controls remain primary.
+- **Conversation file attachments are implemented** as private, ownership-checked files with signed
+  downloads, validation, deletion and audit events. Attachments are deliberately **not** silently fed
+  into AI context.
+- **A dedicated practitioner console is implemented** for assigned-case review, immutable notes and
+  approve/request-changes decisions. Practitioner mutations are assignment-checked server-side.
+- **Migration 0032 is committed but must be applied to the Ask Juice Doctor Supabase project** before
+  the new private knowledge/attachment storage buckets, attachment metadata and selfie-scan session
+  tables are available at runtime.
 - **Error/product monitoring (Sentry/PostHog) is built but not connected** — the capture layer
   and content-free event taxonomy are in place; without keys, errors log server-side only.
 - **Background jobs** (reminders, outbox delivery, scheduled sync) are implemented with a daily
