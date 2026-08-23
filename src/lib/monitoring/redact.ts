@@ -6,8 +6,6 @@
  * survive; user ids are one-way hashed before use as analytics identifiers.
  */
 
-import { createHash } from 'node:crypto';
-
 /** Longest string allowed through to a provider — slugs/statuses, never prose. */
 const MAX_STRING = 64;
 
@@ -38,9 +36,17 @@ export function redactProps(props: Record<string, unknown>): SafeProps {
   return out;
 }
 
-/** One-way analytics identifier — never the raw user id, never reversible. */
-export function analyticsId(userId: string): string {
-  return createHash('sha256').update(`ajd:${userId}`).digest('hex').slice(0, 24);
+/**
+ * One-way analytics identifier — never the raw user id, never reversible.
+ * Uses the Web Crypto API so the same privacy boundary works in Node AND Edge
+ * instrumentation; importing node:crypto here made Next's Edge bundle invalid.
+ */
+export async function analyticsId(userId: string): Promise<string> {
+  const bytes = new TextEncoder().encode(`ajd:${userId}`);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, 24);
 }
 
 /** Error messages can embed user data — keep the class, bound the message. */
