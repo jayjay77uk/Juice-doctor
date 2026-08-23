@@ -8,6 +8,10 @@
 -- RLS is enabled with NO policies, so only the server (service role) can
 -- touch them — none of this data is ever member-readable directly.
 --
+-- APPLIED to live Supabase (project qgthvvrygvtalkzkszsu) on 2026-08-23 and
+-- verified: 8 tables present, RLS enabled, 0 policies, all unique constraints
+-- in place; the production contact form now persists to contact_messages.
+--
 -- NOTE: until this migration is applied, the application degrades honestly —
 -- mail reports undeliverable, the public contact/newsletter forms show a
 -- truthful "not available yet" notice, instalment schedules report

@@ -58,8 +58,8 @@ engineering team, never in client-facing documents.
 - [ ] Resend connected (`RESEND_API_KEY` + from/reply-to addresses) — every email workflow is
       built and queues into the outbox already
 - [ ] Zoho mailboxes created on the final domain; the four business addresses set via env
-- [ ] Database migration **0031** applied (mail outbox, contact/newsletter storage, instalment
-      schedules, webhook events, job runs) — needs a fresh Supabase management token
+- [x] Database migration **0031** applied 2026-08-23 (mail outbox, contact/newsletter storage,
+      instalment schedules, webhook events, job runs) — verified live
 - [ ] `CRON_SECRET` set so the daily background-job run (reminders, outbox delivery, syncs)
       activates
 - [ ] Voice keys supplied if voice is wanted at launch (`DEEPGRAM_API_KEY`,

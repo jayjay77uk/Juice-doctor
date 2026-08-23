@@ -51,15 +51,13 @@ or interim. This document lists every material limitation so nothing is over-cla
   newsletter welcome, account welcome, invitations, appointment lifecycle + reminders,
   follow-up alerts, escalation alerts, subscription changes, payment receipts) composes and
   records into a mail outbox; nothing sends — and nothing claims to have sent — until Resend is
-  connected. The public contact/newsletter forms additionally need database migration 0031
-  before they store submissions; until then they show an honest "not available yet" notice.
+  connected. The public contact/newsletter forms now store submissions (migration 0031 is
+  applied) and show a genuine success message; the email copy waits in the outbox.
 - **No payments provider.** The payment ledger, refund states and instalment-schedule
   architecture are live application-side, but every payment is an admin-recorded manual entry;
-  no online payment is taken and nothing is ever marked paid automatically. Instalment
-  schedules require database migration 0031.
-- **Database migration 0031 is written but not applied** (a fresh Supabase management token is
-  needed). Until applied: mail outbox, contact/newsletter storage, instalment schedules,
-  webhook-event storage and job-run history degrade honestly as described above.
+  no online payment is taken and nothing is ever marked paid automatically.
+- **Database migration 0031 is applied** (2026-08-23) — mail outbox, contact/newsletter storage,
+  instalment schedules, webhook-event storage and job-run history are all live.
 - **Remote Selfie Scan is not yet available** — the page says so honestly.
 - **Knowledge ingestion is pasted text only.** File-upload ingestion and vector embeddings are
   not implemented (retrieval runs on ranked full-text search). Popular-question clustering is

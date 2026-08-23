@@ -58,7 +58,7 @@ export default async function PaymentsPage() {
             <RecordPaymentForm subscriptions={subscriptionOptions} />
           )}
         </Panel>
-        <Panel title="Create an instalment schedule" description="Admin-entered amounts and due dates only — the platform never invents pricing. Requires database migration 0031.">
+        <Panel title="Create an instalment schedule" description="Admin-entered amounts and due dates only — the platform never invents pricing.">
           {subscriptionOptions.length === 0 ? (
             <p className="text-sm text-muted-foreground">No subscriptions with a linked member account yet.</p>
           ) : (
