@@ -2,7 +2,7 @@ name: Verify
 
 on:
   push:
-    branches: [main, security-cleanup]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -22,8 +22,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Refresh vulnerable lockfile on cleanup branch
-        if: github.event_name == 'push' && github.ref == 'refs/heads/security-cleanup' && github.actor != 'github-actions[bot]'
+      - name: Refresh vulnerable lockfile on cleanup PR
+        if: github.event_name == 'pull_request' && github.head_ref == 'security-cleanup' && github.actor != 'github-actions[bot]'
         run: |
           npm audit fix --package-lock-only
           if ! git diff --quiet -- package-lock.json; then
