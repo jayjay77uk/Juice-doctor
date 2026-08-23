@@ -7,10 +7,11 @@ import { ok, err, type Result } from './result';
 
 /**
  * Safety policies — configurable guardrails stored in ai_safety_policies
- * (migration 0014). Real rows: the two baseline policies seed idempotently as
- * configuration data. NOTE: the RUNTIME safety checks (emergency block,
- * medication boundary, citation stripping) are enforced in code today; wiring
- * these configurable policies into inference is a follow-up.
+ * (migration 0014). The hard-coded HERNE safety floor (emergency/self-harm,
+ * medication/diagnosis boundary, citation stripping) always remains in force.
+ * Active managed policies are an ADDITIVE layer: organisation-global policies
+ * (no role restrictions) apply to every specialist, while role-restricted
+ * policies apply only when explicitly assigned through ai_agent_safety_policies.
  */
 
 const ORG = '00000000-0000-0000-0000-000000000001';
@@ -85,6 +86,64 @@ function rowToPolicy(r: Record<string, unknown>): SafetyPolicy {
   };
 }
 
+function compactJson(value: Record<string, unknown> | Record<string, string>): string | null {
+  if (!value || Object.keys(value).length === 0) return null;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return null;
+  }
+}
+
+function normaliseWords(value: string): string[] {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((word) => word.length >= 3);
+}
+
+/**
+ * Deterministic restricted-topic check used BEFORE inference. This is deliberately
+ * conservative: every meaningful word in a configured topic must occur in the
+ * user's message. The model prompt still carries the full policy for semantic
+ * cases that do not meet this exact pre-block test.
+ */
+export function restrictedTopicMatch(text: string, policies: SafetyPolicy[]): { topic: string; policy: SafetyPolicy } | null {
+  const inputWords = new Set(normaliseWords(text));
+  if (inputWords.size === 0) return null;
+  for (const policy of policies) {
+    for (const topic of policy.restrictedTopics) {
+      const topicWords = normaliseWords(topic);
+      if (topicWords.length > 0 && topicWords.every((word) => inputWords.has(word))) return { topic, policy };
+    }
+  }
+  return null;
+}
+
+/** Serialize active database policy data into a non-optional inference block. */
+export function safetyPolicyPrompt(policies: SafetyPolicy[]): string | null {
+  if (!policies.length) return null;
+  const blocks = policies.map((policy) => {
+    const lines = [
+      `POLICY: ${policy.name}`,
+      policy.description ? `Purpose: ${policy.description}` : null,
+      policy.allowedTopics.length ? `Permitted/example topics: ${policy.allowedTopics.join('; ')}` : null,
+      policy.restrictedTopics.length ? `Restricted topics — decline and redirect: ${policy.restrictedTopics.join('; ')}` : null,
+      policy.medicalBoundaries.length ? `Medical/scope boundaries:\n${policy.medicalBoundaries.map((x) => `- ${x}`).join('\n')}` : null,
+      compactJson(policy.emergencyResponses) ? `Configured emergency directives: ${compactJson(policy.emergencyResponses)}` : null,
+      compactJson(policy.contentFilters) ? `Configured content filters: ${compactJson(policy.contentFilters)}` : null,
+      compactJson(policy.escalationRules) ? `Configured escalation rules: ${compactJson(policy.escalationRules)}` : null,
+      `Human escalation enabled: ${policy.humanEscalation ? 'yes' : 'no'}. Confidence threshold: ${policy.confidenceThreshold}.`,
+    ];
+    return lines.filter(Boolean).join('\n');
+  });
+  return [
+    'ADMIN-MANAGED SAFETY POLICIES — ACTIVE AND ENFORCED. These rules are additive to the fixed safety floor below; never weaken or ignore the fixed emergency, diagnosis, medication or evidence rules. “Permitted/example topics” are guidance, not an exhaustive allow-list unless a policy explicitly says so.',
+    ...blocks,
+  ].join('\n\n');
+}
+
 export const safety = {
   async list(): Promise<Result<SafetyPolicy[]>> {
     const sb = createAdminClient();
@@ -93,6 +152,23 @@ export const safety = {
     const { data } = await sb.from('ai_safety_policies').select('*').eq('organisation_id', ORG).order('created_at');
     return ok((data ?? []).map(rowToPolicy));
   },
+
+  /** Active policies that actually apply to one specialist at runtime. */
+  async activeForAgent(agentId: string): Promise<SafetyPolicy[]> {
+    const sb = createAdminClient();
+    if (!sb) return [];
+    await ensureSeed(sb);
+    const [{ data: rows, error }, { data: assignments }] = await Promise.all([
+      sb.from('ai_safety_policies').select('*').eq('organisation_id', ORG).eq('status', 'active').order('created_at'),
+      sb.from('ai_agent_safety_policies').select('policy_id').eq('agent_id', agentId),
+    ]);
+    if (error) return [];
+    const assigned = new Set((assignments ?? []).map((row) => String(row.policy_id)));
+    return (rows ?? [])
+      .map(rowToPolicy)
+      .filter((policy) => policy.roleRestrictions.length === 0 || assigned.has(policy.id));
+  },
+
   async byId(id: string): Promise<Result<SafetyPolicy>> {
     const sb = createAdminClient();
     if (!sb) return err({ code: 'unavailable', message: 'Safety policies are not available.' });
