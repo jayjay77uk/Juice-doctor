@@ -13,8 +13,8 @@ import './globals.css';
 export const metadata: Metadata = baseMetadata;
 
 export const viewport: Viewport = {
-  themeColor: '#0e5c63',
-  colorScheme: 'light',
+  themeColor: '#000000',
+  colorScheme: 'dark',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

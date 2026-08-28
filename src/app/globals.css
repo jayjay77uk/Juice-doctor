@@ -8,73 +8,73 @@
    ============================================================================ */
 
 @theme {
-  /* ── Brand palette (proposal — pending client confirmation) ─────────────── */
-  --color-teal-50: #edf5f5;
-  --color-teal-100: #d3e6e6;
-  --color-teal-200: #a7cdcf;
-  --color-teal-300: #6faab0;
-  --color-teal-400: #3d858d;
-  --color-teal-500: #14757e;
-  --color-teal-600: #0e5c63;
-  --color-teal-700: #0c4d53;
-  --color-teal-800: #0a3b40;
-  --color-teal-900: #072a2e;
+  /* ── Brand palette ───────────────────────────────────────────────────────── */
+  --color-teal-50: #eef4ff;
+  --color-teal-100: #dce8ff;
+  --color-teal-200: #b8d0ff;
+  --color-teal-300: #83aaff;
+  --color-teal-400: #5e8cff;
+  --color-teal-500: #3f6fe8;
+  --color-teal-600: #2f5fd2;
+  --color-teal-700: #244baa;
+  --color-teal-800: #172f70;
+  --color-teal-900: #0c183d;
 
-  --color-green-50: #eef6f1;
-  --color-green-100: #d6e9df;
-  --color-green-300: #8cc0a6;
-  --color-green-500: #4f9d7d;
-  --color-green-600: #3e8b6e;
-  --color-green-700: #2f6d56;
+  --color-green-50: #eef4ff;
+  --color-green-100: #d6e4ff;
+  --color-green-300: #91b0f4;
+  --color-green-500: #5c82db;
+  --color-green-600: #4169bd;
+  --color-green-700: #2d4c91;
 
-  --color-amber-50: #fbf3e1;
-  --color-amber-200: #f4dda8;
-  --color-amber-400: #edbb61;
-  --color-amber-500: #e9a93d;
-  --color-amber-600: #cf8f24;
-  --color-amber-700: #a5701a;
+  --color-amber-50: #eef4ff;
+  --color-amber-200: #c5d8ff;
+  --color-amber-400: #8dafff;
+  --color-amber-500: #5f88ed;
+  --color-amber-600: #4169bd;
+  --color-amber-700: #2d4c91;
 
-  --color-cream-50: #faf8f2;
-  --color-cream-100: #f6f3ec;
-  --color-cream-200: #efebe0;
-  --color-cream-300: #e5dfce;
+  --color-cream-50: #ffffff;
+  --color-cream-100: #000000;
+  --color-cream-200: #111217;
+  --color-cream-300: #1d1f27;
 
-  --color-sage-100: #e2eae3;
-  --color-sage-200: #cfddd3;
-  --color-sage-300: #b6ccbd;
+  --color-sage-100: #17191f;
+  --color-sage-200: #262a35;
+  --color-sage-300: #444b5d;
 
-  --color-ink-500: #5b6b66;
-  --color-ink-700: #34403c;
-  --color-ink-800: #262e2b;
-  --color-ink-900: #1c2321;
+  --color-ink-500: #b8becb;
+  --color-ink-700: #d8dce5;
+  --color-ink-800: #eef0f4;
+  --color-ink-900: #ffffff;
 
   /* ── Semantic tokens (light theme) ──────────────────────────────────────── */
-  --color-background: var(--color-cream-100);
-  --color-foreground: var(--color-ink-900);
-  --color-surface: #ffffff;
+  --color-background: #000000;
+  --color-foreground: #ffffff;
+  --color-surface: #0b0b0d;
   --color-surface-muted: var(--color-sage-100);
-  --color-surface-inverse: var(--color-teal-800);
+  --color-surface-inverse: #000000;
 
-  --color-primary: var(--color-teal-600);
-  --color-primary-hover: var(--color-teal-700);
-  --color-primary-foreground: var(--color-cream-50);
+  --color-primary: #ffffff;
+  --color-primary-hover: #dce8ff;
+  --color-primary-foreground: #000000;
 
-  --color-secondary: var(--color-green-600);
-  --color-secondary-foreground: var(--color-cream-50);
+  --color-secondary: var(--color-teal-500);
+  --color-secondary-foreground: #ffffff;
 
-  --color-accent: var(--color-amber-500);
-  --color-accent-strong: var(--color-amber-600);
-  --color-accent-foreground: var(--color-ink-900);
+  --color-accent: var(--color-teal-500);
+  --color-accent-strong: var(--color-teal-400);
+  --color-accent-foreground: #ffffff;
 
   /* Muted text is a SOLID verified tint (>=4.5:1 on cream), never an opacity. */
   --color-muted-foreground: var(--color-ink-500);
 
-  --color-border: #ddd6c6;
-  --color-border-strong: #c7bfa9; /* audited >=3:1 for non-text UI (WCAG 1.4.11) */
-  --color-ring: var(--color-teal-600);
+  --color-border: #2a2d36;
+  --color-border-strong: #555c6e;
+  --color-ring: var(--color-teal-400);
 
   --color-success: #2f7d57;
-  --color-warning: var(--color-amber-600);
+  --color-warning: var(--color-teal-400);
   --color-danger: #b23a2e;
   --color-info: var(--color-teal-500);
 

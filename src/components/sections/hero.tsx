@@ -1,77 +1,44 @@
 import * as React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Search } from 'lucide-react';
 import { routes } from '@/config/routes';
 import { Container } from '@/components/ui/container';
 import { Button } from '@/components/ui/button';
 import { Media } from '@/components/ui/media';
 
-/**
- * Home hero — the committed "art-directed split-editorial" concept.
- * Fluid display headline + CTAs on the left; a graded portrait with a floating
- * chip on the right. Copy is clear English placeholder text until final approved
- * wording is supplied. Static/RSC — no client JS.
- */
 export function Hero() {
   return (
-    <section className="relative overflow-hidden bg-cream-50">
-      <div className="bg-grain pointer-events-none absolute inset-0 opacity-60" aria-hidden />
-      <Container className="relative grid items-center gap-10 py-14 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:py-24">
-        <div className="flex flex-col items-start gap-6">
-          <span className="reveal inline-flex items-center gap-2 rounded-full border border-border-strong bg-surface px-3.5 py-1.5 text-xs font-medium text-muted-foreground">
-            <Sparkles className="size-3.5 text-accent-strong" />
-            Your Wellbeing Institute
-          </span>
-          <h1 className="reveal reveal-2 text-display text-foreground">
-            Meet Makela,
-            <span className="block text-primary">your wellbeing concierge</span>
-          </h1>
-          <p className="reveal reveal-3 measure text-lg text-muted-foreground sm:text-xl">
-            Makela listens first, then coordinates a team of eight specialists around one shared care plan —
-            so your wellbeing support always works together.
-          </p>
-          <div className="reveal reveal-3 flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg">
-              <Link href={routes.assistant.href}>
-                Ask Makela to guide me <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" intent="outline">
-              <Link href={routes.specialists.href}>Meet your team</Link>
-            </Button>
+    <section className="bg-black pb-5 pt-0 text-white">
+      <Container className="px-0 sm:px-5 lg:px-8">
+        <Media
+          image={{ alt: 'A vivid blue editorial portrait representing a new health chapter', tone: 'teal', ratio: '16/9' }}
+          overlay
+          rounded
+          priority
+          sizes="(max-width: 1024px) 100vw, 90vw"
+          className="min-h-[34rem] sm:min-h-[42rem] lg:min-h-[calc(100vh-7rem)]"
+        >
+          <div className="absolute inset-x-0 top-0 flex items-center justify-between px-6 py-6 sm:px-10 sm:py-8">
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/80">Ask Juice Doctor</span>
+            <span className="hidden items-center gap-2 text-xs text-white/80 sm:flex"><Search className="size-4" /> Explore health, your way</span>
           </div>
-          <dl className="reveal reveal-4 mt-4 flex flex-wrap gap-x-8 gap-y-3">
-            {[
-              { v: '8', l: 'Wellbeing specialists' },
-              { v: '1', l: 'Shared care plan' },
-              { v: '24/7', l: 'Always available' },
-            ].map((s, i) => (
-              <div key={i} className="flex flex-col">
-                <dt className="font-serif text-2xl text-foreground">{s.v}</dt>
-                <dd className="text-sm text-muted-foreground">{s.l}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-
-        <div className="reveal reveal-2 relative">
-          <Media
-            image={{ alt: 'Makela, your wellbeing concierge', tone: 'teal', ratio: '4/5' }}
-            className="shadow-[var(--shadow-soft-lg)]"
-            priority
-            sizes="(max-width: 1024px) 100vw, 45vw"
-          />
-          <div className="absolute -bottom-5 -left-4 max-w-[15rem] rounded-2xl border border-border bg-surface/95 p-4 shadow-[var(--shadow-soft)] backdrop-blur sm:-left-6">
-            <p className="font-serif text-3xl text-primary">Makela</p>
-            <p className="text-sm text-muted-foreground">
-              Your concierge
-              <span className="mt-0.5 block text-xs text-muted-foreground/70">Listens first</span>
-            </p>
+          <div className="mt-auto grid gap-8 p-6 sm:p-10 lg:grid-cols-[1fr_24rem] lg:items-end lg:p-14">
+            <div className="max-w-4xl">
+              <p className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-blue-200">Your health, with direction</p>
+              <h1 className="max-w-4xl font-sans text-[clamp(3.5rem,8vw,7.4rem)] font-semibold leading-[0.9] tracking-[-0.08em] text-white">
+                Your next chapter<br />starts here.
+              </h1>
+              <Button asChild size="lg" className="mt-8 rounded-full bg-white px-8 text-black hover:bg-blue-100">
+                <Link href={routes.assessment.href}>Start your assessment <ArrowRight className="size-4" /></Link>
+              </Button>
+            </div>
+            <div className="rounded-2xl bg-black p-6 text-white sm:p-7">
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-blue-300">AI Juice Doctor</p>
+              <p className="mt-10 font-serif text-3xl leading-none sm:text-4xl">Personal support.<br />Whenever you need it.</p>
+              <Link href={routes.assistant.href} className="mt-8 inline-flex items-center gap-2 text-sm font-medium text-white hover:text-blue-300">Meet your guide <ArrowRight className="size-4" /></Link>
+            </div>
           </div>
-          <div className="absolute -right-3 top-6 hidden rounded-2xl border border-border bg-surface/95 px-4 py-3 shadow-[var(--shadow-soft)] backdrop-blur sm:block">
-            <p className="text-sm font-medium text-foreground">“Speak naturally, in your language.”</p>
-          </div>
-        </div>
+        </Media>
       </Container>
     </section>
   );

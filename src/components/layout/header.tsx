@@ -25,8 +25,8 @@ export function Header() {
       className={cn(
         'sticky top-0 z-40 border-b transition-all duration-300',
         condensed
-          ? 'border-border bg-cream-50/85 shadow-[var(--shadow-crisp)] backdrop-blur-md'
-          : 'border-transparent bg-cream-50/60 backdrop-blur',
+          ? 'border-border bg-black/90 shadow-[var(--shadow-crisp)] backdrop-blur-md'
+          : 'border-transparent bg-black/80 backdrop-blur',
       )}
     >
       <div className="mx-auto flex h-[var(--header-h)] w-full max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
