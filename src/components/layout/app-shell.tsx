@@ -18,6 +18,7 @@ export function AppShell({
   userName,
   navVariant,
   adminHref,
+  practitionerHref,
   children,
 }: {
   roleLabel: string;
@@ -25,6 +26,8 @@ export function AppShell({
   navVariant: NavVariant;
   /** When set, show a cross-link to the admin dashboard (for admins in the member area). */
   adminHref?: string | undefined;
+  /** When set, show a cross-link to the practitioner console (for practitioners). */
+  practitionerHref?: string | undefined;
   children: React.ReactNode;
 }) {
   return (
@@ -43,6 +46,11 @@ export function AppShell({
               Admin dashboard →
             </Link>
           ) : null}
+          {practitionerHref ? (
+            <Link href={practitionerHref} className="text-sm font-medium text-primary hover:underline">
+              Practitioner console →
+            </Link>
+          ) : null}
           <Link href="/" className="text-sm text-muted-foreground hover:text-primary">
             ← Back to site
           </Link>
@@ -53,7 +61,7 @@ export function AppShell({
       <div className="flex min-w-0 flex-col">
         <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-border bg-surface/85 px-6 py-4 backdrop-blur">
           <div className="flex items-center gap-3 lg:hidden">
-            <MobileAppNav navVariant={navVariant} roleLabel={roleLabel} adminHref={adminHref} />
+            <MobileAppNav navVariant={navVariant} roleLabel={roleLabel} adminHref={adminHref} practitionerHref={practitionerHref} />
             <Logo />
           </div>
           <p className="hidden text-sm text-muted-foreground lg:block">
@@ -73,7 +81,7 @@ export function AppShell({
             </span>
           </div>
         </header>
-        <main className="flex-1 overflow-x-hidden px-5 py-8 sm:px-8">{children}</main>
+        <main id="main" className="flex-1 overflow-x-hidden px-5 py-8 sm:px-8">{children}</main>
         <footer className="border-t border-border px-5 pb-8 pt-4 sm:px-8">
           <p className="mx-auto max-w-5xl text-xs text-muted-foreground">
             AI responses are not a substitute for professional medical advice. Not for emergencies — call your local

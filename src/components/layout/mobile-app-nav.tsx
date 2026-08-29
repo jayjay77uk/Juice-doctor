@@ -15,10 +15,12 @@ export function MobileAppNav({
   navVariant,
   roleLabel,
   adminHref,
+  practitionerHref,
 }: {
   navVariant: NavVariant;
   roleLabel: string;
   adminHref?: string | undefined;
+  practitionerHref?: string | undefined;
 }) {
   const [open, setOpen] = React.useState(false);
 
@@ -76,6 +78,11 @@ export function MobileAppNav({
                 {adminHref ? (
                   <Link href={adminHref} className="text-sm font-medium text-primary hover:underline">
                     Admin dashboard →
+                  </Link>
+                ) : null}
+                {practitionerHref ? (
+                  <Link href={practitionerHref} className="text-sm font-medium text-primary hover:underline">
+                    Practitioner console →
                   </Link>
                 ) : null}
                 <Link href="/" className="text-sm text-muted-foreground hover:text-primary">

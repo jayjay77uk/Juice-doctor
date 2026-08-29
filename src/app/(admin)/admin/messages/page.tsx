@@ -22,6 +22,7 @@ export default async function MessagesPage() {
     support.listAll(),
   ]);
   const tickets = ticketsResult.ok ? ticketsResult.data : [];
+  const ticketsError = ticketsResult.ok ? null : ticketsResult.error.message;
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8">
@@ -80,7 +81,11 @@ export default async function MessagesPage() {
       </Panel>
 
       <Panel title="Support tickets" description="Member support requests from the dashboard, with triage statuses." padded={false}>
-        {tickets.length === 0 ? (
+        {ticketsError ? (
+          <p className="px-6 py-6 text-sm text-danger" role="alert">
+            {ticketsError} This is a loading problem — tickets may exist.
+          </p>
+        ) : tickets.length === 0 ? (
           <p className="px-6 py-6 text-sm text-muted-foreground">No support tickets yet.</p>
         ) : (
           <ul className="divide-y divide-border">

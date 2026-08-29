@@ -61,7 +61,17 @@ export const Select = React.forwardRef<
   React.SelectHTMLAttributes<HTMLSelectElement>
 >(function Select({ className, children, ...props }, ref) {
   return (
-    <select ref={ref} className={cn(controlBase, 'appearance-none pr-10', className)} {...props}>
+    // appearance-none strips the native arrow, so draw our own chevron — the
+    // pr-10 gutter exists precisely for it.
+    <select
+      ref={ref}
+      className={cn(
+        controlBase,
+        'appearance-none bg-[url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%2716%27%20height%3D%2716%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%235b6b66%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27m6%209%206%206%206-6%27/%3E%3C/svg%3E")] bg-[length:1rem_1rem] bg-[position:right_0.75rem_center] bg-no-repeat pr-10',
+        className,
+      )}
+      {...props}
+    >
       {children}
     </select>
   );

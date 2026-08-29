@@ -2,7 +2,7 @@ import 'server-only';
 
 import type { Profile } from '@/types/identity';
 import type { AppRole } from '@/lib/auth/roles';
-import { ok, type Page, type Result } from './result';
+import { ok, err, type Page, type Result } from './result';
 import type { ListQuery } from './index';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseAdminConfigured } from '@/lib/env';
@@ -51,7 +51,9 @@ export const admin = {
         .select('*')
         .order('created_at', { ascending: false })
         .limit(q.limit ?? 100);
-      if (error) return ok({ items: [], nextCursor: null });
+      // A query failure must surface — an ok-empty here would render a
+      // confidently false "No users yet" over a live platform.
+      if (error) return err({ code: 'unavailable', message: 'Could not load users from the database.' });
       return ok({ items: (data ?? []).map(rowToProfile), nextCursor: null });
     },
     async count(): Promise<Result<number>> {

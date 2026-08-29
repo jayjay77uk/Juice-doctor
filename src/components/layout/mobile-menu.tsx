@@ -65,10 +65,22 @@ export function MobileMenu() {
             >
               {routes.specialists.label}
             </Link>
+            <Link
+              href={routes.contact.href}
+              onClick={() => setOpen(false)}
+              className="block rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-muted"
+            >
+              {routes.contact.label}
+            </Link>
           </nav>
 
           <div className="flex flex-col gap-3 border-t border-border p-5">
             <Button asChild intent="primary" full>
+              <Link href={routes.assistant.href} onClick={() => setOpen(false)}>
+                {routes.assistant.label}
+              </Link>
+            </Button>
+            <Button asChild intent="outline" full>
               <Link href={routes.specialists.href} onClick={() => setOpen(false)}>
                 Meet your team
               </Link>

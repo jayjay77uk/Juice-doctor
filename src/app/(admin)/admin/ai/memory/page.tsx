@@ -92,7 +92,7 @@ export default async function MemoryCentrePage() {
                         <input type="hidden" name="id" value={memory.id} />
                         <button
                           type="submit"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-danger transition hover:bg-muted"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-danger transition hover:bg-surface-muted"
                           title="Delete this stored memory"
                         >
                           <Trash2 className="size-3.5" />

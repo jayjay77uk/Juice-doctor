@@ -243,7 +243,9 @@ export const receptionist = {
       .select('recommended_specialist_slug, recommendation_confidence, escalated, created_at')
       .gte('created_at', since)
       .limit(1000);
-    if (error) return ok({ consultations30d: 0, recommendationRate: 0, escalationRate: 0, avgConfidence: 0 });
+    // Surface query failures — the dashboard renders "—" for an error, which
+    // must stay distinguishable from a true zero.
+    if (error) return err({ code: 'unavailable', message: 'Could not load receptionist statistics.' });
     const rows = data ?? [];
     const total = rows.length;
     const recommended = rows.filter((r) => r.recommended_specialist_slug).length;

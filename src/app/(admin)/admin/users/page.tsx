@@ -41,6 +41,7 @@ const columns: Column<Profile>[] = [
 export default async function UsersPage() {
   const result = await admin.users.list();
   const items = result.ok ? result.data.items : [];
+  const loadError = result.ok ? null : result.error.message;
 
   const members = items.filter((u) => u.role === 'member').length;
   const practitioners = items.filter((u) => u.role === 'practitioner').length;
@@ -55,11 +56,17 @@ export default async function UsersPage() {
         actions={<InviteUserForm />}
       />
 
+      {loadError && (
+        <p className="rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger" role="alert">
+          {loadError} The figures below are unavailable — this is a loading problem, not an empty platform.
+        </p>
+      )}
+
       <StatGrid>
-        <StatCard label="Total users" value={items.length} icon={Users} />
-        <StatCard label="Members" value={members} icon={User} />
-        <StatCard label="Practitioners" value={practitioners} icon={Stethoscope} />
-        <StatCard label="Staff+" value={staff} icon={ShieldCheck} />
+        <StatCard label="Total users" value={loadError ? '—' : items.length} icon={Users} />
+        <StatCard label="Members" value={loadError ? '—' : members} icon={User} />
+        <StatCard label="Practitioners" value={loadError ? '—' : practitioners} icon={Stethoscope} />
+        <StatCard label="Staff+" value={loadError ? '—' : staff} icon={ShieldCheck} />
       </StatGrid>
 
       <Panel padded={false}>
@@ -68,11 +75,15 @@ export default async function UsersPage() {
           rows={items}
           getKey={(u) => u.id}
           empty={
-            <EmptyState
-              icon={Users}
-              title="No users yet"
-              description="Invited members, practitioners and staff will appear here."
-            />
+            loadError ? (
+              <EmptyState icon={Users} title="Users could not be loaded" description={loadError} />
+            ) : (
+              <EmptyState
+                icon={Users}
+                title="No users yet"
+                description="Invited members, practitioners and staff will appear here."
+              />
+            )
           }
         />
       </Panel>

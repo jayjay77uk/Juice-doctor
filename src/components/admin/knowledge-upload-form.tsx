@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { AlertCircle, CheckCircle2, FileText } from 'lucide-react';
 import { uploadKnowledgeDocumentAction } from '@/services/knowledge-file-actions';
@@ -27,6 +27,7 @@ export function KnowledgeUploadForm({
   categories: { id: string; name: string }[];
 }) {
   const [state, formAction] = useActionState(uploadKnowledgeDocumentAction, idleAction);
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const fe = state.status === 'error' ? state.fieldErrors : undefined;
 
   return (
@@ -109,10 +110,14 @@ export function KnowledgeUploadForm({
           <label htmlFor="file" className="text-sm font-medium text-foreground">
             Knowledge file
           </label>
-          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border bg-muted/30 px-4 py-4 text-sm text-foreground transition hover:border-primary">
+          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border bg-surface-muted/40 px-4 py-4 text-sm text-foreground transition hover:border-primary">
             <FileText className="size-5 text-primary" />
             <span>
-              Choose a PDF, DOCX, TXT or CSV file
+              {selectedFile ? (
+                <span className="font-medium text-foreground">{selectedFile}</span>
+              ) : (
+                'Choose a PDF, DOCX, TXT or CSV file'
+              )}
               <span className="mt-0.5 block text-xs text-muted-foreground">Maximum 25 MB. Files are validated before extraction; originals are private.</span>
             </span>
             <input
@@ -121,6 +126,7 @@ export function KnowledgeUploadForm({
               type="file"
               accept=".pdf,.docx,.txt,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv"
               className="sr-only"
+              onChange={(e) => setSelectedFile(e.currentTarget.files?.[0]?.name ?? null)}
             />
           </label>
         </div>

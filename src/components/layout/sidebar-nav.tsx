@@ -83,6 +83,7 @@ const NAV: Record<NavVariant, ShellNavSection[]> = {
     {
       title: 'Administration',
       items: [
+        { label: 'AI Dashboard', href: '/admin/ai', icon: BarChart3 },
         { label: 'Knowledge Base', href: '/admin/knowledge', icon: BookOpen },
         { label: 'Prompts', href: '/admin/ai/prompts', icon: MessageSquareText },
         { label: 'Playground', href: '/admin/ai/playground', icon: FlaskConical },

@@ -13,9 +13,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const userName = session.user.name;
   // Let an administrator who lands on the member area cross-navigate to /admin.
   const adminHref = isAdminRole(session.user.role) ? '/admin' : undefined;
+  // Practitioners land on the member area after login — give them a visible
+  // path to their case-review console (RBAC still enforced on the route).
+  const practitionerHref = session.user.role === 'practitioner' ? '/practitioner' : undefined;
 
   return (
-    <AppShell roleLabel="Member area" userName={userName} navVariant="dashboard" adminHref={adminHref}>
+    <AppShell roleLabel="Member area" userName={userName} navVariant="dashboard" adminHref={adminHref} practitionerHref={practitionerHref}>
       {children}
     </AppShell>
   );

@@ -56,7 +56,7 @@ export function AddGoalForm() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button type="button" aria-label="Close" onClick={() => setOpen(false)} className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" />
-      <form onSubmit={submit} className="relative z-10 flex w-full max-w-lg flex-col gap-4 rounded-2xl border border-border bg-surface p-6 shadow-xl">
+      <form onSubmit={submit} className="relative z-10 flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-surface p-6 shadow-xl">
         <div className="flex items-center justify-between">
           <h2 className="font-serif text-xl text-foreground">Add a goal</h2>
           <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-surface-muted">

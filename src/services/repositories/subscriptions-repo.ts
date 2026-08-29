@@ -137,7 +137,8 @@ export const subscriptionsRepo = {
   async list(): Promise<Result<CustomerSubscription[]>> {
     const sb = createAdminClient();
     if (!sb) return noDb();
-    const { data } = await sb.from('customer_subscriptions').select('*').eq('organisation_id', ORG).order('created_at', { ascending: false });
+    const { data, error } = await sb.from('customer_subscriptions').select('*').eq('organisation_id', ORG).order('created_at', { ascending: false });
+    if (error) return noDb();
     return ok((data ?? []).map(rowToSub));
   },
   async byId(id: string): Promise<Result<CustomerSubscription>> {
@@ -149,7 +150,8 @@ export const subscriptionsRepo = {
   async byMember(memberId: string): Promise<Result<CustomerSubscription[]>> {
     const sb = createAdminClient();
     if (!sb) return noDb();
-    const { data } = await sb.from('customer_subscriptions').select('*').eq('member_id', memberId).order('created_at', { ascending: false });
+    const { data, error } = await sb.from('customer_subscriptions').select('*').eq('member_id', memberId).order('created_at', { ascending: false });
+    if (error) return noDb();
     return ok((data ?? []).map(rowToSub));
   },
   async memberAccess(memberId: string): Promise<Result<string[]>> {

@@ -48,6 +48,7 @@ function IconAction({
 export default async function AgentsPage() {
   const result = await agents.list();
   const rows = result.ok ? result.data : [];
+  const loadError = result.ok ? null : result.error.message;
 
   const columns: Column<AiAgent>[] = [
     {
@@ -116,6 +117,9 @@ export default async function AgentsPage() {
           rows={rows}
           getKey={(a) => a.id}
           empty={
+            loadError ? (
+              <EmptyState icon={Bot} title="Agents could not be loaded" description={`${loadError} This is a loading problem — the configured agents still exist.`} />
+            ) : (
             <EmptyState
               icon={Bot}
               title="No agents yet"
@@ -128,6 +132,7 @@ export default async function AgentsPage() {
                 </Button>
               }
             />
+            )
           }
         />
       </Panel>

@@ -66,7 +66,8 @@ export const support = {
   async listAll(limit = 50): Promise<Result<(SupportTicket & { memberEmail: string })[]>> {
     const sb = createAdminClient();
     if (!sb) return ok([]);
-    const { data } = await sb.from('support_tickets').select('*').order('created_at', { ascending: false }).limit(limit);
+    const { data, error } = await sb.from('support_tickets').select('*').order('created_at', { ascending: false }).limit(limit);
+    if (error) return err({ code: 'unavailable', message: 'Could not load support tickets.' });
     const rows = data ?? [];
     const memberIds = [...new Set(rows.map((r) => String(r.member_id)))];
     const emails = new Map<string, string>();
