@@ -25,13 +25,14 @@ export type TtsResult =
 export function ttsFailureReason(result: Extract<TtsResult, { ok: false }>): string {
   if (result.error === 'timeout') return 'The voice service timed out — please try again.';
   switch (result.providerStatus) {
+    case 400:
+    case 422:
+      return 'The voice service rejected the request — the voice ID may not be added to the ElevenLabs account (My Voices), or the text was rejected.';
     case 401:
     case 403:
       return 'The voice service rejected our credentials — check ELEVENLABS_API_KEY.';
     case 404:
       return 'The configured voice was not found — check the voice ID.';
-    case 422:
-      return 'The voice service rejected the request — check the voice ID and text.';
     case 429:
       return 'The voice service quota was exceeded — try again shortly.';
     default:

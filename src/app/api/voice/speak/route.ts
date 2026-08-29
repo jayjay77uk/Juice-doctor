@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
 
   const result = await provider.speak(message.data.content, voiceId);
   if (!result.ok) {
+    console.error(`[tts] speak failed for message ${messageId}: ${result.detail ?? result.error}`);
     return NextResponse.json({ error: ttsFailureReason(result) }, { status: result.error === 'timeout' ? 504 : 502 });
   }
   // Long replies are spoken up to the provider limit; signal partial audio

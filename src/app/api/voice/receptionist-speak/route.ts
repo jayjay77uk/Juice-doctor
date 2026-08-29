@@ -62,6 +62,9 @@ export async function POST(request: NextRequest) {
   }
   const result = await provider.speak(text, voiceId);
   if (!result.ok) {
+    // Operator diagnostics in the function logs — provider status/detail only,
+    // never our credentials.
+    console.error(`[tts] receptionist speak failed: ${result.detail ?? result.error}`);
     return NextResponse.json({ error: ttsFailureReason(result) }, { status: result.error === 'timeout' ? 504 : 502 });
   }
   return new Response(result.audio, {

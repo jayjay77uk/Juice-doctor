@@ -89,6 +89,7 @@ describe('TTS failure reasons (operator-facing, no secrets)', () => {
     const { ttsFailureReason } = await import('./tts');
     expect(ttsFailureReason({ ok: false, error: 'provider_error', providerStatus: 401 })).toContain('ELEVENLABS_API_KEY');
     expect(ttsFailureReason({ ok: false, error: 'provider_error', providerStatus: 404 })).toContain('voice was not found');
+    expect(ttsFailureReason({ ok: false, error: 'provider_error', providerStatus: 400 })).toContain('My Voices');
     expect(ttsFailureReason({ ok: false, error: 'provider_error', providerStatus: 429 })).toContain('quota');
     expect(ttsFailureReason({ ok: false, error: 'timeout' })).toContain('timed out');
     expect(ttsFailureReason({ ok: false, error: 'provider_error' })).toContain('could not be generated');
