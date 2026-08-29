@@ -32,7 +32,9 @@ export type PlatformEvent = (typeof EVENT_TAXONOMY)[number];
 const CAPTURE_TIMEOUT_MS = 3_000;
 
 function posthogHost(): string {
-  return (process.env.POSTHOG_HOST ?? 'https://eu.i.posthog.com').replace(/\/$/, '');
+  // A blank POSTHOG_HOST (dashboard artifact) must fall back, not break URLs.
+  const configured = process.env.POSTHOG_HOST?.trim();
+  return (configured || 'https://eu.i.posthog.com').replace(/\/$/, '');
 }
 
 /**

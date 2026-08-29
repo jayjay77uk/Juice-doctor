@@ -11,6 +11,17 @@ function num(value: string | undefined, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+/**
+ * Treat empty/whitespace env values as UNSET. Dashboards (Vercel) make it easy
+ * to save a variable with a blank value, and `'' ?? fallback` does NOT fall
+ * through — a blank ANTHROPIC_DEFAULT_MODEL in production sent `model: ""` to
+ * the API and broke every AI call. Applies to every string var with a default.
+ */
+function str(value: string | undefined): string | undefined {
+  const v = value?.trim();
+  return v ? v : undefined;
+}
+
 /** AI_REQUEST_TIMEOUT accepts ms (>=1000) or seconds (<1000, multiplied up). */
 function timeoutMs(value: string | undefined, fallback: number): number {
   const n = num(value, fallback);
@@ -23,10 +34,10 @@ export const env = {
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
 
   // ── AI provider ────────────────────────────────────────────────────────────
-  aiProvider: process.env.AI_PROVIDER ?? 'anthropic',
+  aiProvider: str(process.env.AI_PROVIDER) ?? 'anthropic',
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
   // ANTHROPIC_DEFAULT_MODEL is preferred; AI_MODEL kept for back-compat.
-  aiModel: process.env.ANTHROPIC_DEFAULT_MODEL ?? process.env.AI_MODEL ?? 'claude-sonnet-5',
+  aiModel: str(process.env.ANTHROPIC_DEFAULT_MODEL) ?? str(process.env.AI_MODEL) ?? 'claude-sonnet-5',
   aiMaxInputTokens: num(process.env.AI_MAX_INPUT_TOKENS, 14_000),
   aiMaxOutputTokens: num(process.env.AI_MAX_OUTPUT_TOKENS, 1_024),
   aiRequestTimeoutMs: timeoutMs(process.env.AI_REQUEST_TIMEOUT, 60_000),
@@ -37,9 +48,9 @@ export const env = {
   // single env change (NEXT_PUBLIC_SITE_URL). Until then Vercel's production
   // URL applies automatically; localhost only in local dev.
   siteUrl:
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined) ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ??
+    str(process.env.NEXT_PUBLIC_SITE_URL) ??
+    (str(process.env.VERCEL_PROJECT_PRODUCTION_URL) ? `https://${str(process.env.VERCEL_PROJECT_PRODUCTION_URL)}` : undefined) ??
+    (str(process.env.VERCEL_URL) ? `https://${str(process.env.VERCEL_URL)}` : undefined) ??
     'http://localhost:3011',
 } as const;
 
