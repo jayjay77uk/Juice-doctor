@@ -76,9 +76,9 @@ limitation so nothing is over-claimed.
   into AI context.
 - **A dedicated practitioner console is implemented** for assigned-case review, immutable notes and
   approve/request-changes decisions. Practitioner mutations are assignment-checked server-side.
-- **Migration 0032 is committed but must be applied to the Ask Juice Doctor Supabase project** before
-  the new private knowledge/attachment storage buckets, attachment metadata and selfie-scan session
-  tables are available at runtime.
+- **Migration 0032 is applied** (2026-08-29) — the private knowledge/attachment storage buckets,
+  attachment metadata and selfie-scan session tables are live (verified: RLS on, read-only
+  policies, private buckets with size limits).
 - **Error/product monitoring (Sentry/PostHog) is built but not connected** — the capture layer
   and content-free event taxonomy are in place; without keys, errors log server-side only.
 - **Background jobs** (reminders, outbox delivery, scheduled sync) are implemented with a daily

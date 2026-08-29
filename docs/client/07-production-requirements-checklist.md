@@ -60,8 +60,8 @@ engineering team, never in client-facing documents.
 - [ ] Zoho mailboxes created on the final domain; the four business addresses set via env
 - [x] Database migration **0031** applied 2026-08-23 (mail outbox, contact/newsletter storage,
       instalment schedules, webhook events, job runs) — verified live
-- [ ] Database migration **0032** applied (private knowledge + conversation-attachment storage,
-      attachment metadata/RLS and provider-neutral Remote Selfie Scan session lifecycle)
+- [x] Database migration **0032** applied 2026-08-29 (private knowledge + conversation-attachment
+      storage, attachment metadata/RLS and Remote Selfie Scan session lifecycle) — verified live
 - [ ] `CRON_SECRET` set so the daily background-job run (reminders, outbox delivery, syncs)
       activates
 - [ ] Voice keys supplied if voice is wanted at launch (`DEEPGRAM_API_KEY`,
