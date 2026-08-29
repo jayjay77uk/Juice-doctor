@@ -65,5 +65,5 @@ function createDeepgramAdapter(apiKey: string): SttProviderAdapter {
 /** The configured STT provider, or null when voice input is not yet connected. */
 export function getSttProvider(): SttProviderAdapter | null {
   if (!isSttConfigured()) return null;
-  return createDeepgramAdapter(process.env.DEEPGRAM_API_KEY ?? '');
+  return createDeepgramAdapter((process.env.DEEPGRAM_API_KEY ?? '').trim());
 }

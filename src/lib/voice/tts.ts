@@ -78,7 +78,9 @@ function createElevenLabsAdapter(apiKey: string): TtsProviderAdapter {
 /** The configured TTS provider, or null when voice output is not yet connected. */
 export function getTtsProvider(): TtsProviderAdapter | null {
   if (!isTtsConfigured()) return null;
-  return createElevenLabsAdapter(process.env.ELEVENLABS_API_KEY ?? '');
+  // Trimmed: a pasted key with stray whitespace would make the HTTP header
+  // invalid and every fetch throw before reaching the provider.
+  return createElevenLabsAdapter((process.env.ELEVENLABS_API_KEY ?? '').trim());
 }
 
 /** The platform-wide default voice id (required for TTS to be configured). */

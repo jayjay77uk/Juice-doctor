@@ -33,7 +33,7 @@ export interface MailProviderAdapter {
 export function getMailProvider(): MailProviderAdapter | null {
   if (!isMailConfigured()) return null;
   return createResendAdapter({
-    apiKey: process.env.RESEND_API_KEY ?? '',
+    apiKey: (process.env.RESEND_API_KEY ?? '').trim(),
     from: process.env.MAIL_FROM_ADDRESS ?? '',
   });
 }
