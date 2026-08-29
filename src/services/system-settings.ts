@@ -39,9 +39,14 @@ export const systemSettings = {
   async setValue(key: string, value: unknown, opts?: { isPublic?: boolean }): Promise<boolean> {
     const sb = createAdminClient();
     if (!sb) return false;
+    // The unique index is (organisation_id, key) NULLS NOT DISTINCT — naming
+    // 'key' alone makes every upsert fail with a missing-constraint error.
     const { error } = await sb
       .from('system_settings')
-      .upsert({ key, value, is_public: opts?.isPublic ?? false, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      .upsert(
+        { organisation_id: null, key, value, is_public: opts?.isPublic ?? false, updated_at: new Date().toISOString() },
+        { onConflict: 'organisation_id,key' },
+      );
     return !error;
   },
 
