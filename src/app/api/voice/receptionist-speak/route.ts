@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getTtsProvider, ttsFailureReason, TTS_MAX_CHARS } from '@/lib/voice/tts';
 import { voiceForSpecialist } from '@/services/voice';
+import { systemSettings } from '@/services/system-settings';
 import { verifyReplySignature } from '@/lib/voice/reply-signature';
 import { RECEPTIONIST_SLUG } from '@/lib/voice/modes';
 import { createInMemoryRateLimiter, enforceRateLimit } from '@/lib/security/rate-limit';
@@ -62,9 +63,15 @@ export async function POST(request: NextRequest) {
   }
   const result = await provider.speak(text, voiceId);
   if (!result.ok) {
-    // Operator diagnostics in the function logs — provider status/detail only,
+    // Operator diagnostics: function log + a durable last-failure record
+    // (system_settings, server/admin-only). Provider status/detail only —
     // never our credentials.
     console.error(`[tts] receptionist speak failed: ${result.detail ?? result.error}`);
+    void systemSettings.setValue('voice.last_tts_error', {
+      at: new Date().toISOString(),
+      surface: 'receptionist-speak',
+      detail: (result.detail ?? result.error).slice(0, 400),
+    });
     return NextResponse.json({ error: ttsFailureReason(result) }, { status: result.error === 'timeout' ? 504 : 502 });
   }
   return new Response(result.audio, {
