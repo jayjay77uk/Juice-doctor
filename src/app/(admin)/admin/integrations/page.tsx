@@ -19,6 +19,7 @@ import { payments } from '@/services/payments';
 import { paymentsRepo } from '@/services/repositories/payments-repo';
 import { runLogRepo } from '@/services/repositories/run-log-repo';
 import { specialistVoices } from '@/services/voice';
+import { systemSettings } from '@/services/system-settings';
 import { EVENT_TAXONOMY } from '@/lib/monitoring/events';
 import { HERNE_ORDER } from '@/data/herne/specialist-profiles';
 import { AdminHeader } from '@/components/admin/admin-header';
