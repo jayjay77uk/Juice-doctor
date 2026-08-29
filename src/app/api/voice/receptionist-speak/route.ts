@@ -67,7 +67,8 @@ export async function POST(request: NextRequest) {
     // (system_settings, server/admin-only). Provider status/detail only —
     // never our credentials.
     console.error(`[tts] receptionist speak failed: ${result.detail ?? result.error}`);
-    void systemSettings.setValue('voice.last_tts_error', {
+    // Awaited: a fire-and-forget write freezes with the lambda before landing.
+    await systemSettings.setValue('voice.last_tts_error', {
       at: new Date().toISOString(),
       surface: 'receptionist-speak',
       detail: (result.detail ?? result.error).slice(0, 400),
