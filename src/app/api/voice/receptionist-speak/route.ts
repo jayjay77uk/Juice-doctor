@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { getTtsProvider, TTS_MAX_CHARS } from '@/lib/voice/tts';
+import { getTtsProvider, ttsFailureReason, TTS_MAX_CHARS } from '@/lib/voice/tts';
 import { voiceForSpecialist } from '@/services/voice';
 import { verifyReplySignature } from '@/lib/voice/reply-signature';
 import { RECEPTIONIST_SLUG } from '@/lib/voice/modes';
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
   }
   const result = await provider.speak(text, voiceId);
   if (!result.ok) {
-    return NextResponse.json({ error: 'Speech could not be generated — please try again.' }, { status: result.error === 'timeout' ? 504 : 502 });
+    return NextResponse.json({ error: ttsFailureReason(result) }, { status: result.error === 'timeout' ? 504 : 502 });
   }
   return new Response(result.audio, {
     headers: {

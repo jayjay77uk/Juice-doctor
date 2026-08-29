@@ -15,7 +15,29 @@ export const TTS_TIMEOUT_MS = 30_000;
 
 export type TtsResult =
   | { ok: true; audio: ReadableStream<Uint8Array>; contentType: string }
-  | { ok: false; error: 'provider_error' | 'timeout'; detail?: string };
+  | { ok: false; error: 'provider_error' | 'timeout'; detail?: string; providerStatus?: number };
+
+/**
+ * Operator-facing reason for a TTS failure — status CLASS only, no secrets,
+ * no provider response bodies. Shown so a misconfigured key or voice id is
+ * diagnosable instead of a blank "failed".
+ */
+export function ttsFailureReason(result: Extract<TtsResult, { ok: false }>): string {
+  if (result.error === 'timeout') return 'The voice service timed out — please try again.';
+  switch (result.providerStatus) {
+    case 401:
+    case 403:
+      return 'The voice service rejected our credentials — check ELEVENLABS_API_KEY.';
+    case 404:
+      return 'The configured voice was not found — check the voice ID.';
+    case 422:
+      return 'The voice service rejected the request — check the voice ID and text.';
+    case 429:
+      return 'The voice service quota was exceeded — try again shortly.';
+    default:
+      return 'Speech could not be generated — please try again.';
+  }
+}
 
 export interface TtsProviderAdapter {
   readonly key: string;
@@ -38,7 +60,7 @@ function createElevenLabsAdapter(apiKey: string): TtsProviderAdapter {
         });
         if (!res.ok || !res.body) {
           const detail = await res.text().catch(() => '');
-          return { ok: false, error: 'provider_error', detail: `elevenlabs_http_${res.status}${detail ? `: ${detail.slice(0, 200)}` : ''}` };
+          return { ok: false, error: 'provider_error', providerStatus: res.status, detail: `elevenlabs_http_${res.status}${detail ? `: ${detail.slice(0, 200)}` : ''}` };
         }
         clearTimeout(timer);
         return { ok: true, audio: res.body, contentType: res.headers.get('content-type') ?? 'audio/mpeg' };
@@ -60,5 +82,7 @@ export function getTtsProvider(): TtsProviderAdapter | null {
 
 /** The platform-wide default voice id (required for TTS to be configured). */
 export function defaultVoiceId(): string {
-  return process.env.ELEVENLABS_DEFAULT_VOICE_ID ?? '';
+  // Trimmed: a pasted value with stray whitespace/newline would otherwise be
+  // sent to the provider verbatim and fail as an unknown voice.
+  return (process.env.ELEVENLABS_DEFAULT_VOICE_ID ?? '').trim();
 }

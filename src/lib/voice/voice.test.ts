@@ -83,3 +83,22 @@ describe('elevenlabs adapter', () => {
     expect(result.ok).toBe(false);
   });
 });
+
+describe('TTS failure reasons (operator-facing, no secrets)', () => {
+  it('maps provider status classes to honest actionable messages', async () => {
+    const { ttsFailureReason } = await import('./tts');
+    expect(ttsFailureReason({ ok: false, error: 'provider_error', providerStatus: 401 })).toContain('ELEVENLABS_API_KEY');
+    expect(ttsFailureReason({ ok: false, error: 'provider_error', providerStatus: 404 })).toContain('voice was not found');
+    expect(ttsFailureReason({ ok: false, error: 'provider_error', providerStatus: 429 })).toContain('quota');
+    expect(ttsFailureReason({ ok: false, error: 'timeout' })).toContain('timed out');
+    expect(ttsFailureReason({ ok: false, error: 'provider_error' })).toContain('could not be generated');
+  });
+
+  it('trims a pasted default voice id', async () => {
+    const { defaultVoiceId } = await import('./tts');
+    const vi_ = await import('vitest');
+    vi_.vi.stubEnv('ELEVENLABS_DEFAULT_VOICE_ID', ' O4fnkotIypvedJqBp4yb\n');
+    expect(defaultVoiceId()).toBe('O4fnkotIypvedJqBp4yb');
+    vi_.vi.unstubAllEnvs();
+  });
+});
