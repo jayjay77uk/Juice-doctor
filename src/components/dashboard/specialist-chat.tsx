@@ -1,10 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { Send, LifeBuoy, ThumbsUp, ThumbsDown, Square, FileText, AlertTriangle, ArrowRightLeft } from 'lucide-react';
+import { Send, LifeBuoy, ThumbsUp, ThumbsDown, Square, FileText, AlertTriangle, ArrowRightLeft, Mic, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { requestSupportAction, messageFeedbackAction } from '@/services/conversation-actions';
-import { VoiceInputButton, SpeakButton } from '@/components/dashboard/voice-controls';
+import { VoiceInputButton, SpeakButton, VoiceModeSwitch, useReplyAudio, useVoiceLoop } from '@/components/dashboard/voice-controls';
+import { voiceModesFor, type VoiceMode } from '@/lib/voice/modes';
 import type { Message, MessageCitation } from '@/types/conversation';
 
 const now = () => new Date().toISOString();
@@ -37,6 +38,7 @@ export function SpecialistChat({
   conversationId,
   agentName,
   agentTitle,
+  specialistSlug,
   initialMessages,
   remembered,
   voice = { sttConfigured: false, ttsConfigured: false },
@@ -44,6 +46,8 @@ export function SpecialistChat({
   conversationId: string;
   agentName: string;
   agentTitle?: string;
+  /** Drives the voice-mode permission matrix (Makela never gets V-V). */
+  specialistSlug?: string;
   initialMessages: Message[];
   remembered: string[];
   /** Real server-side voice configuration — controls stay honest when unset. */
@@ -57,6 +61,45 @@ export function SpecialistChat({
   const [rated, setRated] = React.useState<Record<string, 'up' | 'down'>>({});
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const abortRef = React.useRef<AbortController | null>(null);
+
+  // Communication modes — same thread whatever the mode; switching never
+  // resets the conversation. V-V exists only for non-receptionist specialists.
+  const modes = voiceModesFor(specialistSlug);
+  const [mode, setMode] = React.useState<VoiceMode>('ts');
+  const modeRef = React.useRef<VoiceMode>('ts');
+  modeRef.current = mode;
+  const replyAudio = useReplyAudio();
+  const voiceLoop = useVoiceLoop({
+    endpoint: '/api/voice/transcribe',
+    onTranscript: (text) => {
+      void send(text);
+    },
+    onError: (message) => setError(message),
+  });
+  const voiceLoopRef = React.useRef(voiceLoop);
+  voiceLoopRef.current = voiceLoop;
+
+  function switchMode(next: VoiceMode) {
+    setMode(next);
+    replyAudio.stop();
+    voiceLoopRef.current.stop();
+    if (next === 'vv') void voiceLoopRef.current.start();
+  }
+
+  /** Speak a stored reply; in V-V, resume listening once playback ends. */
+  async function speakReply(messageId: string) {
+    if (!voice.ttsConfigured) return;
+    await replyAudio.play(() =>
+      fetch('/api/voice/speak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId }),
+      }),
+    );
+    // Re-arm the mic ONLY after the AI has finished speaking, so the
+    // microphone can never capture the AI's own voice.
+    if (modeRef.current === 'vv') void voiceLoopRef.current.start();
+  }
 
   React.useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -106,6 +149,12 @@ export function SpecialistChat({
             const finalMsg = ev.message ?? blankMessage({ id: `srv_${Date.now()}`, conversationId, role: 'assistant', content: streamed, citations: ev.citations ?? [], escalated: ev.escalated ?? false });
             setMessages((m) => [...m, finalMsg]);
             setStreaming(null);
+            // T-T / V-V: speak the reply once it is fully stored (server ids only).
+            if (modeRef.current !== 'ts' && !finalMsg.id.startsWith('srv_') && !finalMsg.id.startsWith('local_')) {
+              void speakReply(finalMsg.id);
+            } else if (modeRef.current === 'vv') {
+              void voiceLoopRef.current.start();
+            }
           } else if (ev.type === 'error') {
             setError(ev.error ?? 'The reply could not be completed.');
           }
@@ -144,13 +193,21 @@ export function SpecialistChat({
 
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-border bg-surface">
-      {/* Active specialist header */}
-      <div className="flex items-center gap-3 border-b border-border bg-surface-muted/60 px-5 py-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#12233a] font-serif text-sm text-[#c9a961]">{agentName.charAt(0)}</span>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-foreground">{agentName}</p>
-          {agentTitle && <p className="truncate text-xs text-muted-foreground">{agentTitle}</p>}
+      {/* Active specialist header + communication-mode switch */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-muted/60 px-5 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#12233a] font-serif text-sm text-[#c9a961]">{agentName.charAt(0)}</span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-foreground">{agentName}</p>
+            {agentTitle && <p className="truncate text-xs text-muted-foreground">{agentTitle}</p>}
+          </div>
         </div>
+        <VoiceModeSwitch
+          modes={modes}
+          mode={mode}
+          onChange={switchMode}
+          providers={{ stt: voice.sttConfigured, tts: voice.ttsConfigured }}
+        />
       </div>
 
       {remembered.length > 0 && (
@@ -206,6 +263,29 @@ export function SpecialistChat({
               {streaming || <span className="text-muted-foreground">{agentName} is thinking…</span>}
             </p>
           </div>
+        )}
+
+        {/* Voice-state indicators — integrated into the thread, never replacing it. */}
+        {voiceLoop.phase === 'listening' && (
+          <p className="flex items-center gap-2 pl-1 text-xs text-muted-foreground" role="status">
+            <Mic className="size-3.5 text-primary motion-safe:animate-pulse" /> Listening — pause when you have finished speaking.
+            <button type="button" onClick={() => voiceLoop.stop()} className="underline underline-offset-2 hover:text-foreground">
+              Stop
+            </button>
+          </p>
+        )}
+        {voiceLoop.phase === 'processing' && (
+          <p className="flex items-center gap-2 pl-1 text-xs text-muted-foreground" role="status">
+            <Mic className="size-3.5" /> Transcribing…
+          </p>
+        )}
+        {replyAudio.state === 'playing' && (
+          <p className="flex items-center gap-2 pl-1 text-xs text-muted-foreground" role="status">
+            <Volume2 className="size-3.5 text-primary motion-safe:animate-pulse" /> {agentName} is speaking…
+            <button type="button" onClick={() => replyAudio.stop()} className="underline underline-offset-2 hover:text-foreground">
+              Stop
+            </button>
+          </p>
         )}
       </div>
 

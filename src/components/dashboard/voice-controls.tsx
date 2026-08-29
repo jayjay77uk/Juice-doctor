@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { Mic, Square, Loader2, Volume2, Pause, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import type { VoiceMode } from '@/lib/voice/modes';
 
 /**
  * Voice controls — a thin input/output layer over the REAL conversation:
@@ -24,7 +25,18 @@ function pickMimeType(): string | null {
 
 type RecordingState = 'idle' | 'recording' | 'processing';
 
-export function VoiceInputButton({ enabled, disabled, onTranscript }: { enabled: boolean; disabled?: boolean; onTranscript: (text: string) => void }) {
+export function VoiceInputButton({
+  enabled,
+  disabled,
+  onTranscript,
+  endpoint = '/api/voice/transcribe',
+}: {
+  enabled: boolean;
+  disabled?: boolean;
+  onTranscript: (text: string) => void;
+  /** STT endpoint — the public receptionist console uses its own rate-limited route. */
+  endpoint?: string;
+}) {
   const [state, setState] = React.useState<RecordingState>('idle');
   const [error, setError] = React.useState<string | null>(null);
   const recorderRef = React.useRef<MediaRecorder | null>(null);
@@ -70,7 +82,7 @@ export function VoiceInputButton({ enabled, disabled, onTranscript }: { enabled:
       }
       setState('processing');
       try {
-        const res = await fetch('/api/voice/transcribe', {
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': mimeType },
           body: blob,
@@ -232,5 +244,232 @@ export function SpeakButton({ messageId }: { messageId: string }) {
         </button>
       )}
     </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Voice modes — shared machinery for T-T (spoken replies) and V-V (voice loop)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type ReplyAudioState = 'idle' | 'loading' | 'playing';
+
+/**
+ * Plays one fetched audio response at a time. `play` resolves when playback
+ * ENDS (or fails) — V-V uses that to re-arm the microphone only after the AI
+ * has finished speaking, so the mic can never capture the AI's own voice.
+ */
+export function useReplyAudio() {
+  const [state, setState] = React.useState<ReplyAudioState>('idle');
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const urlRef = React.useRef<string | null>(null);
+
+  const stop = React.useCallback(() => {
+    audioRef.current?.pause();
+    audioRef.current = null;
+    if (urlRef.current) {
+      URL.revokeObjectURL(urlRef.current);
+      urlRef.current = null;
+    }
+    setState('idle');
+  }, []);
+
+  React.useEffect(() => () => stop(), [stop]);
+
+  const play = React.useCallback(
+    async (fetcher: () => Promise<Response>): Promise<boolean> => {
+      stop();
+      setState('loading');
+      try {
+        const res = await fetcher();
+        if (!res.ok) {
+          setState('idle');
+          return false;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        urlRef.current = url;
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        setState('playing');
+        await new Promise<void>((resolve) => {
+          audio.onended = () => resolve();
+          audio.onerror = () => resolve();
+          void audio.play().catch(() => resolve());
+        });
+        stop();
+        return true;
+      } catch {
+        stop();
+        return false;
+      }
+    },
+    [stop],
+  );
+
+  return { state, play, stop };
+}
+
+export type VoiceLoopPhase = 'idle' | 'listening' | 'processing';
+
+/**
+ * Hands-free capture for V-V: records, watches the microphone level, and after
+ * ~1.6s of silence following speech stops and transcribes. The caller decides
+ * when to (re)start — never while reply audio is playing.
+ */
+export function useVoiceLoop({ endpoint, onTranscript, onError }: {
+  endpoint: string;
+  onTranscript: (text: string) => void;
+  onError: (message: string) => void;
+}) {
+  const [phase, setPhase] = React.useState<VoiceLoopPhase>('idle');
+  const recorderRef = React.useRef<MediaRecorder | null>(null);
+  const rafRef = React.useRef<number | null>(null);
+  const ctxRef = React.useRef<AudioContext | null>(null);
+  const stoppingRef = React.useRef(false);
+
+  const teardown = React.useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    recorderRef.current?.stream.getTracks().forEach((t) => t.stop());
+    recorderRef.current = null;
+    void ctxRef.current?.close().catch(() => undefined);
+    ctxRef.current = null;
+  }, []);
+
+  React.useEffect(() => () => teardown(), [teardown]);
+
+  const stop = React.useCallback(() => {
+    stoppingRef.current = true;
+    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
+    teardown();
+    setPhase('idle');
+  }, [teardown]);
+
+  const start = React.useCallback(async () => {
+    const mimeType = pickMimeType();
+    if (!mimeType || !navigator.mediaDevices?.getUserMedia) {
+      onError('Voice conversation is not supported in this browser.');
+      return;
+    }
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      onError('Microphone access was declined — allow it in your browser settings to use voice conversation.');
+      return;
+    }
+    stoppingRef.current = false;
+    const recorder = new MediaRecorder(stream, { mimeType });
+    recorderRef.current = recorder;
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+    recorder.onstop = async () => {
+      teardown();
+      if (stoppingRef.current) {
+        setPhase('idle');
+        return;
+      }
+      const blob = new Blob(chunks, { type: mimeType });
+      if (blob.size < 2000) {
+        // Nothing meaningful captured — return to idle quietly.
+        setPhase('idle');
+        return;
+      }
+      setPhase('processing');
+      try {
+        const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': mimeType }, body: blob });
+        const body = (await res.json().catch(() => ({}))) as { transcript?: string; error?: string };
+        setPhase('idle');
+        if (res.ok && body.transcript) onTranscript(body.transcript);
+        else if (res.status !== 422) onError(body.error ?? 'Transcription failed.');
+      } catch {
+        setPhase('idle');
+        onError('Transcription failed — check your connection.');
+      }
+    };
+
+    // Silence detection: stop ~1.6s after speech pauses (max 30s per turn).
+    const ctx = new AudioContext();
+    ctxRef.current = ctx;
+    const source = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    source.connect(analyser);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    let spokeAt = 0;
+    const startedAt = Date.now();
+    const tick = () => {
+      if (recorder.state !== 'recording') return;
+      analyser.getByteTimeDomainData(data);
+      let sum = 0;
+      for (const v of data) sum += (v - 128) * (v - 128);
+      const rms = Math.sqrt(sum / data.length);
+      const nowMs = Date.now();
+      if (rms > 6) spokeAt = nowMs;
+      const tooLong = nowMs - startedAt > 30_000;
+      const silentAfterSpeech = spokeAt > 0 && nowMs - spokeAt > 1_600;
+      if (tooLong || silentAfterSpeech) {
+        recorder.stop();
+        return;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    recorder.start();
+    setPhase('listening');
+    rafRef.current = requestAnimationFrame(tick);
+  }, [endpoint, onTranscript, onError, teardown]);
+
+  return { phase, start, stop };
+}
+
+const MODE_LABELS: Record<VoiceMode, string> = { ts: 'Chat', tt: 'Voice replies', vv: 'Voice chat' };
+const MODE_TITLES: Record<VoiceMode, string> = {
+  ts: 'Type or dictate; replies arrive as text',
+  tt: 'Type or dictate; replies are spoken aloud too',
+  vv: 'Hands-free voice conversation',
+};
+
+/**
+ * Communication-mode switch. Only the modes this AI is PERMITTED to offer are
+ * rendered; a permitted mode that needs an unconnected provider is shown
+ * disabled with an honest reason. Switching modes never touches the thread.
+ */
+export function VoiceModeSwitch({
+  modes,
+  mode,
+  onChange,
+  providers,
+}: {
+  modes: VoiceMode[];
+  mode: VoiceMode;
+  onChange: (mode: VoiceMode) => void;
+  providers: { stt: boolean; tts: boolean };
+}) {
+  if (modes.length <= 1) return null;
+  return (
+    <div className="flex items-center gap-1 rounded-full border border-border bg-surface p-1" role="radiogroup" aria-label="Communication mode">
+      {modes.map((m) => {
+        const available = m === 'ts' || (providers.stt && providers.tts);
+        const active = mode === m;
+        return (
+          <button
+            key={m}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            disabled={!available}
+            title={available ? MODE_TITLES[m] : 'Not available yet — the voice service is not connected.'}
+            onClick={() => onChange(m)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              active ? 'bg-primary text-primary-foreground' : available ? 'text-muted-foreground hover:text-foreground' : 'text-muted-foreground/50'
+            }`}
+          >
+            {MODE_LABELS[m]}
+          </button>
+        );
+      })}
+    </div>
   );
 }

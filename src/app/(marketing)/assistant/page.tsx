@@ -4,6 +4,7 @@ import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
 import { receptionist } from '@/services/receptionist';
 import { getSession } from '@/services/auth';
+import { voiceStatus } from '@/services/voice';
 import { ReceptionistConsole } from '@/components/sections/receptionist-console';
 
 export const metadata: Metadata = createMetadata({
@@ -27,10 +28,10 @@ export default async function AssistantPage() {
         {settings ? (
           <ReceptionistConsole
             signedIn={Boolean(session)}
+            voice={voiceStatus()}
             settings={{
               active: settings.active,
               greeting: settings.greeting,
-              questions: settings.questions,
               whatsappEnabled: settings.whatsappEnabled,
               whatsappNumber: settings.whatsappNumber,
             }}

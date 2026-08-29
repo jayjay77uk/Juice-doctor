@@ -8,6 +8,7 @@ import { getSession } from './auth';
 import { createInMemoryRateLimiter, enforceRateLimit, RATE_LIMIT_POLICIES } from '@/lib/security/rate-limit';
 import { RateLimitError } from '@/lib/security/errors';
 import { track } from '@/lib/monitoring/events';
+import { signReply } from '@/lib/voice/reply-signature';
 import type { ReceptionistRecommendation, ConsultAnswer, ConversationTurn } from '@/types/crm';
 
 /**
@@ -82,6 +83,51 @@ const recommendationSchema = z.object({
   alternativeSlug: z.string().max(64).nullable(),
   alternatives: z.array(z.object({ slug: z.string().max(64), name: z.string().max(120) })).max(8),
 });
+
+/**
+ * ONE conversational receptionist turn (public console). Same clamps and
+ * rate limits as the assessment path; additionally returns an HMAC signature
+ * over the reply so the public TTS endpoint can voice ONLY genuine replies.
+ */
+export async function receptionistTurnAction(input: {
+  conversation: ConversationTurn[];
+}): Promise<
+  | { ok: true; reply: string; replySig: string | null; action: 'continue' | 'recommend' | 'escalate'; recommendation: ReceptionistRecommendation | null; summary: string | null }
+  | { ok: false; error: string }
+> {
+  const clamped = clampAssessInput({ conversation: input.conversation, answers: [] });
+  const parsed = assessSchema.safeParse(clamped);
+  if (!parsed.success || parsed.data.conversation.length === 0) {
+    return { ok: false, error: 'That message could not be processed — please try again.' };
+  }
+  try {
+    await enforceRateLimit(assessVisitorLimiter, `turn:${await visitorKey()}`);
+    await enforceRateLimit(assessInstanceLimiter, 'turn:instance');
+  } catch (e) {
+    if (e instanceof RateLimitError) return { ok: false, error: BUSY_MESSAGE };
+    throw e;
+  }
+  if (parsed.data.conversation.length <= 2) {
+    await track('receptionist.assessment_started', { turns: parsed.data.conversation.length });
+  }
+  const result = await receptionist.turn({ conversation: parsed.data.conversation });
+  if (!result.ok) return { ok: false, error: result.error.message };
+  if (result.data.action !== 'continue') {
+    await track('receptionist.assessment_completed', {
+      recommendedSlug: result.data.recommendation?.specialistSlug || 'none',
+      confidence: result.data.recommendation?.confidence ?? 0,
+      escalate: result.data.recommendation?.escalate ?? false,
+    });
+  }
+  return {
+    ok: true,
+    reply: result.data.reply,
+    replySig: signReply(result.data.reply),
+    action: result.data.action,
+    recommendation: result.data.recommendation,
+    summary: result.data.summary,
+  };
+}
 
 export async function receptionistAssessAction(input: {
   conversation: ConversationTurn[];

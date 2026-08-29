@@ -29,11 +29,13 @@ export default async function ConversationThreadPage({ params }: { params: Promi
 
   let agentName = 'Specialist AI';
   let agentTitle: string | undefined;
+  let agentSlug: string | undefined;
   if (convo.data.agentId) {
     const agentResult = await agents.byId(convo.data.agentId);
     if (agentResult.ok) {
       agentName = agentResult.data.name;
       agentTitle = agentResult.data.role;
+      agentSlug = agentResult.data.slug;
     }
   }
 
@@ -49,6 +51,7 @@ export default async function ConversationThreadPage({ params }: { params: Promi
         conversationId={id}
         agentName={agentName}
         {...(agentTitle ? { agentTitle } : {})}
+        {...(agentSlug ? { specialistSlug: agentSlug } : {})}
         initialMessages={messagesResult.ok ? messagesResult.data : []}
         remembered={rememberedResult.ok ? rememberedResult.data : []}
         voice={voiceStatus()}

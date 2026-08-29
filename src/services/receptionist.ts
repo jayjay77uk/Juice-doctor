@@ -6,6 +6,9 @@ import { DEFAULT_RECEPTIONIST_SETTINGS, type ReceptionistSettings } from '@/conf
 import { getAiProvider } from '@/lib/ai';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { parseReceptionistResult, type ReceptionistResult } from '@/lib/ai/receptionist-schema';
+import { parseReceptionistTurnResult } from '@/lib/ai/receptionist-turn-schema';
+import { precheckInput } from './herne/safety-eval';
+import { runLogRepo } from './repositories/run-log-repo';
 import { receptionistSettings } from './receptionist-settings';
 import { agents } from './agents';
 import { specialists } from './specialists';
@@ -159,6 +162,60 @@ function unavailableRecommendation(settings: ReceptionistSettings): Receptionist
   };
 }
 
+/** One conversational receptionist turn — what the console renders/acts on. */
+export interface ReceptionistTurnResult {
+  reply: string;
+  action: 'continue' | 'recommend' | 'escalate';
+  recommendation: ReceptionistRecommendation | null;
+  /** Present when routing — the summary persisted onto the CRM lead. */
+  summary: string | null;
+  /** True when the safety layer answered instead of the model. */
+  safetyBlocked: boolean;
+}
+
+/**
+ * System prompt for the CONVERSATIONAL receptionist. The core rule: respond to
+ * what the visitor actually said. The admin-configured intake questions are
+ * supplied only as topics that may be useful WHEN RELEVANT — never a script.
+ */
+function buildTurnSystemPrompt(settings: ReceptionistSettings, roster: AiAgent[]): string {
+  const specialistLines = roster.length
+    ? roster
+        .map((s) => `- slug: ${s.slug} | name: ${s.name} | helps with: ${s.purpose || s.description}`)
+        .join('\n')
+    : '(no specialists are currently available)';
+  const topicLines = settings.questions.length
+    ? settings.questions.map((q) => `- ${q.prompt}`).join('\n')
+    : '(none configured)';
+
+  return [
+    'You are Makela, the wellbeing receptionist and concierge for this platform. You are the warm, intelligent front door — a real conversation, never a form.',
+    `Tone: ${settings.tone}.`,
+    '',
+    'How you behave — UNDERSTAND → RESPOND → CLARIFY ONLY IF NECESSARY → ROUTE:',
+    "- ALWAYS respond to what the visitor actually said. If they ask what you can do, ANSWER that question — describe how you listen, help them work out what they need, and connect them with the right specialist or a human team member. Never answer a question with an unrelated question.",
+    '- Listen first. When someone shares a problem, acknowledge it genuinely before anything else. If someone just wants to be heard, be present — do not interrogate them.',
+    '- Ask AT MOST one short clarifying question per turn, and only when you genuinely need it to help or route them. Never ask a question merely because it is on a list.',
+    '- Keep replies natural and concise (usually 1-4 sentences). No bullet-point lectures in casual conversation.',
+    '- You are a receptionist, not a clinician: never diagnose, never give medical/clinical advice, never claim to be a doctor or therapist. For support questions, describe what the specialists can explore with them instead.',
+    '- Answer service questions from the REAL roster below — never invent specialists, capabilities or availability. Members of the human team can also help; a consultation can be booked through the site.',
+    '',
+    'The specialists (the ONLY ones that exist — use exact slugs when routing):',
+    specialistLines,
+    '',
+    'Topics that are often useful to understand when relevant (guidance only — NEVER work through these as a script):',
+    topicLines,
+    '',
+    'Routing:',
+    "- When the visitor has shared a real need and you are confident which specialist fits, set action='recommend', primaryRecommendation to that slug, confidence to your genuine 0..1 confidence, and summary to a 2-3 sentence plain-English summary of their need. Your reply should say who you recommend and why in a natural way.",
+    "- When a human team member is clearly more appropriate (they ask for a human, the situation is complex or sensitive beyond routing, or they are distressed and need personal contact), set action='escalate' with escalationReason and a summary. Your reply should warmly explain a member of the team will pick this up.",
+    "- Otherwise set action='continue'. Simply having a conversation is a valid outcome.",
+    '- Do not rush to route. One or two genuine exchanges are usually worth more than an early guess. Never route before the visitor has actually described a need.',
+    '',
+    'Return ONLY a JSON object: { "reply": string, "action": "continue"|"recommend"|"escalate", "primaryRecommendation": string|null, "alternativeRecommendations": string[], "confidence": number, "summary": string|null, "escalationReason": string|null }',
+  ].join('\n');
+}
+
 export const receptionist = {
   /** The receptionist agent record (identity/prompt managed like any agent). */
   async agent(): Promise<Result<AiAgent>> {
@@ -170,6 +227,121 @@ export const receptionist = {
   /** Current admin-editable settings (greeting, questions, threshold, etc.). */
   async settings(): Promise<Result<ReceptionistSettings>> {
     return receptionistSettings.get();
+  },
+
+  /**
+   * ONE conversational turn — the engine behind the ChatGPT-style console.
+   * Safety precheck runs BEFORE any inference (emergency/self-harm wording is
+   * answered by the safety layer and escalated, never by the model). Replies
+   * are grounded in the real roster; routing happens only when the model is
+   * genuinely confident, and low-confidence routing degrades to continuing
+   * the conversation rather than guessing. Never fabricates when the provider
+   * is unavailable — it says so and hands over to the human team.
+   */
+  async turn(input: { conversation: ConversationTurn[] }): Promise<Result<ReceptionistTurnResult>> {
+    const settings = await settingsOrDefault();
+    const roster = await activeSpecialists();
+    const lastVisitor = [...input.conversation].reverse().find((t) => t.role === 'visitor');
+
+    // Safety first — the fixed floor answers emergencies, not the model.
+    const safety = precheckInput(lastVisitor?.text ?? '');
+    if (safety.blocked && safety.userMessage) {
+      void runLogRepo.log({ agentId: null, input: (lastVisitor?.text ?? '').slice(0, 500), output: '', status: 'blocked' });
+      return ok({
+        reply: safety.userMessage,
+        action: 'escalate',
+        recommendation: {
+          specialistSlug: '', specialistName: 'a specialist', confidence: 0,
+          reasoning: `Safety escalation (${safety.category}) — a member of the team should review this conversation.`,
+          escalate: true, alternativeSlug: null, alternatives: [],
+        },
+        summary: `Safety escalation: the visitor's message triggered the ${safety.category} safety pathway. The safety wording was shown and the conversation was passed to ${settings.escalationTarget.name}.`,
+        safetyBlocked: true,
+      });
+    }
+
+    const provider = getAiProvider();
+    if (!provider) {
+      const rec = unavailableRecommendation(settings);
+      return ok({
+        reply: `I'm sorry — I'm not able to chat right now. I've passed this to ${settings.escalationTarget.name}; please leave your details and a member of the team will get back to you.`,
+        action: 'escalate',
+        recommendation: rec,
+        summary: 'The AI receptionist was unavailable; the visitor was passed to the human team.',
+        safetyBlocked: false,
+      });
+    }
+
+    const transcript = input.conversation
+      .map((t) => `${t.role === 'visitor' ? 'Visitor' : 'Makela'}: ${t.text}`)
+      .join('\n');
+    const started = Date.now();
+    try {
+      const result = await provider.structured(
+        {
+          system: buildTurnSystemPrompt(settings, roster),
+          messages: [{ role: 'user', content: `Conversation so far:\n${transcript}\n\nRespond to the visitor's last message and return the JSON object.` }],
+          maxTokens: 700,
+        },
+        parseReceptionistTurnResult,
+      );
+
+      // Roster + threshold enforcement — the model cannot invent a specialist,
+      // and an under-confident recommendation keeps the conversation going.
+      const bySlug = new Map(roster.map((s) => [s.slug, s]));
+      let action = result.action;
+      const primary = result.primaryRecommendation ? bySlug.get(result.primaryRecommendation) : undefined;
+      if (action === 'recommend' && (!primary || clamp(result.confidence, 0, 1) < settings.confidenceThreshold)) {
+        action = 'continue';
+      }
+
+      let recommendation: ReceptionistRecommendation | null = null;
+      let summary: string | null = null;
+      if (action === 'recommend' && primary) {
+        const alternatives = result.alternativeRecommendations
+          .filter((slug) => slug !== primary.slug)
+          .map((slug) => bySlug.get(slug))
+          .filter((s): s is AiAgent => Boolean(s))
+          .slice(0, 2)
+          .map((s) => ({ slug: s.slug, name: s.name }));
+        recommendation = {
+          specialistSlug: primary.slug,
+          specialistName: primary.name,
+          confidence: clamp(result.confidence, 0, 1),
+          reasoning: result.summary?.trim() || `Recommended from the conversation.`,
+          escalate: false,
+          alternativeSlug: alternatives[0]?.slug ?? null,
+          alternatives,
+        };
+        summary = `${(result.summary ?? '').trim()}\n\nOutcome: recommended ${primary.name} (confidence ${Math.round(clamp(result.confidence, 0, 1) * 100)}%).`.trim();
+      } else if (action === 'escalate') {
+        recommendation = {
+          specialistSlug: '', specialistName: 'a specialist', confidence: clamp(result.confidence, 0, 1),
+          reasoning: result.escalationReason?.trim() || `Passed to ${settings.escalationTarget.name} to review.`,
+          escalate: true, alternativeSlug: null, alternatives: [],
+        };
+        summary = `${(result.summary ?? '').trim()}\n\nOutcome: passed to ${settings.escalationTarget.name} for review.`.trim();
+      }
+
+      void runLogRepo.log({
+        agentId: null,
+        input: (lastVisitor?.text ?? '').slice(0, 500),
+        output: result.reply.slice(0, 1000),
+        latencyMs: Date.now() - started,
+        status: 'ok',
+      });
+      return ok({ reply: result.reply, action, recommendation, summary, safetyBlocked: false });
+    } catch {
+      void runLogRepo.log({ agentId: null, input: (lastVisitor?.text ?? '').slice(0, 500), output: '', latencyMs: Date.now() - started, status: 'error' });
+      const rec = unavailableRecommendation(settings);
+      return ok({
+        reply: `I'm sorry — I couldn't respond just then. I've let ${settings.escalationTarget.name} know; you can leave your details and a member of the team will get back to you, or try again in a moment.`,
+        action: 'escalate',
+        recommendation: rec,
+        summary: 'The AI receptionist errored mid-conversation; the visitor was passed to the human team.',
+        safetyBlocked: false,
+      });
+    }
   },
 
   /**
