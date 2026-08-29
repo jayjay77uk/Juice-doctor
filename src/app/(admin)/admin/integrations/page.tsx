@@ -51,7 +51,7 @@ interface Row {
 }
 
 export default async function IntegrationsPage() {
-  const [mail, outbox, paymentStatus, webhookEvents, wearableStats, lastRuns, voices] = await Promise.all([
+  const [mail, outbox, paymentStatus, webhookEvents, wearableStats, lastRuns, voices, lastTtsError] = await Promise.all([
     mailStatus(),
     mailRepo.recent(5),
     payments.status(),
@@ -59,7 +59,9 @@ export default async function IntegrationsPage() {
     connectionStats(),
     runLogRepo.recent(1),
     specialistVoices(),
+    systemSettings.getValue('voice.last_tts_error'),
   ]);
+  const ttsError = (lastTtsError ?? null) as { at?: string; detail?: string } | null;
   const lastRunAt = lastRuns[0]?.created_at ? String(lastRuns[0].created_at) : null;
   const customDomainSet = Boolean(process.env.NEXT_PUBLIC_SITE_URL);
 
@@ -101,7 +103,9 @@ export default async function IntegrationsPage() {
     {
       name: 'ElevenLabs (read-aloud)',
       state: isTtsConfigured() ? 'connected' : 'not_configured',
-      detail: `${Object.keys(voices).length} specialist voice(s) configured below; a default voice id is required to connect.`,
+      detail: `${Object.keys(voices).length} specialist voice(s) configured below; a default voice id is required to connect.${
+        ttsError?.detail ? ` Last voice error (${ttsError.at ? new Date(ttsError.at).toLocaleString('en-GB') : ''}): ${ttsError.detail.slice(0, 160)}` : ''
+      }`,
       requirements: 'ELEVENLABS_API_KEY, ELEVENLABS_DEFAULT_VOICE_ID',
     },
     {

@@ -31,6 +31,8 @@ export function ttsFailureReason(result: Extract<TtsResult, { ok: false }>): str
     case 401:
     case 403:
       return 'The voice service rejected our credentials — check ELEVENLABS_API_KEY.';
+    case 402:
+      return 'The ElevenLabs plan does not allow this voice via the API — upgrade the ElevenLabs subscription, or set a premade voice as the voice ID.';
     case 404:
       return 'The configured voice was not found — check the voice ID.';
     case 429:
