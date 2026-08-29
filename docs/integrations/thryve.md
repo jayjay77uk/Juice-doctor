@@ -45,10 +45,14 @@ official Thryve API documentation:
    app-side with `TOKEN_ENCRYPTION_KEY` (add the variable then; it does not
    exist before it is needed).
 
-## Verification commands (after credentials are set)
+## Verification commands (after credentials are set AND the adapter is implemented)
+
+Status surfaces (and the checks below) key off `getWearableProvider()` — the
+integration reports "connected" only once the adapter exists, never on
+credentials alone.
 
 ```bash
-# Webhook goes from 503 to 401 (signature required) once configured:
+# Webhook goes from 503 to 401 (signature required) once connected:
 curl -s -o /dev/null -w '%{http_code}\n' -X POST https://<host>/api/webhooks/thryve -d '{}'
 # Callback rejects an invalid state with 401 once configured:
 curl -s -o /dev/null -w '%{http_code}\n' 'https://<host>/api/wearables/thryve/callback?state=bad'

@@ -20,11 +20,15 @@ describe('wearable provider gating', () => {
     expect(isWearableProviderConfigured()).toBe(false);
   });
 
-  it('reports configured only when all three credentials are present', () => {
+  it('credentials alone do NOT report configured — the adapter must exist too', () => {
     vi.stubEnv('THRYVE_API_KEY', 'k');
     vi.stubEnv('THRYVE_APP_ID', 'a');
     vi.stubEnv('THRYVE_WEBHOOK_SECRET', 's');
     expect(thryveConfig()).toEqual({ apiKey: 'k', appId: 'a', webhookSecret: 's' });
-    expect(isWearableProviderConfigured()).toBe(true);
+    // The contract-dependent Thryve adapter is not implemented yet, so the
+    // integration must keep reporting "not configured" even with all three
+    // credentials set — status can never go green over a null adapter.
+    expect(getWearableProvider()).toBeNull();
+    expect(isWearableProviderConfigured()).toBe(false);
   });
 });

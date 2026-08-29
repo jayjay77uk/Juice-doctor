@@ -1,7 +1,7 @@
 # Completion Report
 
 **Product:** Ask Juice Doctor AI — HERNE Multi-Specialist Wellbeing Platform
-**Environment:** `https://prototypeai-rose.vercel.app` — live deployment
+**Environment:** `https://juice-doctor.vercel.app` — live deployment
 **Status:** Delivered and live
 **Date:** 14 July 2026 (status refreshed 10 August 2026)
 

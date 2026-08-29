@@ -184,3 +184,20 @@ describe('Anthropic provider — timeout vs user-abort classification', () => {
     c.cleanup();
   });
 });
+
+describe('Anthropic provider — input token budget (AI_MAX_INPUT_TOKENS)', () => {
+  it('estimates input tokens from system + message characters', async () => {
+    const { estimateInputTokens } = await import('./anthropic');
+    expect(estimateInputTokens({ system: 'a'.repeat(400), messages: [{ role: 'user', content: 'b'.repeat(400) }] })).toBe(200);
+    expect(estimateInputTokens({ messages: [] })).toBe(0);
+  });
+
+  it('rejects an over-budget prompt BEFORE any provider call', async () => {
+    const { createAnthropicProvider } = await import('./anthropic');
+    const { AiProviderError } = await import('./provider');
+    const provider = createAnthropicProvider();
+    // Default budget is 14,000 tokens (~56,000 chars) — exceed it comfortably.
+    const oversized = { messages: [{ role: 'user' as const, content: 'x'.repeat(120_000) }] };
+    await expect(provider.chat(oversized)).rejects.toSatisfy((e: unknown) => e instanceof AiProviderError && e.kind === 'invalid_request');
+  });
+});

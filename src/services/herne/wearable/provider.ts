@@ -43,9 +43,15 @@ export function thryveConfig(): { apiKey: string; appId: string; webhookSecret: 
   return { apiKey, appId, webhookSecret };
 }
 
-/** True when a live wearable provider is fully credentialed. */
+/**
+ * True only when a live wearable provider ADAPTER exists — not merely when
+ * credentials are set. Derived from `getWearableProvider()` (mirroring the
+ * payments seam's `isPaymentProviderConfigured`), so a status surface can
+ * never show "connected" while the contract-dependent adapter is still
+ * unimplemented: credentials alone must not light anything green.
+ */
 export function isWearableProviderConfigured(): boolean {
-  return thryveConfig() !== null;
+  return getWearableProvider() !== null;
 }
 
 /**

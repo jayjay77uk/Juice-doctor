@@ -25,6 +25,7 @@ import { newTraceId, logAiTrace } from './trace';
 
 const DEFAULT_MAX_TOKENS = env.aiMaxOutputTokens;
 const REQUEST_TIMEOUT_MS = env.aiRequestTimeoutMs;
+const MAX_INPUT_TOKENS = env.aiMaxInputTokens;
 const MAX_RETRIES = 2;
 // The SDK's timeout is PER ATTEMPT; our outer timer bounds TOTAL wall time.
 // It must leave room for the SDK's automatic retries (429/overload/5xx) or
@@ -34,6 +35,28 @@ const TOTAL_TIMEOUT_MS = REQUEST_TIMEOUT_MS * (MAX_RETRIES + 1) + 5_000;
 function firstText(content: Anthropic.Messages.ContentBlock[]): string {
   const block = content.find((b): b is Anthropic.Messages.TextBlock => b.type === 'text');
   return block?.text ?? '';
+}
+
+/** Conservative ~4-chars-per-token estimate for the input budget guardrail. */
+export function estimateInputTokens(req: Pick<AiChatRequest, 'system' | 'messages'>): number {
+  const chars = (req.system?.length ?? 0) + req.messages.reduce((total, m) => total + m.content.length, 0);
+  return Math.ceil(chars / 4);
+}
+
+/**
+ * Enforce the AI_MAX_INPUT_TOKENS budget BEFORE any provider call — the
+ * documented guardrail against pathological/oversized prompts and the cost
+ * they would incur. Normal assembled HERNE prompts sit far below the default
+ * (14k tokens); a breach is an honest non-retryable error, never a trim.
+ */
+function assertInputBudget(req: AiChatRequest): void {
+  const estimated = estimateInputTokens(req);
+  if (estimated > MAX_INPUT_TOKENS) {
+    throw new AiProviderError(
+      `Prompt too large: ~${estimated} estimated input tokens exceeds the AI_MAX_INPUT_TOKENS budget of ${MAX_INPUT_TOKENS}.`,
+      { kind: 'invalid_request' },
+    );
+  }
 }
 
 /** Newer models (e.g. claude-sonnet-5) reject the `temperature` parameter. */
@@ -133,6 +156,7 @@ export function createAnthropicProvider(): AiProvider {
   }
 
   async function chat(req: AiChatRequest): Promise<AiChatResult> {
+    assertInputBudget(req);
     const traceId = newTraceId();
     const started = Date.now();
     const model = req.model ?? env.aiModel;
@@ -166,6 +190,7 @@ export function createAnthropicProvider(): AiProvider {
   }
 
   async function* stream(req: AiChatRequest): AsyncIterable<AiStreamChunk> {
+    assertInputBudget(req);
     const traceId = newTraceId();
     const started = Date.now();
     const model = req.model ?? env.aiModel;

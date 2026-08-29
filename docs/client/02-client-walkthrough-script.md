@@ -1,7 +1,7 @@
 # Client Walkthrough Script
 
 A suggested running order for presenting the platform. The whole walkthrough takes ~20–25 minutes.
-Run it on the live deployment: **`https://prototypeai-rose.vercel.app`**.
+Run it on the live deployment: **`https://juice-doctor.vercel.app`**.
 
 > **Before you start:** open the site on a desktop browser for the fullest experience (the site is
 > also fully mobile-responsive). Sign-in details are in the **Access Guide**. Live AI replies

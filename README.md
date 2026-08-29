@@ -2,9 +2,9 @@
 
 A multi-specialist AI wellbeing platform: live Anthropic Claude AI (receptionist + eight HERNE specialists), real Supabase Auth accounts and a live Supabase Postgres database, behind a full admin portal.
 
-> **Integration status.** No payments provider is connected (subscription payments are recorded manually) and no email provider is connected (the only email sent is the password-reset message; contact/newsletter/public-booking forms return an honest "not available yet" message). Wearable device integration is not connected (surfaces show empty states) and voice is planned. AI replies are grounded in the approved evidence base but are not clinically reviewed, and the platform is not for emergency use. See `docs/client/04-current-limitations.md`.
+> **Integration status.** No payments provider is connected (subscription payments are recorded manually). Email is fully built but no provider is connected: contact and newsletter submissions are stored and their emails wait in the mail outbox (the only email dispatched today is the password-reset message; public booking still shows an honest "not available yet" notice). Wearable device integration and voice are built application-side but await provider credentials. AI replies are grounded in the approved evidence base but are not clinically reviewed, and the platform is not for emergency use. The real per-provider state lives on `/admin/integrations`; see `docs/client/04-current-limitations.md`.
 
-**Current status (2026-08-10):** all four phases below are delivered and live at `https://prototypeai-rose.vercel.app`. The platform runs real Claude inference (receptionist + eight HERNE specialists with streaming replies, safety pre/post checks, usage limits and per-call cost logging), real Supabase auth, and database persistence for all operational data, behind a full admin portal. Wearable device integration is not yet connected, voice is planned, and payments/email providers remain unconnected. The phase sections below are kept as delivery history.
+**Current status (2026-08-29):** all phases below are delivered and live at `https://juice-doctor.vercel.app`. The platform runs real Claude inference (receptionist + eight HERNE specialists with streaming replies, safety pre/post checks, usage limits and per-call cost logging), real Supabase auth, and database persistence for all operational data, behind a full admin portal. The phase sections below are kept as delivery history.
 
 Phase 1 delivered the **foundation**: design system, component library, all pages, the three signature features (the Framework, Assessment, Remote Selfie Scan), interim non-persistent auth + dashboards (since replaced by live Supabase Auth), and a production-shaped data/write seam — with **no AI**.
 
@@ -84,7 +84,7 @@ db/                        # SQL migrations (applied to live Supabase) + storage
 
 The enterprise backend **foundation** — designed as it would exist in production, and now running live against Supabase (no payments):
 
-- **Database** — SQL migrations in [`db/migrations/`](db/migrations) (30 today, applied to the live database) with RLS on every table. See [`db/README.md`](db/README.md).
+- **Database** — SQL migrations in [`db/migrations/`](db/migrations) (32 today, all applied to the live database) with RLS on every table. See [`db/README.md`](db/README.md).
 - **Auth & RBAC** — a 6-role hierarchy, permission matrix, guards and session seam in [`src/lib/auth`](src/lib/auth); middleware in [`src/proxy.ts`](src/proxy.ts).
 - **Security** — headers/CSP, rate limiting, CSRF, file validation, typed errors in [`src/lib/security`](src/lib/security).
 - **Frameworks** — AI agents (data-driven), knowledge, memory (six scopes), consultations, and platform ops as typed services in [`src/services`](src/services) and models in [`src/types`](src/types).

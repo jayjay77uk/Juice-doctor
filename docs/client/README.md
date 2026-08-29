@@ -14,4 +14,4 @@ platform. None of these documents contain production secrets, API keys or databa
 | 06 | [Production Implementation Roadmap](06-production-implementation-roadmap.md) | Remaining phased work to full launch |
 | 07 | [Production Requirements Checklist](07-production-requirements-checklist.md) | What must be in place for full production |
 
-**Live environment:** `https://prototypeai-rose.vercel.app`
+**Live environment:** `https://juice-doctor.vercel.app`
