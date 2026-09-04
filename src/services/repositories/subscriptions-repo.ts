@@ -72,6 +72,17 @@ export const subscriptionsRepo = {
     const sb = createAdminClient(); if (!sb) return noDb(); const { data, error } = await sb.from('customer_subscriptions').select('*').order('created_at', { ascending: false });
     if (error) return noDb(); return ok((data ?? []).map(rowToSub));
   },
+  async summary(): Promise<Result<{ total: number; active: number; trialing: number; pastDue: number; canceled: number }>> {
+    const result = await subscriptionsRepo.list();
+    if (!result.ok) return result;
+    return ok({
+      total: result.data.length,
+      active: result.data.filter((s) => s.state === 'active').length,
+      trialing: result.data.filter((s) => s.state === 'trialing').length,
+      pastDue: result.data.filter((s) => s.state === 'past_due' || s.state === 'incomplete').length,
+      canceled: result.data.filter((s) => s.state === 'canceled').length,
+    });
+  },
   async byId(id: string): Promise<Result<CustomerSubscription>> {
     const sb = createAdminClient(); if (!sb) return noDb(); const { data } = await sb.from('customer_subscriptions').select('*').eq('id', id).maybeSingle();
     return data ? ok(rowToSub(data)) : err({ code: 'not_found', message: 'Subscription not found.' });
