@@ -14,6 +14,10 @@ const STARTER_PLANS = [
   { name: 'All-access', description: 'Access to every available specialist AI.', scope: 'all', specialist_slugs: [] as string[], price_label: 'Price on request', status: 'active' },
 ];
 
+// Temporary client-demo access. This is intentionally limited to the named test account
+// and can be removed once real specialist subscriptions/checkout are configured.
+const DEMO_ALL_ACCESS_EMAILS = new Set(['jimohmujeeb820@gmail.com']);
+
 let plansSeeded = false;
 
 async function ensurePlans(sb: SupabaseClient): Promise<void> {
@@ -93,6 +97,15 @@ export const subscriptionsRepo = {
   },
   async memberAccess(memberId: string): Promise<Result<string[]>> {
     const sb = createAdminClient(); if (!sb) return noDb();
+
+    // Demo account bypass: use Supabase Auth as the source of truth for the email.
+    // This avoids depending on a profile row existing for the account.
+    const authUser = await sb.auth.admin.getUserById(memberId);
+    const email = authUser.data.user?.email?.trim().toLowerCase();
+    if (email && DEMO_ALL_ACCESS_EMAILS.has(email)) {
+      return ok(await resolveAccess('all', []));
+    }
+
     const { data } = await sb.from('customer_subscriptions').select('scope, specialist_slugs, state').eq('member_id', memberId).in('state', ['active', 'trialing']);
     const slugs = new Set<string>(['makela']);
     for (const row of data ?? []) (await resolveAccess((row.scope as SubscriptionScope) ?? 'all', Array.isArray(row.specialist_slugs) ? row.specialist_slugs as string[] : [])).forEach((s) => slugs.add(s));
