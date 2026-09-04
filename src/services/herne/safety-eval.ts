@@ -139,8 +139,11 @@ const DIAGNOSIS_CLAIM = new RegExp(
     // punctuation-free gap so qualifiers are allowed but the match cannot
     // reach across a clause ("questions about your thyroid" stays clean).
     // Handles "you have", "you've got" and "you’ve got" (the model uses curly
-    // apostrophes) — note no space before the contraction.
-    `|you(?:\\s+have|\\s*['’]ve got|\\s+are suffering from)\\b[^.!?;\\n]{0,20}?\\b${CONDITION_TERM}` +
+    // apostrophes) — note no space before the contraction. The lookbehind
+    // excludes CONDITIONAL framing: "unless you have kidney disease" is a
+    // safety caveat a specialist SHOULD give, not a diagnosis of this member.
+    `|(?<!\\b(?:unless|if|whether|when|while|should|until|because|since|though|although|suppose|assuming|do|does|did|don'?t)\\s)` +
+    `you(?:\\s+have|\\s*['’]ve got|\\s+are suffering from)\\b[^.!?;\\n]{0,20}?\\b${CONDITION_TERM}` +
     ')',
   'i',
 );

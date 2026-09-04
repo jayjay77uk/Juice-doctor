@@ -71,3 +71,25 @@ describe('diagnosis detection — clause boundary', () => {
     }
   });
 });
+
+describe('diagnosis detection — conditional caveats are not diagnoses', () => {
+  it('does NOT flag safety caveats (the specialist SHOULD give these)', () => {
+    for (const text of [
+      'Higher protein is generally safe unless you have kidney disease or a metabolic condition.',
+      'If you have coeliac disease, we would swap the oats.',
+      'Do you have any thyroid problems I should know about?',
+      'Whether you have IBS or not, fibre is worth building up slowly.',
+    ]) {
+      expect(postcheckOutput(text, ALLOWED).mustEscalate, text).toBe(false);
+    }
+  });
+
+  it('STILL flags direct assertions about this member', () => {
+    for (const text of [
+      'You have kidney disease.',
+      'Based on what you describe, you have an iron deficiency.',
+    ]) {
+      expect(postcheckOutput(text, ALLOWED).mustEscalate, text).toBe(true);
+    }
+  });
+});
