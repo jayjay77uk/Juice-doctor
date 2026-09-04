@@ -15,14 +15,17 @@ describe('voice provider gating', () => {
     expect(getSttProvider()?.key).toBe('deepgram');
   });
 
-  it('TTS has NO provider until ELEVENLABS_API_KEY + default voice exist', () => {
+  it('TTS has NO provider until ELEVENLABS_API_KEY exists; a default voice always resolves', () => {
     vi.stubEnv('ELEVENLABS_API_KEY', '');
     vi.stubEnv('ELEVENLABS_DEFAULT_VOICE_ID', '');
     expect(getTtsProvider()).toBeNull();
+    // With a key, TTS is usable: an unset voice id falls back to a premade voice
+    // that works on the free plan, so read-aloud is never blocked on config alone.
     vi.stubEnv('ELEVENLABS_API_KEY', 'el-key');
-    expect(getTtsProvider()).toBeNull(); // still needs a voice id
-    vi.stubEnv('ELEVENLABS_DEFAULT_VOICE_ID', 'Voice123456');
     expect(getTtsProvider()?.key).toBe('elevenlabs');
+    expect(defaultVoiceId()).toBeTruthy();
+    // An explicitly configured voice id still wins.
+    vi.stubEnv('ELEVENLABS_DEFAULT_VOICE_ID', 'Voice123456');
     expect(defaultVoiceId()).toBe('Voice123456');
   });
 });
@@ -89,8 +92,8 @@ describe('TTS failure reasons (operator-facing, no secrets)', () => {
     const { ttsFailureReason } = await import('./tts');
     expect(ttsFailureReason({ ok: false, error: 'provider_error', providerStatus: 401 })).toContain('ELEVENLABS_API_KEY');
     expect(ttsFailureReason({ ok: false, error: 'provider_error', providerStatus: 404 })).toContain('voice was not found');
-    expect(ttsFailureReason({ ok: false, error: 'provider_error', providerStatus: 400 })).toContain('My Voices');
-    expect(ttsFailureReason({ ok: false, error: 'provider_error', providerStatus: 402 })).toContain('upgrade the ElevenLabs subscription');
+    expect(ttsFailureReason({ ok: false, error: 'provider_error', providerStatus: 400 })).toContain('ElevenLabs voice');
+    expect(ttsFailureReason({ ok: false, error: 'provider_error', providerStatus: 402 })).toContain('premade voice');
     expect(ttsFailureReason({ ok: false, error: 'provider_error', providerStatus: 429 })).toContain('quota');
     expect(ttsFailureReason({ ok: false, error: 'timeout' })).toContain('timed out');
     expect(ttsFailureReason({ ok: false, error: 'provider_error' })).toContain('could not be generated');
