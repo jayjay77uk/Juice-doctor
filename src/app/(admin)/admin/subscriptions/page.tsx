@@ -29,17 +29,21 @@ function formatDate(value: string | null): string {
 }
 
 export default async function AdminSubscriptionsPage() {
-  const [plansResult, subsResult, summaryResult, specialistsResult] = await Promise.all([
+  const [plansResult, subsResult, specialistsResult] = await Promise.all([
     subscriptionsService.plans.all(),
     subscriptionsService.list(),
-    subscriptionsService.summary(),
     specialists.all(),
   ]);
 
   const plans = plansResult.ok ? plansResult.data : [];
-  const summary = summaryResult.ok
-    ? summaryResult.data
-    : { total: 0, active: 0, trialing: 0, pastDue: 0, canceled: 0 };
+  const subscriptions = subsResult.ok ? subsResult.data : [];
+  const summary = {
+    total: subscriptions.length,
+    active: subscriptions.filter((s) => s.state === 'active').length,
+    trialing: subscriptions.filter((s) => s.state === 'trialing').length,
+    pastDue: subscriptions.filter((s) => s.state === 'past_due' || s.state === 'incomplete').length,
+    canceled: subscriptions.filter((s) => s.state === 'canceled').length,
+  };
   const specialistOptions = specialistsResult.ok
     ? specialistsResult.data.map((s) => ({ slug: s.slug, name: s.name }))
     : [];
@@ -143,7 +147,7 @@ export default async function AdminSubscriptionsPage() {
         {subsResult.ok ? (
           <DataTable
             columns={columns}
-            rows={subsResult.data}
+            rows={subscriptions}
             getKey={(sub) => sub.id}
             empty={
               <EmptyState
