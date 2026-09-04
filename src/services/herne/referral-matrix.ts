@@ -43,3 +43,16 @@ export function loadReferralMatrix(): MatrixRule[] {
 export function classifyRules(): (MatrixRule & { isHumanEscalation: boolean })[] {
   return loadReferralMatrix().map((r) => ({ ...r, isHumanEscalation: isHumanEscalation(r.to_specialist) }));
 }
+
+/**
+ * True when a sentence frames a colleague handoff as a HYPOTHETICAL rather than
+ * an actual referral — "if you ever need supplement advice, I'd bring in Felix"
+ * is a specialist explaining how the team works, not a handoff happening now.
+ * Writing a referral record (and showing a "Suggested" chip) for these is noise.
+ */
+const HYPOTHETICAL_HANDOFF =
+  /\b(?:if|whenever|when(?:ever)?|should you|in case|unless|might need|ever need|would (?:be|bring|loop|pass)|could bring)\b/i;
+
+export function isHypotheticalHandoff(sentence: string): boolean {
+  return HYPOTHETICAL_HANDOFF.test(sentence);
+}

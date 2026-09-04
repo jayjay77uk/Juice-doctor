@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { loadReferralMatrix, isHumanEscalation, classifyRules } from './referral-matrix';
+import { loadReferralMatrix, isHumanEscalation, classifyRules, isHypotheticalHandoff } from './referral-matrix';
 
 describe('HERNE referral matrix', () => {
   it('loads exactly the 15 client referral rules', () => {
@@ -50,6 +50,29 @@ describe('specialist reference normalisation', () => {
     for (const rule of loadReferralMatrix()) {
       if (isWildcardRef(rule.from_specialist)) continue;
       expect(herneProfile(normalizeSpecialistRef(rule.from_specialist)), rule.from_specialist).toBeTruthy();
+    }
+  });
+});
+
+describe('hypothetical handoffs are not real referrals', () => {
+  it('treats conditional framing as hypothetical', () => {
+    for (const s of [
+      "If something needs supplement advice, I'll bring in Felix",
+      'Whenever there is a hormonal angle, Serena is the one for that',
+      'Should you need gut symptom help, I would loop in Sage',
+      'In case you ever need supplements, Felix can help',
+    ]) {
+      expect(isHypotheticalHandoff(s), s).toBe(true);
+    }
+  });
+
+  it('treats an actual handoff as real', () => {
+    for (const s of [
+      'I am bringing in Felix on this one',
+      'Let me connect you with Serena about that',
+      'Sage is better placed to help here, so I am introducing you now',
+    ]) {
+      expect(isHypotheticalHandoff(s), s).toBe(false);
     }
   });
 });

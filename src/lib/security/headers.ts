@@ -67,7 +67,11 @@ export function securityHeaders(options: SecurityHeaderOptions = {}): Record<str
     // Lock down powerful features by default.
     'Permissions-Policy': [
       'camera=(self)', // Remote Selfie Scan uses the camera on its own origin
-      'microphone=()',
+      // Voice input (Talk-to-Speech / Talk-to-Talk / Voice-to-Voice) needs the
+      // microphone on OUR origin. An empty allowlist blocked getUserMedia
+      // outright, so the mic button failed before the browser ever prompted.
+      // Still denied to every third-party frame.
+      'microphone=(self)',
       'geolocation=()',
       'payment=()',
       'usb=()',

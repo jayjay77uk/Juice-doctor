@@ -16,7 +16,7 @@ import { getLanguagePreferenceFor } from './language-store';
 import { carePlan, timeline, type CarePlan, type CarePlanAction, type TimelineEvent } from './care-plan';
 import { buildWearableContext, type WearableContext } from './wearable/store';
 import { referralRules, escalationEngine, referralEngine, type ReferralRule } from './referrals';
-import { normalizeSpecialistRef, isWildcardRef } from './referral-matrix';
+import { normalizeSpecialistRef, isWildcardRef, isHypotheticalHandoff } from './referral-matrix';
 import { windowHistory } from '@/lib/ai/history';
 import { activePrompt, type ActivePrompt } from './prompt-version';
 import { precheckInput, postcheckOutput, citedRecordIds, type SafetyCategory } from './safety-eval';
@@ -149,7 +149,10 @@ function assembleSystemPrompt(a: AssemblyInput): string {
     journeyBlock,
     `SHARED EVIDENCE — answer using ONLY these approved records and cite each you use as [RECORD-ID]. Include evidence strength, limitations and source where relevant. Never contradict this evidence or invent facts, figures, clinical claims, or citations.\n\n${evidenceBlock}`,
     wearableBlock,
-    `OUTPUT FORMAT — let these sections guide a helpful, complete answer as ${profile.name} (a natural guide, not a rigid template):\n${profile.outputFormat.map((s) => `- ${s}`).join('\n')}`,
+    // Topics, NOT headings — and only for substantial pieces of work. Injecting
+    // these as a section list made every reply (even "who are you") render as a
+    // structured document instead of a human answer.
+    `WHEN THE PERSON ASKS YOU FOR A PLAN OR A DETAILED PIECE OF WORK, these are the things worth covering as ${profile.name}: ${profile.outputFormat.join('; ')}. Cover them in your own words, woven into natural prose — they are NOT headings to print, NOT a checklist to fill in, and they do NOT apply to greetings, questions about you, or ordinary conversation.`,
     a.langDirective,
     referralBlock,
     'SAFETY — do not diagnose, prescribe, or advise stopping or changing medication. If the person reports alarm symptoms (e.g. severe or chest pain, fainting, blood in stool, pregnancy concerns, medication interactions, self-harm), recommend appropriate professional assessment and stop routine coaching.',
@@ -312,7 +315,7 @@ function detectColleagueReferral(
     const toProfile = herneProfile(toSlug);
     if (!toProfile || toSlug === slug) continue;
     const nameRe = new RegExp(`\\b${toProfile.name}\\b`); // case-sensitive
-    if (sentences.some((s) => nameRe.test(s) && REFERRAL_INTENT.test(s))) {
+    if (sentences.some((s) => nameRe.test(s) && REFERRAL_INTENT.test(s) && !isHypotheticalHandoff(s))) {
       return { toSlug, toName: toProfile.name, rule };
     }
   }
