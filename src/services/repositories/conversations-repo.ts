@@ -289,7 +289,12 @@ export const conversationsRepo = {
     return data ? ok(rowToConversation(data)) : err({ code: 'not_found', message: 'Conversation not found.' });
   },
 
-  async requestSupport(conversationId: string): Promise<Result<Message[]>> {
+  /**
+   * Record the member's request to speak with a person. `notified` MUST reflect
+   * whether a staff-visible escalation record was actually created — the
+   * message never claims the team was told unless it genuinely was.
+   */
+  async requestSupport(conversationId: string, opts?: { notified?: boolean }): Promise<Result<Message[]>> {
     const sb = createAdminClient();
     if (!sb) return err({ code: 'unavailable', message: 'Conversation store unavailable.' });
     const conv = await conversationsRepo.byId(conversationId);
@@ -297,7 +302,9 @@ export const conversationsRepo = {
     await sb.from('messages').insert({
       conversation_id: conversationId,
       role: 'system',
-      content: 'You asked to speak with a person. A member of the team has been notified and will follow up.',
+      content: opts?.notified
+        ? 'You asked to speak with a person. A member of the team has been notified and will follow up.'
+        : 'You asked to speak with a person. We could not notify the team automatically just now — please use the contact page so someone can reach you.',
     });
     await sb.from('conversations').update({ last_message_at: nowIso(), updated_at: nowIso() }).eq('id', conversationId);
     return conversationsRepo.messages(conversationId);

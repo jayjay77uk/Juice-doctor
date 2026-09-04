@@ -45,8 +45,8 @@ export const conversations_service = {
   remove(id: string): Promise<Result<Conversation>> {
     return conversationsRepo.setStatus(id, 'deleted');
   },
-  requestSupport(conversationId: string): Promise<Result<Message[]>> {
-    return conversationsRepo.requestSupport(conversationId);
+  requestSupport(conversationId: string, opts?: { notified?: boolean }): Promise<Result<Message[]>> {
+    return conversationsRepo.requestSupport(conversationId, opts);
   },
   feedback(messageId: string, rating: FeedbackRating, userId: string): Promise<Result<MessageFeedback | { id: string }>> {
     return conversationsRepo.feedback(messageId, userId, rating);

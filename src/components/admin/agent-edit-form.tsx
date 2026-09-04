@@ -81,7 +81,7 @@ export function AgentEditForm({ agent, models }: { agent: AiAgent; models: Model
         </div>
       </Panel>
 
-      <Panel title="Behaviour" description="Personality, tone and the system prompt that define how this agent responds.">
+      <Panel title="Behaviour" description="Personality, tone and the system prompt. Note: HERNE specialists (all eight production specialists) assemble their prompt from the shared DNA, published prompt versions and the bundled role definitions — the fields in this panel are stored but NOT read at inference for them.">
         <div className="flex flex-col gap-5">
           <Field label="Personality & conversation style" name="personality">
             <Textarea id="personality" name="personality" rows={3} defaultValue={agent.personality} />
@@ -92,7 +92,7 @@ export function AgentEditForm({ agent, models }: { agent: AiAgent; models: Model
         </div>
       </Panel>
 
-      <Panel title="Model configuration">
+      <Panel title="Model configuration" description="Stored for reference. Live calls currently use the platform-wide model and token limits from the AI environment (see Configuration), not these values.">
         <div className="grid gap-5 sm:grid-cols-3">
           <Field label="Default model" name="defaultModelId">
             <Select id="defaultModelId" name="defaultModelId" defaultValue={agent.defaultModelId ?? ''}>
@@ -113,7 +113,7 @@ export function AgentEditForm({ agent, models }: { agent: AiAgent; models: Model
         </div>
       </Panel>
 
-      <Panel title="Memory configuration" description="Which memory scopes this agent may read.">
+      <Panel title="Memory configuration" description="Which memory scopes this agent may read. Note: HERNE specialists currently recall consented member memory regardless of these toggles.">
         <div className="grid gap-3 sm:grid-cols-2">
           <Toggle name="useUserMemory" label="User memory" defaultChecked={agent.memoryConfig.useUserMemory} />
           <Toggle name="useConversationMemory" label="Conversation memory" defaultChecked={agent.memoryConfig.useConversationMemory} />
@@ -122,7 +122,7 @@ export function AgentEditForm({ agent, models }: { agent: AiAgent; models: Model
         </div>
       </Panel>
 
-      <Panel title="Safety rules" description="Guardrails enforced around this agent. Full policies live in the Safety Centre.">
+      <Panel title="Safety rules" description="Reference notes only — these lines are NOT enforced at inference. The enforced safety floor (emergency, self-harm, diagnosis, medication, evidence checks) is fixed in code, plus any active policies from the Safety Centre.">
         <div className="flex flex-col gap-5">
           <Field label="Blocked topics" name="blockedTopics" hint="Comma or newline separated.">
             <Textarea id="blockedTopics" name="blockedTopics" rows={2} defaultValue={agent.safetyRules.blockedTopics.join(', ')} />

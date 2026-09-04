@@ -56,6 +56,22 @@ export const admin = {
       if (error) return err({ code: 'unavailable', message: 'Could not load users from the database.' });
       return ok({ items: (data ?? []).map(rowToProfile), nextCursor: null });
     },
+    /** Look one member up by email (exact, case-insensitive). Null when absent. */
+    async findByEmail(email: string): Promise<{ id: string; name: string; email: string } | null> {
+      const sb = createAdminClient();
+      if (!sb || !isSupabaseAdminConfigured()) return null;
+      const { data, error } = await sb
+        .from('profiles')
+        .select('id, email, full_name, display_name')
+        .ilike('email', email.trim())
+        .maybeSingle();
+      if (error || !data) return null;
+      return {
+        id: String(data.id),
+        email: String(data.email ?? email),
+        name: String(data.display_name ?? data.full_name ?? data.email ?? email),
+      };
+    },
     async count(): Promise<Result<number>> {
       const sb = createAdminClient();
       if (!sb || !isSupabaseAdminConfigured()) return ok(0);

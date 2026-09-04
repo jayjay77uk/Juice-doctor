@@ -9,15 +9,20 @@ import { getSession } from '@/services/auth';
 import { subscriptionsService } from '@/services/subscriptions';
 import { carePlan, timeline } from '@/services/herne/care-plan';
 import { referralEngine } from '@/services/herne/referrals';
-import { websiteProfiles, websiteProfile } from '@/data/herne/website-profiles';
 import { StartChatButton } from '@/components/dashboard/start-chat-button';
+import { websiteProfiles, websiteProfile } from '@/data/herne/website-profiles';
 
 export const metadata = createMetadata({ title: 'My specialists', path: '/dashboard/specialists' });
 export const dynamic = 'force-dynamic';
 
-export default async function MySpecialistsPage() {
+export default async function MySpecialistsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ recommended?: string }>;
+}) {
   const session = await getSession();
   const userId = session?.user.id;
+  const { recommended } = await searchParams;
   const plan = userId ? await carePlan.get(userId) : null;
   const [events, referrals, accessResult] = userId
     ? await Promise.all([
@@ -30,6 +35,8 @@ export default async function MySpecialistsPage() {
   const contributing = (plan?.assignedSpecialists ?? [])
     .map((s) => websiteProfile(s))
     .filter((p): p is NonNullable<typeof p> => Boolean(p));
+  // Makela's recommendation, carried over from the concierge console.
+  const recommendedProfile = recommended ? websiteProfile(recommended) : null;
   const latest = events[0] ?? null;
   const lastReferral = referrals[0] ?? null;
   const all = websiteProfiles();
@@ -47,6 +54,30 @@ export default async function MySpecialistsPage() {
           </Button>
         }
       />
+
+      {recommendedProfile && (
+        <Panel title="Recommended by Makela" description="From your consultation — start here.">
+          <div className="flex flex-wrap items-center gap-4">
+            <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[#12233a] font-serif text-lg text-[#c9a961]">
+              {recommendedProfile.name.charAt(0)}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-foreground">{recommendedProfile.name}</p>
+              <p className="text-sm text-muted-foreground">{recommendedProfile.title}</p>
+            </div>
+            {accessible.has(recommendedProfile.slug) ? (
+              <StartChatButton agentId={recommendedProfile.slug} label={`Talk to ${recommendedProfile.name}`} />
+            ) : (
+              <div className="flex flex-col items-end gap-1">
+                <Button asChild size="sm" intent="outline">
+                  <Link href={`/specialists/${recommendedProfile.slug}`}>View profile</Link>
+                </Button>
+                <span className="text-xs text-muted-foreground">Your plan does not include {recommendedProfile.name} yet.</span>
+              </div>
+            )}
+          </div>
+        </Panel>
+      )}
 
       <Panel title="Your concierge">
         <div className="flex items-center gap-4">
@@ -127,14 +158,23 @@ export default async function MySpecialistsPage() {
         )}
       </Panel>
 
-      <Panel title="Explore the full team" padded={false}>
+      <Panel
+        title="Explore the full team"
+        description="Start a conversation with any specialist your plan covers."
+        padded={false}
+      >
         <ul className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
           {all.map((s) => (
-            <li key={s.slug} className="bg-surface">
-              <Link href={`/specialists/${s.slug}`} className="flex flex-col items-center gap-2 p-4 text-center hover:bg-surface-muted">
+            <li key={s.slug} className="flex flex-col items-center gap-2 bg-surface p-4 text-center">
+              <Link href={`/specialists/${s.slug}`} className="flex flex-col items-center gap-2 hover:opacity-80">
                 <Compass className="size-4 text-primary" />
                 <span className="text-sm font-medium text-foreground">{s.name}</span>
               </Link>
+              {accessible.has(s.slug) ? (
+                <StartChatButton agentId={s.slug} label="Talk" intent="outline" />
+              ) : (
+                <span className="text-xs text-muted-foreground">Not in your plan</span>
+              )}
             </li>
           ))}
         </ul>

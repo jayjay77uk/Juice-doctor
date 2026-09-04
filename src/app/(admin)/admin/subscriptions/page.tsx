@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/admin/empty-state';
 import { Button } from '@/components/ui/button';
 import { CreatePlanForm } from '@/components/admin/create-plan-form';
 import { SubscriptionRowActions } from '@/components/admin/subscription-row-actions';
+import { GrantAccessForm } from '@/components/admin/grant-access-form';
 import { archivePlanAction } from '@/services/subscription-actions';
 import { subscriptionsService } from '@/services/subscriptions';
 import { specialists } from '@/services/specialists';
@@ -87,6 +88,17 @@ export default async function AdminSubscriptionsPage() {
         <StatCard label="Trialing" value={summary.trialing} />
         <StatCard label="Past due / incomplete" value={summary.pastDue} icon={CreditCard} />
       </StatGrid>
+
+      <Panel
+        title="Grant access to a member"
+        description="Give a registered member access to a plan without a checkout — the operational route while pricing and a payment provider are being decided."
+      >
+        {planOptions.length > 0 ? (
+          <GrantAccessForm plans={plans.filter((p) => p.status === 'active').map((p) => ({ id: p.id, name: p.name, scope: p.scope }))} />
+        ) : (
+          <p className="text-sm text-muted-foreground">Create an active plan first.</p>
+        )}
+      </Panel>
 
       <Panel
         title="Plans"

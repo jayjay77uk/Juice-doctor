@@ -38,7 +38,7 @@ export default async function PromptsPage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <AdminHeader
         title="Prompt Management"
-        description="Every prompt — system, developer, instruction, behaviour, restriction, safety, style and welcome — versioned with a publishing workflow. Nothing is hardcoded."
+        description="Every prompt — system, developer, instruction, behaviour, restriction, safety, style and welcome — versioned with a publishing workflow."
         breadcrumbs={[{ label: 'AI', href: '/admin/ai' }, { label: 'Prompts' }]}
       />
       <Panel padded={false}>

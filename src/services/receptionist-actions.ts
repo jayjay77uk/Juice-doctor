@@ -107,6 +107,12 @@ export async function receptionistTurnAction(input: {
     if (e instanceof RateLimitError) return { ok: false, error: BUSY_MESSAGE };
     throw e;
   }
+  // Enforce the admin "Receptionist is active" switch SERVER-side: hiding the
+  // console in the client is not an off switch for a public server action.
+  const settings = await receptionist.settings();
+  if (settings.ok && !settings.data.active) {
+    return { ok: false, error: 'The AI receptionist is currently offline. Please use the contact page and a member of the team will get back to you.' };
+  }
   if (parsed.data.conversation.length <= 2) {
     await track('receptionist.assessment_started', { turns: parsed.data.conversation.length });
   }

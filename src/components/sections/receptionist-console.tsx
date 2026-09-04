@@ -202,7 +202,7 @@ export function ReceptionistConsole({
             <RecommendationCard recommendation={recommendation} />
             {signedIn && !recommendation.escalate && (
               <a
-                href="/dashboard/specialists"
+                href={`/dashboard/specialists?recommended=${encodeURIComponent(recommendation.specialistSlug)}`}
                 className="mx-auto inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
               >
                 Continue with {recommendation.specialistName} in your dashboard →

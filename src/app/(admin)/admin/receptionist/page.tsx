@@ -57,7 +57,7 @@ export default async function ReceptionistPage() {
         )}
       </Panel>
 
-      <Panel title="Identity" description="How the Receptionist AI presents itself to every visitor.">
+      <Panel title="Identity" description="The stored receptionist agent record. Reference only — Makela's live conversational behaviour is defined in code plus the settings above (greeting, tone, topics, threshold, escalation target), not by this record.">
         {agentResult.ok ? (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">

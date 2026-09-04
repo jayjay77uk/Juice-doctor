@@ -6,6 +6,7 @@ import { agents } from './agents';
 import { subscriptionsService } from './subscriptions';
 import { assertSession } from '@/lib/auth/authorize';
 import { track } from '@/lib/monitoring/events';
+import { escalationEngine } from './herne/referrals';
 import type { Message, FeedbackRating } from '@/types/conversation';
 
 const MSG_RES = 'Please sign in.';
@@ -50,7 +51,34 @@ export async function requestSupportAction(
     return { ok: false, error: MSG_RES };
   }
   if (!(await assertOwnedConversation(conversationId, userId))) return { ok: false, error: MSG_OWN };
-  const result = await conversations_service.requestSupport(conversationId);
+
+  // Create a REAL staff-visible escalation before telling the member anything.
+  // escalationEngine writes herne_escalations + a member timeline event, bridges
+  // into the CRM human-review queue and sends the staff alert — the same path a
+  // specialist escalation takes. Without this the member was told the team had
+  // been notified when nothing had been recorded anywhere.
+  let specialist: string | undefined;
+  const convo = await conversations_service.byId(conversationId);
+  if (convo.ok && convo.data.agentId) {
+    const agent = await agents.byId(convo.data.agentId);
+    if (agent.ok) specialist = agent.data.slug;
+  }
+  let notified = false;
+  try {
+    const escalation = await escalationEngine.escalate({
+      userId,
+      conversationId,
+      trigger: 'human_review',
+      reason: 'The member asked to speak with a person from their conversation.',
+      ...(specialist ? { specialist } : {}),
+      destination: 'Human support',
+    });
+    notified = Boolean(escalation.escalationId);
+  } catch {
+    notified = false;
+  }
+
+  const result = await conversations_service.requestSupport(conversationId, { notified });
   if (!result.ok) return { ok: false, error: result.error.message };
   return { ok: true, messages: result.data };
 }

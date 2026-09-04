@@ -67,7 +67,7 @@ export default async function KnowledgeBasePage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <AdminHeader
         title="Knowledge Base"
-        description="Manage source documents, versions and the publishing workflow that powers grounded AI answers."
+        description="Source documents, versions and the publishing workflow. IMPORTANT: HERNE specialist replies are currently grounded in the curated evidence base, not in these documents — uploads here do not yet reach live answers."
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Knowledge Base' }]}
       />
 
@@ -80,7 +80,7 @@ export default async function KnowledgeBasePage() {
 
       <Panel
         title="Upload to a knowledge brain"
-        description="Add a source document and assign it to a specialist AI. It enters the indexing pipeline as “uploaded”."
+        description="Add a source document and assign it to a specialist AI. It is indexed for retrieval, but live HERNE replies do not read this store yet."
       >
         <KnowledgeUploadForm
           specialists={specialistList.map((s) => ({ slug: s.slug, name: s.name }))}

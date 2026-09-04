@@ -62,7 +62,7 @@ export default async function ConfigPage() {
 
       <Panel
         title="Feature flags"
-        description="Toggle capabilities live — changes are stored in the platform database and take effect immediately."
+        description="A registry of capability flags, stored and audit-logged. These flags are NOT yet checked by the features they name — toggling one does not currently switch anything on or off."
         padded={false}
       >
         <ul className="divide-y divide-border">
