@@ -36,7 +36,7 @@ export function ConversationAttachments({
     <section className="rounded-2xl border border-border bg-surface p-5" aria-labelledby="attachments-heading">
       <div className="flex flex-col gap-1">
         <h2 id="attachments-heading" className="text-sm font-semibold text-foreground">Conversation files</h2>
-        <p className="text-xs text-muted-foreground">Private files shared in this conversation. Attachments are not automatically read by the AI.</p>
+        <p className="text-xs text-muted-foreground">Private files in this conversation. Your specialist reads the text of PDF, DOCX, TXT and CSV files you attach here. Images are stored securely but cannot be read yet.</p>
       </div>
 
       <form action={action} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -50,7 +50,7 @@ export function ConversationAttachments({
             accept=".pdf,.docx,.txt,.csv,.png,.jpg,.jpeg,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv,image/png,image/jpeg,image/webp"
             className="block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-surface-muted file:px-3 file:py-1.5 file:text-xs file:font-medium"
           />
-          <span className="text-xs font-normal text-muted-foreground">PDF, DOCX, TXT, CSV or image · max 10 MB</span>
+          <span className="text-xs font-normal text-muted-foreground">PDF, DOCX, TXT, CSV (read by your specialist) or image · max 10 MB</span>
         </label>
         <UploadButton />
       </form>
@@ -68,7 +68,12 @@ export function ConversationAttachments({
               <FileText className="size-4 shrink-0 text-muted-foreground" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">{file.filename}</p>
-                <p className="text-xs text-muted-foreground">{bytesLabel(file.byteSize)} · {new Date(file.createdAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                <p className="text-xs text-muted-foreground">
+                  {bytesLabel(file.byteSize)} · {new Date(file.createdAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
+                  {file.extractionState === 'extracted' && <span className="ml-2 text-secondary">· read by your specialist</span>}
+                  {file.extractionState === 'unsupported' && <span className="ml-2">· stored only (images cannot be read yet)</span>}
+                  {file.extractionState === 'failed' && <span className="ml-2 text-danger">· could not be read</span>}
+                </p>
               </div>
               {file.downloadUrl ? (
                 <a
