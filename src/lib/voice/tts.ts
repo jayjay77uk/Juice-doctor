@@ -15,7 +15,10 @@ function createElevenLabsAdapter(apiKey: string): TtsProviderAdapter {
       if (!first.ok && first.providerStatus === 402 && voiceId !== FREE_PREMADE_VOICE_ID) {
         const retry = await call(text, FREE_PREMADE_VOICE_ID);
         if (retry.ok) return retry;
-        return first;
+        // Record WHY the fallback failed too — this distinguishes "library
+        // voice needs a paid plan" from "this plan cannot use TTS at all".
+        const why = retry.ok ? 'ok' : `failed_${retry.providerStatus ?? retry.error}`;
+        return { ...first, detail: `${first.detail ?? ''} | premade_fallback=${why}` };
       }
       return first;
     },

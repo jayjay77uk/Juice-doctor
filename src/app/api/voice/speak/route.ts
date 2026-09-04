@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getSession } from '@/services/auth';
 import { getTtsProvider, ttsFailureReason, TTS_MAX_CHARS } from '@/lib/voice/tts';
 import { voiceForSpecialist } from '@/services/voice';
+import { systemSettings } from '@/services/system-settings';
 import { conversationsRepo } from '@/services/repositories/conversations-repo';
 import { agents } from '@/services/agents';
 import { createInMemoryRateLimiter, enforceRateLimit } from '@/lib/security/rate-limit';
@@ -63,6 +64,7 @@ export async function POST(request: NextRequest) {
   const result = await provider.speak(message.data.content, voiceId);
   if (!result.ok) {
     console.error(`[tts] speak failed for message ${messageId}: ${result.detail ?? result.error}`);
+    await systemSettings.setValue('voice.last_tts_error', { at: new Date().toISOString(), surface: 'speak', detail: (result.detail ?? result.error).slice(0, 400) });
     return NextResponse.json({ error: ttsFailureReason(result) }, { status: result.error === 'timeout' ? 504 : 502 });
   }
   // Long replies are spoken up to the provider limit; signal partial audio
