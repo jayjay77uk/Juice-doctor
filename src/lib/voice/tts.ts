@@ -47,6 +47,12 @@ export function ttsFailureReason(result: Extract<TtsResult, { ok: false }>): str
 let voiceCache: { at: number; voices: AccountVoice[] } | null = null;
 const VOICE_TTL_MS = 5 * 60_000;
 
+/** Last /v1/voices outcome — so the admin page can say WHY no voice is usable. */
+let lastDiscovery: { status: number | null; count: number; at: number } | null = null;
+export function voiceDiscoveryStatus(): { status: number | null; count: number; at: number } | null {
+  return lastDiscovery;
+}
+
 export async function listAccountVoices(force = false): Promise<AccountVoice[]> {
   const apiKey = (process.env.ELEVENLABS_API_KEY ?? '').trim();
   if (!apiKey) return [];
@@ -59,12 +65,16 @@ export async function listAccountVoices(force = false): Promise<AccountVoice[]> 
       signal: controller.signal,
       cache: 'no-store',
     });
-    if (!res.ok) return voiceCache?.voices ?? [];
+    if (!res.ok) {
+      lastDiscovery = { status: res.status, count: 0, at: Date.now() };
+      return voiceCache?.voices ?? [];
+    }
     const body = (await res.json().catch(() => null)) as { voices?: { voice_id?: string; name?: string; category?: string }[] } | null;
     const voices = (body?.voices ?? [])
       .filter((v) => typeof v.voice_id === 'string' && v.voice_id)
       .map((v) => ({ voiceId: String(v.voice_id), name: String(v.name ?? 'Voice'), category: String(v.category ?? 'unknown') }));
     voiceCache = { at: Date.now(), voices };
+    lastDiscovery = { status: res.status, count: voices.length, at: Date.now() };
     return voices;
   } catch {
     return voiceCache?.voices ?? [];

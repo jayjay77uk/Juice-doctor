@@ -1,6 +1,6 @@
 import 'server-only';
 import { isSttConfigured, isTtsConfigured } from '@/lib/env';
-import { defaultVoiceId, resolveUsableVoiceId, listAccountVoices, type AccountVoice } from '@/lib/voice/tts';
+import { defaultVoiceId, resolveUsableVoiceId, listAccountVoices, voiceDiscoveryStatus, type AccountVoice } from '@/lib/voice/tts';
 import { systemSettings } from './system-settings';
 const VOICES_KEY = 'voice.specialist_voices';
 export interface VoiceStatus { sttConfigured: boolean; ttsConfigured: boolean; }
@@ -21,4 +21,11 @@ export async function voiceForSpecialist(slug: string | null): Promise<string> {
 /** Voices this ElevenLabs account can use — for the admin picker. */
 export async function accountVoices(): Promise<AccountVoice[]> {
   return listAccountVoices();
+}
+
+/** Why voice discovery found nothing (401 = key problem, 402 = plan problem). */
+export async function voiceDiscoveryDiagnostic(): Promise<{ status: number | null; count: number } | null> {
+  await listAccountVoices();
+  const d = voiceDiscoveryStatus();
+  return d ? { status: d.status, count: d.count } : null;
 }
