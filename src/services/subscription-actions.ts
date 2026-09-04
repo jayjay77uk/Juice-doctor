@@ -24,7 +24,8 @@ export async function customerSubscribeAction(planId: string): Promise<Res> {
   let session; try { session = await assertSession(); } catch { return { ok: false, error: 'Please sign in.' }; }
   const plan = await subscriptionsService.plans.byId(planId); if (!plan.ok || plan.data.status !== 'active') return { ok: false, error: 'That plan is not available.' };
   const existing = await subscriptionsService.byMember(session.user.id); if (existing.ok && existing.data.some((s) => MEMBER_LIVE_STATES.includes(s.state) && s.planId === planId)) return { ok: true };
-  const metadata = (session.user.user_metadata ?? {}) as Record<string, unknown>; const customerName = String(metadata.full_name ?? metadata.name ?? session.user.email?.split('@')[0] ?? 'Member'); const customerEmail = session.user.email ?? '';
+  const customerName = session.user.name || session.user.email?.split('@')[0] || 'Member';
+  const customerEmail = session.user.email ?? '';
   const r = await subscriptionsService.create({ memberId: session.user.id, customerName, customerEmail, planId }); if (!r.ok) return { ok: false, error: r.error.message }; revalidateAll(); return { ok: true };
 }
 
