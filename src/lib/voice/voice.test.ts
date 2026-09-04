@@ -107,3 +107,39 @@ describe('TTS failure reasons (operator-facing, no secrets)', () => {
     vi_.vi.unstubAllEnvs();
   });
 });
+
+describe('ElevenLabs 402 fallback (library voice on a free plan)', () => {
+  it('retries once with the free premade voice and succeeds', async () => {
+    vi.stubEnv('ELEVENLABS_API_KEY', 'el-key');
+    vi.stubEnv('ELEVENLABS_DEFAULT_VOICE_ID', 'LibraryVoice123');
+    const { FREE_PREMADE_VOICE_ID } = await import('./tts');
+    const calls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        calls.push(url);
+        if (!url.includes(FREE_PREMADE_VOICE_ID)) {
+          return new Response('{"detail":{"status":"payment_required"}}', { status: 402 });
+        }
+        return new Response(new Blob([new Uint8Array([1, 2, 3])]).stream(), {
+          status: 200,
+          headers: { 'content-type': 'audio/mpeg' },
+        });
+      }),
+    );
+    const result = await getTtsProvider()!.speak('Hello', 'LibraryVoice123');
+    expect(result.ok).toBe(true);
+    expect(calls).toHaveLength(2);
+    expect(calls[1]).toContain(FREE_PREMADE_VOICE_ID);
+  });
+
+  it('does not loop when the premade voice itself 402s', async () => {
+    vi.stubEnv('ELEVENLABS_API_KEY', 'el-key');
+    const { FREE_PREMADE_VOICE_ID } = await import('./tts');
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('nope', { status: 402 }));
+    vi.stubGlobal('fetch', fetchSpy);
+    const result = await getTtsProvider()!.speak('Hello', FREE_PREMADE_VOICE_ID);
+    expect(result.ok).toBe(false);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+});

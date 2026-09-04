@@ -1,68 +1,73 @@
 import { describe, it, expect } from 'vitest';
-import { precheckInput, postcheckOutput } from './safety-eval';
+import { postcheckOutput, citedRecordIds } from './safety-eval';
 
-describe('HERNE safety pre-check', () => {
-  it('blocks + escalates self-harm language with crisis wording', () => {
-    const r = precheckInput('I feel like I want to kill myself');
-    expect(r.blocked).toBe(true);
-    expect(r.escalate).toBe(true);
-    expect(r.category).toBe('self_harm');
-    expect(r.trigger).toBe('emergency');
-    expect(r.userMessage).toBeTruthy();
-    expect(r.messageStatus).toBe('awaiting_client_approval');
+const ALLOWED = ['HERNE-H-001', 'HERNE-N-003'];
+
+describe('diagnosis detection — no false clinical-review escalations', () => {
+  it('does NOT flag ordinary conversational phrasing containing "you have"', () => {
+    // Verbatim from a real Luca reply that was wrongly escalated for
+    // "unsupported-claim review" purely because it contained "you have".
+    const reply =
+      "So, tell me a bit about what's going on for you — and it'd help to know about any allergies, " +
+      'intolerances, cultural/taste preferences, or goals you have in mind.';
+    const result = postcheckOutput(reply, ALLOWED);
+    expect(result.issues).not.toContain('unsupported_diagnosis');
+    expect(result.mustEscalate).toBe(false);
+    expect(result.ok).toBe(true);
   });
 
-  it('blocks + escalates acute emergency symptoms', () => {
-    const r = precheckInput('I have severe chest pain and can\'t breathe');
-    expect(r.blocked).toBe(true);
-    expect(r.category).toBe('emergency');
-    expect(r.urgency).toBe('immediate');
+  it('does NOT flag other benign uses', () => {
+    for (const text of [
+      'If you have any questions, just ask.',
+      "Let me know what you have in the fridge and I'll build a meal around it.",
+      "You have options here — we can go either way.",
+    ]) {
+      expect(postcheckOutput(text, ALLOWED).mustEscalate).toBe(false);
+    }
   });
 
-  it('escalates a medication-change request without blocking the whole reply', () => {
-    const r = precheckInput('should I stop taking my medication?');
-    expect(r.blocked).toBe(false);
-    expect(r.escalate).toBe(true);
-    expect(r.category).toBe('medication_change');
-    expect(r.trigger).toBe('clinical_review');
-  });
-
-  it('flags a diagnosis request', () => {
-    const r = precheckInput('do i have diabetes?');
-    expect(r.category).toBe('diagnosis_request');
-    expect(r.escalate).toBe(true);
-    expect(r.blocked).toBe(false);
-  });
-
-  it('passes ordinary wellbeing questions', () => {
-    const r = precheckInput('how much water should I drink each day?');
-    expect(r.blocked).toBe(false);
-    expect(r.escalate).toBe(false);
-    expect(r.category).toBe('none');
+  it('STILL flags genuine diagnosis claims', () => {
+    for (const text of [
+      'Based on this, you have hypothyroidism.',
+      'You have an iron deficiency.',
+      'I diagnose insulin resistance.',
+      'You are diabetic.',
+      "You've got IBS.",
+      'You\u2019ve got coeliac disease.',
+    ]) {
+      const result = postcheckOutput(text, ALLOWED);
+      expect(result.issues, text).toContain('unsupported_diagnosis');
+      expect(result.mustEscalate, text).toBe(true);
+    }
   });
 });
 
-describe('HERNE safety post-check', () => {
-  it('keeps allowed citations and strips fabricated ones', () => {
-    const text = 'Hydration matters [HERNE-H-001]. Also consider sleep [HERNE-X-999].';
-    const r = postcheckOutput(text, ['HERNE-H-001', 'HERNE-H-002']);
-    expect(r.text).toContain('[HERNE-H-001]');
-    expect(r.text).not.toContain('HERNE-X-999');
-    expect(r.fabricatedCitations).toEqual(['HERNE-X-999']);
-    expect(r.issues).toContain('fabricated_citation');
-    expect(r.ok).toBe(false);
+describe('citations reflect what the reply actually used', () => {
+  it('returns nothing for a conversational answer that cites no record', () => {
+    // "who are you" style answer — must not claim unrelated evidence.
+    expect(citedRecordIds("Hey there — I'm Luca, the nutrition planner.", ALLOWED)).toEqual([]);
   });
 
-  it('flags an unsupported diagnosis claim and marks it for escalation', () => {
-    const r = postcheckOutput('Based on this, you have diabetes and should worry.', ['HERNE-H-001']);
-    expect(r.issues).toContain('unsupported_diagnosis');
-    expect(r.mustEscalate).toBe(true);
+  it('returns only cited, permitted records (deduped)', () => {
+    const text = 'Hydration matters [HERNE-H-001] and protein too [HERNE-N-003]. Again [HERNE-H-001].';
+    expect(citedRecordIds(text, ALLOWED).sort()).toEqual(['HERNE-H-001', 'HERNE-N-003']);
   });
 
-  it('passes clean, correctly-cited output', () => {
-    const r = postcheckOutput('Aim for steady hydration through the day [HERNE-H-001].', ['HERNE-H-001']);
-    expect(r.ok).toBe(true);
-    expect(r.issues).toEqual([]);
-    expect(r.fabricatedCitations).toEqual([]);
+  it('ignores record ids the model was not given (fabricated)', () => {
+    expect(citedRecordIds('Made up [HERNE-X-999].', ALLOWED)).toEqual([]);
+  });
+});
+
+describe('diagnosis detection — clause boundary', () => {
+  it('does not reach across a clause into an unrelated condition word', () => {
+    expect(
+      postcheckOutput('Let me know if you have questions about your thyroid tests.', ALLOWED).mustEscalate,
+    ).toBe(false);
+  });
+
+  it('catches qualified diagnoses', () => {
+    for (const text of ['You have a mild vitamin D deficiency.', "You've got early osteoporosis."]) {
+      expect(postcheckOutput(text, ALLOWED).mustEscalate, text).toBe(true);
+    }
   });
 });

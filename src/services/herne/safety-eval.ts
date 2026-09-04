@@ -100,7 +100,50 @@ export function precheckInput(text: string): SafetyPrecheck {
 
 // A record id looks like HERNE-H-001 (uppercase letters + hyphens + digits).
 const CITATION_TOKEN = /\[([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+)\]/g;
-const DIAGNOSIS_CLAIM = /\b(you (have|are suffering from)|i diagnose|this is (a )?diagnosis|you are (diabetic|hypertensive)|you'?ve got)\b/i;
+
+/**
+ * The record ids the model ACTUALLY cited in its reply, restricted to the ones
+ * it was permitted to use. Retrieval always returns a ranked top-N, so showing
+ * every retrieved record as a citation would claim grounding the answer never
+ * used (e.g. attaching fibre/hydration papers to "who are you"). Only records
+ * the model referenced are real citations.
+ */
+export function citedRecordIds(text: string, allowedRecordIds: string[]): string[] {
+  const allowed = new Set(allowedRecordIds);
+  const cited = new Set<string>();
+  for (const match of text.matchAll(CITATION_TOKEN)) {
+    const id = match[1];
+    if (id && allowed.has(id)) cited.add(id);
+  }
+  return [...cited];
+}
+/**
+ * Clinical conditions — a diagnosis claim is "you have X" where X is a
+ * condition, NOT any sentence containing "you have".
+ */
+const CONDITION_TERM =
+  '(?:diabet\\w*|hypertens\\w*|high blood pressure|cancer|tumou?r\\w*|ibs|ibd|crohn\\w*|colitis|co?eliac|thyroid\\w*|hypothyroid\\w*|hyperthyroid\\w*|an ?a?emia|an ?a?emic|deficien\\w+|disorder\\w*|disease\\w*|syndrome\\w*|infection\\w*|depression|pcos|endometriosis|arthritis|osteoporosis|insulin resistance|fatty liver|apnoea|apnea)';
+
+/**
+ * A genuine diagnosis assertion. Deliberately NOT triggered by ordinary
+ * conversational phrasing — "any goals you have in mind" or "if you have
+ * questions" are not diagnoses, and previously flagged every such reply for
+ * clinical review, creating false escalations and alarming users.
+ */
+const DIAGNOSIS_CLAIM = new RegExp(
+  '\\b(?:' +
+    'i diagnose\\b' +
+    '|this is (?:a )?diagnosis\\b' +
+    '|you are (?:diabetic|hypertensive|an ?a?emic|hypothyroid|coeliac|celiac)\\b' +
+    // "you have an iron deficiency" / "you've got mild IBS" — a short,
+    // punctuation-free gap so qualifiers are allowed but the match cannot
+    // reach across a clause ("questions about your thyroid" stays clean).
+    // Handles "you have", "you've got" and "you’ve got" (the model uses curly
+    // apostrophes) — note no space before the contraction.
+    `|you(?:\\s+have|\\s*['’]ve got|\\s+are suffering from)\\b[^.!?;\\n]{0,20}?\\b${CONDITION_TERM}` +
+    ')',
+  'i',
+);
 
 /**
  * Post-check the model output against the evidence it was actually given.

@@ -19,7 +19,7 @@ import { referralRules, escalationEngine, referralEngine, type ReferralRule } fr
 import { normalizeSpecialistRef, isWildcardRef } from './referral-matrix';
 import { windowHistory } from '@/lib/ai/history';
 import { activePrompt, type ActivePrompt } from './prompt-version';
-import { precheckInput, postcheckOutput, type SafetyCategory } from './safety-eval';
+import { precheckInput, postcheckOutput, citedRecordIds, type SafetyCategory } from './safety-eval';
 import { isMemoryEnabled } from '../memory-prefs';
 
 /**
@@ -330,7 +330,13 @@ async function finalizeTurn(t: PreparedTurn, agent: AiAgent, query: string, ctx:
   } else if (raw.stopReason === 'refusal' && !post.text.trim()) {
     post.text = 'I’m sorry — I can’t help with that particular request. If it concerns your wellbeing, I can connect you with a member of our human team.';
   }
-  const citations = retrieved.map((r) => ({ recordId: r.recordId, sourceTitle: r.sourceTitle, sourceUrl: r.sourceUrl }));
+  // Cite ONLY what the reply actually used. Retrieval always returns a ranked
+  // top-N, so mapping every retrieved record to a chip attached unrelated
+  // evidence to conversational answers ("who are you") and overstated grounding.
+  const cited = new Set(citedRecordIds(post.text, retrieved.map((r) => r.recordId)));
+  const citations = retrieved
+    .filter((r) => cited.has(r.recordId))
+    .map((r) => ({ recordId: r.recordId, sourceTitle: r.sourceTitle, sourceUrl: r.sourceUrl }));
 
   await runLogRepo.log({
     agentId: agent.id,
