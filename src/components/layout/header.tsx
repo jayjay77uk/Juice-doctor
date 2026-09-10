@@ -34,7 +34,7 @@ export function Header() {
         condensed && 'shadow-[0_12px_35px_rgba(0,0,0,.42)]',
       )}
     >
-      <div className="relative mx-auto flex h-[3.85rem] w-full max-w-[1055px] items-center justify-between gap-4 px-5 sm:px-8 lg:px-[3.8rem]">
+      <div className="relative mx-auto flex h-[4.55rem] w-full max-w-[1480px] items-center justify-between gap-4 px-6 sm:px-10 lg:px-14 xl:px-[4.75rem]">
         <Logo inverse className="shrink-0" />
 
         <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Primary navigation">
@@ -43,8 +43,8 @@ export function Header() {
               key={item.label}
               href={item.href}
               className={cn(
-                'relative px-2.5 py-2 text-[0.66rem] font-medium text-white/82 transition hover:text-white xl:px-3',
-                index === 0 && 'after:absolute after:bottom-0 after:left-1/2 after:h-px after:w-9 after:-translate-x-1/2 after:bg-[#f0c42d]',
+                'relative px-2.5 py-2 text-[0.72rem] font-medium text-white/82 transition hover:text-white xl:px-3.5',
+                index === 0 && 'after:absolute after:bottom-0 after:left-1/2 after:h-px after:w-10 after:-translate-x-1/2 after:bg-[#f1c62d]',
               )}
             >
               {item.label}
@@ -52,7 +52,7 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             aria-label={searchOpen ? 'Close search' : 'Search'}
@@ -63,7 +63,7 @@ export function Header() {
           </button>
           <Link
             href="/assistant"
-            className="hidden min-h-10 items-center justify-center gap-2 rounded-full bg-[linear-gradient(100deg,#ff6b30,#ffad29_50%,#ffe533)] px-5 text-[0.7rem] font-bold text-black shadow-[0_8px_25px_rgba(242,163,42,.20)] transition hover:brightness-105 sm:inline-flex"
+            className="hidden min-h-10 items-center justify-center gap-2 rounded-full bg-[linear-gradient(100deg,#ff6b30,#ffad29_50%,#ffe533)] px-6 text-[0.76rem] font-extrabold text-black shadow-[0_8px_25px_rgba(242,163,42,.20)] transition hover:brightness-105 sm:inline-flex"
           >
             Start Your Journey <span aria-hidden>→</span>
           </Link>
@@ -71,7 +71,7 @@ export function Header() {
         </div>
 
         {searchOpen && (
-          <form action="/resources" method="GET" className="absolute inset-x-5 top-[calc(100%+.5rem)] z-20 rounded-xl border border-white/12 bg-[#111412] p-2 shadow-2xl sm:left-auto sm:right-8 sm:w-[22rem] lg:right-[3.8rem]">
+          <form action="/resources" method="GET" className="absolute inset-x-6 top-[calc(100%+.5rem)] z-20 rounded-xl border border-white/12 bg-[#111412] p-2 shadow-2xl sm:left-auto sm:right-10 sm:w-[22rem] lg:right-14 xl:right-[4.75rem]">
             <div className="flex items-center gap-2 rounded-lg bg-white/[0.06] px-3">
               <Search className="size-4 text-white/45" />
               <input autoFocus name="q" placeholder="Search resources..." className="h-10 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/38" />
