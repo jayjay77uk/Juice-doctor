@@ -2,7 +2,7 @@ import type { FaqItem, Pillar, Stat } from '@/types/content';
 
 export const frameworkPillars: Pillar[] = [
   {
-    key: 'hydration',
+    key: 'pillar-one',
     letter: 'H',
     name: 'Hydration',
     tagline: 'Support the body with consistent hydration.',
@@ -11,7 +11,7 @@ export const frameworkPillars: Pillar[] = [
     tone: 'teal',
   },
   {
-    key: 'elimination',
+    key: 'pillar-two',
     letter: 'E',
     name: 'Elimination',
     tagline: 'Make healthy elimination part of the conversation.',
@@ -20,7 +20,7 @@ export const frameworkPillars: Pillar[] = [
     tone: 'green',
   },
   {
-    key: 'rest',
+    key: 'pillar-three',
     letter: 'R',
     name: 'Rest',
     tagline: 'Give recovery and restorative sleep a clear place.',
@@ -29,7 +29,7 @@ export const frameworkPillars: Pillar[] = [
     tone: 'sage',
   },
   {
-    key: 'nutrition',
+    key: 'pillar-four',
     letter: 'N',
     name: 'Nutrition',
     tagline: 'Build practical nutrition habits around real life.',
@@ -38,7 +38,7 @@ export const frameworkPillars: Pillar[] = [
     tone: 'amber',
   },
   {
-    key: 'exercise',
+    key: 'pillar-five',
     letter: 'E',
     name: 'Exercise',
     tagline: 'Use movement to support long-term wellbeing.',
