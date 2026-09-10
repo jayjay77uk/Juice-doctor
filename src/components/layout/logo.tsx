@@ -6,34 +6,33 @@ export function Logo({ className, inverse = false }: { className?: string; inver
   return (
     <Link
       href="/"
-      className={cn(
-        'group inline-flex items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4',
-        className,
-      )}
+      className={cn('group inline-flex items-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4', className)}
       aria-label="Ask Juice Doctor AI — home"
     >
-      <span className="relative grid size-11 shrink-0 place-items-center" aria-hidden>
-        <svg viewBox="0 0 48 48" className="size-11 overflow-visible">
-          <path d="M17 12C10 10 7 6 7 3c7 0 12 3 14 8" fill="#44a54a" />
-          <path d="M21 11C20 4 23 0 29 0c1 6-1 11-7 15" fill="#44a54a" />
-          <path d="M12 24c0-9 7-15 17-15 8 0 13 3 16 8-8 0-12 4-15 9-4 7-8 12-14 12-3-4-4-9-4-14Z" fill="#ec922a" />
-          <path d="M12 24c0-7 5-12 11-14 6 0 11 2 15 6-8 1-12 5-15 10-3 5-6 8-10 10-1-4-1-8-1-12Z" fill="#f2c92a" opacity=".94" />
-          <path d="M31 8c7 0 12 3 14 9-7 0-12 3-15 8 1-7 1-12 1-17Z" fill="#e04728" />
-          <path d="M33 29c4-3 8-4 12-2 2 4 1 8-1 11-5-2-8-5-11-9Z" fill="#e04728" />
-        </svg>
-      </span>
-      <span className="flex flex-col leading-none">
-        <span className={cn('text-[0.64rem] font-medium uppercase tracking-[0.24em]', inverse ? 'text-white/65' : 'text-ink-500')}>
-          Ask
-        </span>
-        <span className="font-serif text-[1.5rem] font-semibold tracking-[-0.04em]">
-          <span className="text-[#e04728]">Juice</span>{' '}
-          <span className={inverse ? 'text-white' : 'text-ink-900'}>Doctor</span>
-        </span>
-        <span className={cn('mt-0.5 text-[0.55rem] font-semibold uppercase tracking-[0.22em]', inverse ? 'text-[#f2c92a]' : 'text-[#a98110]')}>
-          AI wellbeing
-        </span>
-      </span>
+      <svg viewBox="0 0 152 58" className="h-[2.85rem] w-[7.7rem] overflow-visible sm:w-[8rem]" role="img" aria-label="Ask Juice Doctor AI">
+        <defs>
+          <linearGradient id="fruitGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#ffe22c" />
+            <stop offset=".46" stopColor="#f09b24" />
+            <stop offset="1" stopColor="#e33d2e" />
+          </linearGradient>
+          <linearGradient id="juiceGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stopColor="#e84d2d" />
+            <stop offset=".54" stopColor="#ee9a27" />
+            <stop offset="1" stopColor="#f3d32d" />
+          </linearGradient>
+        </defs>
+        <g transform="translate(0 1)">
+          <path d="M23 10C14 9 7 5 4 1c9-1 16 2 22 8" fill="#45a94d" />
+          <path d="M25 10C24 3 29-2 36-2c1 7-2 13-10 18" fill="#45a94d" />
+          <path d="M9 25c0-10 8-17 20-17 10 0 17 4 21 11-9 1-15 5-19 12-5 9-9 14-16 14-4-5-6-12-6-20Z" fill="url(#fruitGrad)" />
+          <path d="M43 9c8 0 14 4 17 10-8 0-14 3-18 9 1-7 1-13 1-19Z" fill="#ef3d35" />
+        </g>
+        <text x="24" y="30" fontFamily="Georgia,serif" fontSize="11" fill={inverse ? '#f4f1e8' : '#242424'}>ask</text>
+        <text x="18" y="44" fontFamily="Georgia,serif" fontSize="30" fontWeight="600" letterSpacing="-1.5" fill="url(#juiceGrad)">Juice</text>
+        <text x="48" y="55" fontFamily="Georgia,serif" fontSize="14" letterSpacing="5" fill={inverse ? '#f7f3e9' : '#272727'}>DOCTOR</text>
+        <text x="126" y="43" fontFamily="Georgia,serif" fontSize="16" fill={inverse ? '#f7f3e9' : '#272727'}>AI</text>
+      </svg>
     </Link>
   );
 }
