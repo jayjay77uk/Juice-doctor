@@ -58,7 +58,7 @@ export function SpecialistsHomeSection() {
                     </span>
                     <div className="absolute inset-x-0 bottom-0 p-3 text-white">
                       <p className="font-serif text-lg leading-tight">{profile.name}</p>
-                      <p className="mt-1 line-clamp-2 text-[0.68rem] uppercase tracking-[0.11em] text-white/55">{profile.role}</p>
+                      <p className="mt-1 line-clamp-2 text-[0.68rem] uppercase tracking-[0.11em] text-white/55">{profile.title}</p>
                     </div>
                   </div>
                 </Link>
