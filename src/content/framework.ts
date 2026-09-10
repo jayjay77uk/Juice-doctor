@@ -1,91 +1,70 @@
 import type { FaqItem, Pillar, Stat } from '@/types/content';
 
-/**
- * Development placeholder data. The framework structure (five pillars) is kept
- * intact; all human-readable wording is neutral placeholder text pending
- * approved copy.
- */
 export const frameworkPillars: Pillar[] = [
   {
     key: 'pillar-one',
-    letter: '1',
-    name: 'Pillar one',
-    tagline: 'A short summary line describing the first pillar of the framework.',
-    description:
-      'This is placeholder copy describing the first pillar in a few sentences. It explains what this part of the framework covers and why it matters. Final approved wording will replace this text.',
-    points: [
-      'First supporting point for pillar one',
-      'Second supporting point for pillar one',
-      'Third supporting point for pillar one',
-    ],
+    letter: 'H',
+    name: 'Hydration',
+    tagline: 'Support the body with consistent hydration.',
+    description: 'Hydration is the first pillar of HERNE and keeps fluid intake visible as part of the wider wellbeing picture.',
+    points: ['Build a consistent hydration routine', 'Notice hydration alongside energy and recovery', 'Keep hydration connected to the wider plan'],
     tone: 'teal',
   },
   {
     key: 'pillar-two',
-    letter: '2',
-    name: 'Pillar two',
-    tagline: 'A short summary line describing the second pillar of the framework.',
-    description:
-      'This is placeholder copy describing the second pillar in a few sentences. It explains what this part of the framework covers and why it matters. Final approved wording will replace this text.',
-    points: ['First supporting point for pillar two', 'Second supporting point for pillar two', 'Third supporting point for pillar two'],
+    letter: 'E',
+    name: 'Elimination',
+    tagline: 'Make healthy elimination part of the conversation.',
+    description: 'The elimination pillar keeps digestive and elimination patterns in view rather than treating them as an isolated topic.',
+    points: ['Track patterns that matter to you', 'Discuss changes in context', 'Connect digestive habits with the wider framework'],
     tone: 'green',
   },
   {
     key: 'pillar-three',
-    letter: '3',
-    name: 'Pillar three',
-    tagline: 'A short summary line describing the third pillar of the framework.',
-    description:
-      'This is placeholder copy describing the third pillar in a few sentences. It explains what this part of the framework covers and why it matters. Final approved wording will replace this text.',
-    points: ['First supporting point for pillar three', 'Second supporting point for pillar three', 'Third supporting point for pillar three'],
+    letter: 'R',
+    name: 'Rest',
+    tagline: 'Give recovery and restorative sleep a clear place.',
+    description: 'Rest covers sleep, recovery and the routines that help make both easier to understand over time.',
+    points: ['Make sleep part of the care conversation', 'Look at recovery alongside daily habits', 'Build practical routines around rest'],
     tone: 'sage',
   },
   {
     key: 'pillar-four',
-    letter: '4',
-    name: 'Pillar four',
-    tagline: 'A short summary line describing the fourth pillar of the framework.',
-    description:
-      'This is placeholder copy describing the fourth pillar in a few sentences. It explains what this part of the framework covers and why it matters. Final approved wording will replace this text.',
-    points: ['First supporting point for pillar four', 'Second supporting point for pillar four', 'Third supporting point for pillar four'],
+    letter: 'N',
+    name: 'Nutrition',
+    tagline: 'Build practical nutrition habits around real life.',
+    description: 'Nutrition is considered alongside the other HERNE pillars so food choices can be discussed in the context of the whole journey.',
+    points: ['Keep food choices practical', 'Connect nutrition with energy and routines', 'Use specialist support when deeper guidance is needed'],
     tone: 'amber',
   },
   {
     key: 'pillar-five',
-    letter: '5',
-    name: 'Pillar five',
-    tagline: 'A short summary line describing the fifth pillar of the framework.',
-    description:
-      'This is placeholder copy describing the fifth pillar in a few sentences. It explains what this part of the framework covers and why it matters. Final approved wording will replace this text.',
-    points: ['First supporting point for pillar five', 'Second supporting point for pillar five', 'Third supporting point for pillar five'],
+    letter: 'E',
+    name: 'Exercise',
+    tagline: 'Use movement to support long-term wellbeing.',
+    description: 'Exercise brings movement, strength and activity into the same shared framework as hydration, rest and nutrition.',
+    points: ['Build movement into daily life', 'Consider recovery alongside activity', 'Keep goals connected to the wider wellbeing plan'],
     tone: 'teal',
   },
 ];
 
-/**
- * Placeholder headline figures. Numeric structure is retained; labels are
- * neutral placeholder text pending approved, substantiated copy.
- */
 export const frameworkStats: Stat[] = [
-  { value: '92%', label: 'Placeholder statistic label one', note: 'placeholder' },
-  { value: '87%', label: 'Placeholder statistic label two', note: 'placeholder' },
-  { value: '3×', label: 'Placeholder statistic label three', note: 'placeholder' },
+  { value: '5', label: 'HERNE wellbeing pillars', note: 'one framework' },
+  { value: '8', label: 'specialist roles', note: 'one coordinated team' },
+  { value: '1', label: 'shared care journey', note: 'context that stays connected' },
 ];
 
 export const frameworkFaqs: FaqItem[] = [
   {
-    question: 'What is this first frequently asked question about?',
-    answer:
-      'This is a placeholder answer to the first frequently asked question. It gives a clear, concise response in a few sentences. Final approved wording will replace this text.',
+    question: 'What does HERNE stand for?',
+    answer: 'HERNE brings together Hydration, Elimination, Rest, Nutrition and Exercise as five connected pillars of the Ask Juice Doctor wellbeing framework.',
   },
   {
-    question: 'What is this second frequently asked question about?',
-    answer:
-      'This is a placeholder answer to the second frequently asked question. It gives a clear, concise response in a few sentences. Final approved wording will replace this text.',
+    question: 'How does the specialist team fit into HERNE?',
+    answer: 'Makela helps route each conversation to the right specialist role while the wider care journey stays connected across the platform.',
   },
   {
-    question: 'What is this third frequently asked question about?',
-    answer:
-      'This is a placeholder answer to the third frequently asked question. It gives a clear, concise response in a few sentences. Final approved wording will replace this text.',
+    question: 'Do I have to start with a specialist?',
+    answer: 'No. You can begin with Makela, explain what you need in your own words, and use that conversation to find the most relevant next step.',
   },
 ];

@@ -2,19 +2,24 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import * as NavigationMenu from '@radix-ui/react-navigation-menu';
-import { ChevronDown } from 'lucide-react';
-import { primaryNav, routes } from '@/config/routes';
-import { Button } from '@/components/ui/button';
+import { routes } from '@/config/routes';
 import { Logo } from './logo';
 import { MobileMenu } from './mobile-menu';
 import { cn } from '@/lib/cn';
+
+const nav = [
+  { label: 'HERNE Protocol', href: routes.framework.href },
+  { label: 'Specialists', href: routes.specialists.href },
+  { label: 'Programmes', href: routes.programmes.href },
+  { label: 'Resources', href: routes.resources.href },
+  { label: 'About', href: routes.about.href },
+];
 
 export function Header() {
   const [condensed, setCondensed] = React.useState(false);
 
   React.useEffect(() => {
-    const onScroll = () => setCondensed(window.scrollY > 12);
+    const onScroll = () => setCondensed(window.scrollY > 10);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
@@ -23,81 +28,38 @@ export function Header() {
   return (
     <header
       className={cn(
-        'sticky top-0 z-40 border-b transition-all duration-300',
-        condensed
-          ? 'border-border bg-cream-50/85 shadow-[var(--shadow-crisp)] backdrop-blur-md'
-          : 'border-transparent bg-cream-50/60 backdrop-blur',
+        'sticky top-0 z-50 border-b border-white/10 bg-[#080808] text-white transition-all duration-300',
+        condensed ? 'shadow-[0_12px_35px_rgba(0,0,0,0.28)]' : '',
       )}
     >
-      <div className="mx-auto flex h-[var(--header-h)] w-full max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
-        <Logo />
+      <div className="mx-auto flex h-[var(--header-h)] w-full max-w-7xl items-center justify-between gap-5 px-5 sm:px-8">
+        <Logo inverse />
 
-        <NavigationMenu.Root className="relative hidden lg:block" delayDuration={80}>
-          <NavigationMenu.List className="flex items-center gap-1">
-            {primaryNav.map((group, i) => (
-              <NavigationMenu.Item key={i}>
-                <NavigationMenu.Trigger className="group inline-flex items-center gap-1 rounded-full px-4 py-2 text-[0.95rem] font-medium text-foreground transition-colors hover:bg-surface-muted data-[state=open]:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-ring)]">
-                  {group.label}
-                  <ChevronDown
-                    className="size-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
-                    aria-hidden
-                  />
-                </NavigationMenu.Trigger>
-                <NavigationMenu.Content className="absolute left-0 top-full pt-3 data-[motion=from-start]:animate-in">
-                  <ul className="grid w-[22rem] gap-1 rounded-2xl border border-border bg-surface p-2 shadow-[var(--shadow-soft)]">
-                    {group.items.map((item) => (
-                      <li key={item.href}>
-                        <NavigationMenu.Link asChild>
-                          <Link
-                            href={item.href}
-                            className="block rounded-xl px-3 py-2.5 transition-colors hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none"
-                          >
-                            <span className="block text-[0.95rem] font-medium text-foreground">
-                              {item.label}
-                            </span>
-                            {item.description && (
-                              <span className="mt-0.5 block text-sm text-muted-foreground">
-                                {item.description}
-                              </span>
-                            )}
-                          </Link>
-                        </NavigationMenu.Link>
-                      </li>
-                    ))}
-                  </ul>
-                </NavigationMenu.Content>
-              </NavigationMenu.Item>
-            ))}
-            <NavigationMenu.Item>
-              <NavigationMenu.Link asChild>
-                <Link
-                  href={routes.specialists.href}
-                  className="inline-flex items-center rounded-full px-4 py-2 text-[0.95rem] font-medium text-foreground transition-colors hover:bg-surface-muted"
-                >
-                  {routes.specialists.label}
-                </Link>
-              </NavigationMenu.Link>
-            </NavigationMenu.Item>
-            <NavigationMenu.Item>
-              <NavigationMenu.Link asChild>
-                <Link
-                  href={routes.contact.href}
-                  className="inline-flex items-center rounded-full px-4 py-2 text-[0.95rem] font-medium text-foreground transition-colors hover:bg-surface-muted"
-                >
-                  {routes.contact.label}
-                </Link>
-              </NavigationMenu.Link>
-            </NavigationMenu.Item>
-          </NavigationMenu.List>
-        </NavigationMenu.Root>
+        <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary navigation">
+          {nav.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="rounded-full px-4 py-2 text-sm font-medium text-white/78 transition-colors hover:bg-white/8 hover:text-white focus-visible:outline-white"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
 
         <div className="flex items-center gap-2">
-          <Button asChild intent="ghost" size="sm" className="hidden sm:inline-flex">
-            <Link href={routes.login.href}>{routes.login.label}</Link>
-          </Button>
-          <Button asChild intent="primary" size="sm" className="hidden sm:inline-flex">
-            <Link href={routes.assistant.href}>{routes.assistant.label}</Link>
-          </Button>
+          <Link
+            href={routes.login.href}
+            className="hidden rounded-full px-4 py-2 text-sm font-medium text-white/72 transition-colors hover:text-white sm:inline-flex"
+          >
+            Sign in
+          </Link>
+          <Link
+            href={routes.assistant.href}
+            className="brand-gradient hidden min-h-10 items-center justify-center rounded-full px-5 text-sm font-semibold text-[#111] shadow-[0_8px_28px_rgba(224,71,40,0.25)] transition-transform hover:-translate-y-0.5 sm:inline-flex"
+          >
+            Start your journey
+          </Link>
           <MobileMenu />
         </div>
       </div>

@@ -4,10 +4,17 @@ import * as React from 'react';
 import Link from 'next/link';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Menu, X } from 'lucide-react';
-import { primaryNav, routes } from '@/config/routes';
-import { Button } from '@/components/ui/button';
+import { routes } from '@/config/routes';
 
-/** Focus-trapped mobile navigation drawer (Radix Dialog). */
+const nav = [
+  { label: 'HERNE Protocol', href: routes.framework.href },
+  { label: 'Specialists', href: routes.specialists.href },
+  { label: 'Programmes', href: routes.programmes.href },
+  { label: 'Resources', href: routes.resources.href },
+  { label: 'About', href: routes.about.href },
+  { label: 'Contact', href: routes.contact.href },
+];
+
 export function MobileMenu() {
   const [open, setOpen] = React.useState(false);
 
@@ -17,84 +24,55 @@ export function MobileMenu() {
         <button
           type="button"
           aria-label="Open menu"
-          className="grid size-11 place-items-center rounded-full text-foreground hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-ring)] lg:hidden"
+          className="grid size-11 place-items-center rounded-full text-white hover:bg-white/8 focus-visible:outline-white lg:hidden"
         >
           <Menu className="size-5" />
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[60] bg-ink-900/40 backdrop-blur-sm data-[state=open]:animate-in" />
-        <Dialog.Content className="fixed inset-y-0 right-0 z-[60] flex w-[86%] max-w-sm flex-col bg-cream-50 shadow-[var(--shadow-soft-lg)] focus:outline-none">
-          <div className="flex items-center justify-between border-b border-border px-5 py-4">
-            <Dialog.Title className="font-serif text-lg">Menu</Dialog.Title>
+        <Dialog.Overlay className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm" />
+        <Dialog.Content className="fixed inset-y-0 right-0 z-[61] flex w-[88%] max-w-sm flex-col border-l border-white/10 bg-[#0b0b0b] text-white shadow-2xl focus:outline-none">
+          <div className="flex items-center justify-between border-b border-white/10 px-5 py-5">
+            <Dialog.Title className="font-serif text-xl">Ask Juice Doctor</Dialog.Title>
             <Dialog.Close
               aria-label="Close menu"
-              className="grid size-10 place-items-center rounded-full text-foreground hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-ring)]"
+              className="grid size-10 place-items-center rounded-full text-white/75 hover:bg-white/8 hover:text-white"
             >
               <X className="size-5" />
             </Dialog.Close>
           </div>
 
-          <nav className="flex-1 overflow-y-auto px-5 py-6" aria-label="Mobile">
-            <ul className="flex flex-col gap-6">
-              {primaryNav.map((group, i) => (
-                <li key={i}>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                    {group.label}
-                  </p>
-                  <ul className="flex flex-col">
-                    {group.items.map((item) => (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          onClick={() => setOpen(false)}
-                          className="block rounded-lg py-2 text-lg text-foreground hover:text-primary"
-                        >
-                          {item.label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
+          <nav className="flex-1 overflow-y-auto px-5 py-6" aria-label="Mobile navigation">
+            <ul className="flex flex-col gap-1">
+              {nav.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className="block rounded-2xl px-4 py-3 text-lg text-white/82 transition-colors hover:bg-white/[0.06] hover:text-white"
+                  >
+                    {item.label}
+                  </Link>
                 </li>
               ))}
             </ul>
-            <Link
-              href={routes.specialists.href}
-              onClick={() => setOpen(false)}
-              className="mt-2 block rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-muted"
-            >
-              {routes.specialists.label}
-            </Link>
-            <Link
-              href={routes.contact.href}
-              onClick={() => setOpen(false)}
-              className="block rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-muted"
-            >
-              {routes.contact.label}
-            </Link>
           </nav>
 
-          <div className="flex flex-col gap-3 border-t border-border p-5">
-            <Button asChild intent="primary" full>
-              <Link href={routes.assistant.href} onClick={() => setOpen(false)}>
-                {routes.assistant.label}
-              </Link>
-            </Button>
-            <Button asChild intent="outline" full>
-              <Link href={routes.specialists.href} onClick={() => setOpen(false)}>
-                Meet your team
-              </Link>
-            </Button>
-            <Button asChild intent="ghost" full>
-              <Link href={routes.book.href} onClick={() => setOpen(false)}>
-                Book now
-              </Link>
-            </Button>
-            <Button asChild intent="ghost" full>
-              <Link href={routes.login.href} onClick={() => setOpen(false)}>
-                Sign in
-              </Link>
-            </Button>
+          <div className="space-y-3 border-t border-white/10 p-5">
+            <Link
+              href={routes.assistant.href}
+              onClick={() => setOpen(false)}
+              className="brand-gradient flex min-h-12 items-center justify-center rounded-full px-5 text-sm font-semibold text-[#111]"
+            >
+              Start your journey
+            </Link>
+            <Link
+              href={routes.login.href}
+              onClick={() => setOpen(false)}
+              className="flex min-h-12 items-center justify-center rounded-full border border-white/15 px-5 text-sm font-semibold text-white"
+            >
+              Sign in
+            </Link>
           </div>
         </Dialog.Content>
       </Dialog.Portal>
