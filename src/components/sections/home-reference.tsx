@@ -36,6 +36,13 @@ const quickPrompts = [
   ['Gut support', 'I want help with my gut health'],
 ] as const;
 
+const heroFeatures = [
+  { icon: Leaf, label: 'Personalised AI guidance', tone: 'text-[#45b955]' },
+  { icon: BarChart3, label: 'Evidence-led wellbeing', tone: 'text-[#4ac66c]' },
+  { icon: Heart, label: 'Connected specialist support', tone: 'text-[#ef6436]' },
+  { icon: Sparkles, label: 'One shared care journey', tone: 'text-[#f4ca2d]' },
+] as const;
+
 function AssistantCard() {
   return (
     <div className="w-full max-w-[19rem] rounded-[1.4rem] border border-white/20 bg-[#0b0d0c]/95 p-4 shadow-2xl backdrop-blur-xl sm:max-w-[20.5rem]">
@@ -111,15 +118,10 @@ function HeroSection() {
           </div>
 
           <div className="mt-8 grid grid-cols-2 gap-x-5 gap-y-4 text-[0.7rem] text-white/68 sm:grid-cols-4">
-            {[
-              [Leaf, 'Personalised AI guidance'],
-              [BarChart3, 'Evidence-led wellbeing'],
-              [Heart, 'Connected specialist support'],
-              [Sparkles, 'One shared care journey'],
-            ].map(([Icon, label], i) => (
-              <div key={String(label)} className="flex items-center gap-2.5">
+            {heroFeatures.map(({ icon: Icon, label, tone }) => (
+              <div key={label} className="flex items-center gap-2.5">
                 <span className="grid size-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04]">
-                  <Icon className={`size-4 ${i === 0 ? 'text-[#45b955]' : i === 1 ? 'text-[#4ac66c]' : i === 2 ? 'text-[#ef6436]' : 'text-[#f4ca2d]'}`} />
+                  <Icon className={`size-4 ${tone}`} />
                 </span>
                 <span className="leading-4">{label}</span>
               </div>
@@ -242,7 +244,7 @@ function SpecialistSection() {
                 {index === 0 && <span className="absolute bottom-1 right-1 size-3.5 rounded-full border-2 border-[#0a0c0b] bg-[#36d05d]" />}
               </span>
               <span className="mt-3 block text-sm font-semibold text-white">{profile.name}</span>
-              <span className="mx-auto mt-1 block max-w-[8rem] text-[0.65rem] leading-4 text-white/48">{profile.websiteTitle}</span>
+              <span className="mx-auto mt-1 block max-w-[8rem] text-[0.65rem] leading-4 text-white/48">{profile.title}</span>
             </Link>
           ))}
         </div>
