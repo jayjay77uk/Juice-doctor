@@ -1,75 +1,96 @@
 import * as React from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, MessageCircle, Play, Sparkles } from 'lucide-react';
 import { routes } from '@/config/routes';
 import { Container } from '@/components/ui/container';
-import { Button } from '@/components/ui/button';
-import { Media } from '@/components/ui/media';
 
-/**
- * Home hero — the committed "art-directed split-editorial" concept.
- * Fluid display headline + CTAs on the left; a graded portrait with a floating
- * chip on the right. Copy is clear English placeholder text until final approved
- * wording is supplied. Static/RSC — no client JS.
- */
 export function Hero() {
   return (
-    <section className="relative overflow-hidden bg-cream-50">
-      <div className="bg-grain pointer-events-none absolute inset-0 opacity-60" aria-hidden />
-      <Container className="relative grid items-center gap-10 py-14 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:py-24">
-        <div className="flex flex-col items-start gap-6">
-          <span className="reveal inline-flex items-center gap-2 rounded-full border border-border-strong bg-surface px-3.5 py-1.5 text-xs font-medium text-muted-foreground">
-            <Sparkles className="size-3.5 text-accent-strong" />
-            Your Wellbeing Institute
-          </span>
-          <h1 className="reveal reveal-2 text-display text-foreground">
-            Meet Makela,
-            <span className="block text-primary">your wellbeing concierge</span>
-          </h1>
-          <p className="reveal reveal-3 measure text-lg text-muted-foreground sm:text-xl">
-            Makela listens first, then coordinates a team of eight specialists around one shared care plan —
-            so your wellbeing support always works together.
-          </p>
-          <div className="reveal reveal-3 flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg">
-              <Link href={routes.assistant.href}>
-                Ask Makela to guide me <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" intent="outline">
-              <Link href={routes.specialists.href}>Meet your team</Link>
-            </Button>
+    <section className="relative isolate overflow-hidden bg-[#080808] text-white">
+      <div className="brand-glow pointer-events-none absolute inset-0" aria-hidden />
+      <div className="bg-grain pointer-events-none absolute inset-0 opacity-25" aria-hidden />
+
+      <Container className="relative grid min-h-[43rem] items-center gap-10 py-14 sm:py-16 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10 lg:py-20">
+        <div className="z-10 max-w-3xl">
+          <div className="reveal inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#f2c92a]">
+            <Sparkles className="size-3.5" />
+            Ask Juice Doctor AI
           </div>
-          <dl className="reveal reveal-4 mt-4 flex flex-wrap gap-x-8 gap-y-3">
-            {[
-              { v: '8', l: 'Wellbeing specialists' },
-              { v: '1', l: 'Shared care plan' },
-              { v: '24/7', l: 'Always available' },
-            ].map((s, i) => (
-              <div key={i} className="flex flex-col">
-                <dt className="font-serif text-2xl text-foreground">{s.v}</dt>
-                <dd className="text-sm text-muted-foreground">{s.l}</dd>
-              </div>
-            ))}
+
+          <h1 className="reveal reveal-2 mt-7 max-w-[11ch] text-display text-white">
+            Your health.
+            <span className="block brand-text-gradient">One intelligent team.</span>
+          </h1>
+
+          <p className="reveal reveal-3 mt-7 max-w-2xl text-lg leading-8 text-white/68 sm:text-xl">
+            Start with Makela, your wellbeing concierge. She listens, understands what you need and connects you with the right specialist while your care stays joined up.
+          </p>
+
+          <div className="reveal reveal-3 mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href={routes.assistant.href}
+              className="brand-gradient inline-flex min-h-13 items-center justify-center gap-2 rounded-full px-7 text-base font-semibold text-[#111] shadow-[0_16px_42px_rgba(224,71,40,0.26)] transition-transform hover:-translate-y-0.5"
+            >
+              Ask Makela now <ArrowRight className="size-4" />
+            </Link>
+            <Link
+              href={routes.specialists.href}
+              className="inline-flex min-h-13 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/[0.04] px-7 text-base font-medium text-white transition-colors hover:bg-white/[0.09]"
+            >
+              <Play className="size-4" /> Meet the team
+            </Link>
+          </div>
+
+          <dl className="reveal reveal-4 mt-10 grid max-w-2xl grid-cols-3 divide-x divide-white/12 border-y border-white/10 py-5">
+            <div className="pr-4">
+              <dt className="font-serif text-3xl text-[#f2c92a]">5</dt>
+              <dd className="mt-1 text-xs uppercase tracking-[0.12em] text-white/50">HERNE pillars</dd>
+            </div>
+            <div className="px-4 sm:px-6">
+              <dt className="font-serif text-3xl text-[#44a54a]">8</dt>
+              <dd className="mt-1 text-xs uppercase tracking-[0.12em] text-white/50">Specialists</dd>
+            </div>
+            <div className="pl-4 sm:pl-6">
+              <dt className="font-serif text-3xl text-[#ec922a]">1</dt>
+              <dd className="mt-1 text-xs uppercase tracking-[0.12em] text-white/50">Shared journey</dd>
+            </div>
           </dl>
         </div>
 
-        <div className="reveal reveal-2 relative">
-          <Media
-            image={{ alt: 'Makela, your wellbeing concierge', tone: 'teal', ratio: '4/5' }}
-            className="shadow-[var(--shadow-soft-lg)]"
-            priority
-            sizes="(max-width: 1024px) 100vw, 45vw"
-          />
-          <div className="absolute -bottom-5 -left-4 max-w-[15rem] rounded-2xl border border-border bg-surface/95 p-4 shadow-[var(--shadow-soft)] backdrop-blur sm:-left-6">
-            <p className="font-serif text-3xl text-primary">Makela</p>
-            <p className="text-sm text-muted-foreground">
-              Your concierge
-              <span className="mt-0.5 block text-xs text-muted-foreground/70">Listens first</span>
-            </p>
+        <div className="reveal reveal-2 relative mx-auto w-full max-w-[35rem] lg:ml-auto">
+          <div className="absolute -inset-5 rounded-[2.75rem] bg-gradient-to-br from-[#e04728]/20 via-transparent to-[#44a54a]/16 blur-2xl" aria-hidden />
+          <div className="relative min-h-[35rem] overflow-hidden rounded-[2.4rem] border border-white/12 bg-[#141414] shadow-[0_35px_100px_rgba(0,0,0,0.5)] sm:min-h-[39rem]">
+            <Image
+              src="/specialists/makela.png"
+              alt="Makela, Ask Juice Doctor wellbeing concierge"
+              fill
+              priority
+              sizes="(max-width: 1024px) 90vw, 44vw"
+              className="object-cover object-top"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/5 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#f2c92a]">Your first point of contact</p>
+              <p className="mt-2 font-serif text-4xl text-white">Meet Makela</p>
+              <p className="mt-2 max-w-md text-sm leading-6 text-white/65">Talk naturally. Makela helps you find the right next step and the right member of your wellbeing team.</p>
+            </div>
           </div>
-          <div className="absolute -right-3 top-6 hidden rounded-2xl border border-border bg-surface/95 px-4 py-3 shadow-[var(--shadow-soft)] backdrop-blur sm:block">
-            <p className="text-sm font-medium text-foreground">“Speak naturally, in your language.”</p>
+
+          <div className="absolute -left-3 top-9 hidden w-[17rem] rounded-[1.6rem] border border-white/12 bg-[#111]/95 p-4 shadow-2xl backdrop-blur sm:block lg:-left-16">
+            <div className="flex items-center gap-3">
+              <span className="grid size-9 place-items-center rounded-full bg-[#44a54a]/15 text-[#76c77b]"><MessageCircle className="size-4" /></span>
+              <div>
+                <p className="text-sm font-semibold text-white">Hi, I’m Makela</p>
+                <p className="text-xs text-white/45">Your wellbeing concierge</p>
+              </div>
+            </div>
+            <div className="mt-4 rounded-2xl bg-white px-4 py-3 text-sm leading-5 text-[#222]">What would you like support with today?</div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {['Energy', 'Sleep', 'Nutrition'].map((item) => (
+                <span key={item} className="rounded-full border border-white/12 px-3 py-1.5 text-xs text-white/64">{item}</span>
+              ))}
+            </div>
           </div>
         </div>
       </Container>

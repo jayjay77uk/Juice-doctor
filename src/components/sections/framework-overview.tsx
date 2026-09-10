@@ -1,40 +1,56 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import { frameworkPillars } from '@/content/framework';
 import { routes } from '@/config/routes';
-import { Section } from '@/components/ui/section';
-import { SectionHeading } from './section-heading';
-import { Reveal } from '@/components/ui/reveal';
+import { Container } from '@/components/ui/container';
 
-/** Compact overview for the Home page. */
+const pillars = [
+  { letter: 'H', name: 'Hydration', line: 'Support the body with consistent hydration.', accent: '#ec922a' },
+  { letter: 'E', name: 'Elimination', line: 'Create space for healthy daily elimination.', accent: '#44a54a' },
+  { letter: 'R', name: 'Rest', line: 'Make recovery and restorative sleep part of the plan.', accent: '#f2c92a' },
+  { letter: 'N', name: 'Nutrition', line: 'Build practical nutrition habits around real life.', accent: '#e04728' },
+  { letter: 'E', name: 'Exercise', line: 'Use movement to support strength and long-term wellbeing.', accent: '#44a54a' },
+];
+
 export function FrameworkOverview() {
   return (
-    <Section tone="sage" spacing="lg">
-      <SectionHeading
-        eyebrow="Our framework"
-        title={<>How the framework works</>}
-        intro="This is placeholder text in clear English. It introduces the five pillars of the framework. Final approved wording will be supplied later."
-      />
-      <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {frameworkPillars.map((pillar, i) => (
-          <Reveal as="li" key={pillar.key} delay={i * 70}>
-            <div className="flex h-full flex-col gap-3 rounded-2xl border border-border bg-surface p-6 transition-shadow hover:shadow-[var(--shadow-soft)]">
-              <span className="font-serif text-4xl text-primary">{pillar.letter}</span>
-              <span className="font-serif text-lg text-foreground">{pillar.name}</span>
-              <span className="text-sm text-muted-foreground">{pillar.tagline}</span>
-            </div>
-          </Reveal>
-        ))}
-      </ol>
-      <div className="mt-10">
-        <Link
-          href={routes.framework.href}
-          className="inline-flex items-center gap-2 font-medium text-primary hover:gap-3 transition-all"
-        >
-          Explore the framework <ArrowRight className="size-4" />
-        </Link>
-      </div>
-    </Section>
+    <section className="bg-[#0d0d0d] py-20 text-white sm:py-28">
+      <Container>
+        <div className="grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:items-end">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#ec922a]">The HERNE Protocol</p>
+            <h2 className="mt-4 max-w-[10ch] text-h1 text-white">Five pillars. One connected approach.</h2>
+            <p className="mt-5 max-w-xl text-base leading-7 text-white/58">
+              HERNE brings Hydration, Elimination, Rest, Nutrition and Exercise into one framework so each part of your wellbeing can be considered together.
+            </p>
+            <Link
+              href={routes.framework.href}
+              className="mt-7 inline-flex items-center gap-2 rounded-full border border-white/18 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:border-[#f2c92a]/50 hover:bg-white/[0.05]"
+            >
+              Explore the HERNE Protocol <ArrowRight className="size-4" />
+            </Link>
+          </div>
+
+          <ol className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {pillars.map((pillar, index) => (
+              <li
+                key={`${pillar.letter}-${pillar.name}`}
+                className="group relative min-h-[16rem] overflow-hidden rounded-[1.55rem] border border-white/10 bg-[#151515] p-5 transition-transform duration-300 hover:-translate-y-1"
+              >
+                <div
+                  className="absolute inset-x-0 top-0 h-1"
+                  style={{ backgroundColor: pillar.accent }}
+                  aria-hidden
+                />
+                <span className="text-xs font-semibold text-white/30">0{index + 1}</span>
+                <span className="mt-8 block font-serif text-6xl" style={{ color: pillar.accent }}>{pillar.letter}</span>
+                <h3 className="mt-3 text-xl text-white">{pillar.name}</h3>
+                <p className="mt-3 text-sm leading-6 text-white/48">{pillar.line}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </Container>
+    </section>
   );
 }

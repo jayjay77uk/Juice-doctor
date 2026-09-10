@@ -28,47 +28,45 @@ export default async function HomePage() {
     <>
       <Hero />
       <PressStrip />
-      <SpecialistsHomeSection />
       <FrameworkOverview />
+      <SpecialistsHomeSection />
 
-      {/* Programmes */}
-      <Section tone="default" spacing="lg">
-        <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+      {programmes.length > 0 && (
+        <Section tone="default" spacing="lg">
+          <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+            <SectionHeading
+              eyebrow="Programmes"
+              title="Support built around the next step"
+              intro="Explore structured wellbeing programmes designed to give your journey a clear focus and practical direction."
+            />
+            <Button asChild intent="outline" className="shrink-0">
+              <Link href={routes.programmes.href}>
+                View all programmes <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </div>
+          <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {programmes.map((programme) => (
+              <ProgrammeCard key={programme.id} programme={programme} />
+            ))}
+          </div>
+        </Section>
+      )}
+
+      <StatBand heading="One framework. One coordinated experience." stats={frameworkStats} tone="inverse" />
+
+      {testimonials.length > 0 && (
+        <Section tone="cream" spacing="lg">
           <SectionHeading
-            eyebrow="Programmes"
-            title="Featured programmes"
-            intro="This is placeholder text in clear English. Final approved wording will be supplied later."
+            eyebrow="Stories"
+            title="What people share about their experience"
+            intro="Read experiences from people who have chosen Ask Juice Doctor as part of their wellbeing journey."
           />
-          <Button asChild intent="outline" className="shrink-0">
-            <Link href={routes.programmes.href}>
-              View all programmes <ArrowRight className="size-4" />
-            </Link>
-          </Button>
-        </div>
-        <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {programmes.map((programme) => (
-            <ProgrammeCard key={programme.id} programme={programme} />
-          ))}
-        </div>
-      </Section>
-
-      <StatBand
-        heading="By the numbers"
-        stats={frameworkStats}
-        tone="inverse"
-      />
-
-      {/* Testimonials */}
-      <Section tone="cream" spacing="lg">
-        <SectionHeading
-          eyebrow="Testimonials"
-          title="What people say"
-          intro="This is placeholder text in clear English. Final approved wording will be supplied later."
-        />
-        <div className="mt-10">
-          <TestimonialsCarousel testimonials={testimonials} />
-        </div>
-      </Section>
+          <div className="mt-10">
+            <TestimonialsCarousel testimonials={testimonials} />
+          </div>
+        </Section>
+      )}
 
       <CtaSection />
     </>

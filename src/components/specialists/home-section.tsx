@@ -1,53 +1,72 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Lotus } from './lotus';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import { websiteProfiles } from '@/data/herne/website-profiles';
+import { Container } from '@/components/ui/container';
 
-/** Premium specialist section for the homepage — brief, Makela-first, all eight, no biographies. */
 export function SpecialistsHomeSection() {
   const profiles = websiteProfiles();
+
   return (
-    <section className="bg-[#0a1420] text-white">
-      <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
-        <div className="text-center">
-          <Lotus className="mx-auto size-9 text-[#c9a961]" />
-          <p className="mt-4 text-xs uppercase tracking-[0.24em] text-[#c9a961]">Your Wellbeing Institute</p>
-          <h2 className="mt-3 font-serif text-3xl text-[#f3ecdd] sm:text-4xl">Meet your specialist team</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-white/60">
-            Start with Makela, your concierge — she listens first, then coordinates a team of specialists around one shared care plan.
-          </p>
-        </div>
-
-        <ul className="mx-auto mt-10 grid max-w-4xl grid-cols-4 gap-4 sm:grid-cols-8">
-          {profiles.map((p) => (
-            <li key={p.slug}>
-              <Link href={`/specialists/${p.slug}`} className="group flex flex-col items-center gap-2 outline-none">
-                <span className="relative grid size-16 place-items-center overflow-hidden rounded-full border border-[#c9a961]/30 bg-[#12233a] ring-[#c9a961] transition group-hover:ring-2 group-focus-visible:ring-2 sm:size-[4.5rem]">
-                  {p.portrait ? (
-                    <Image src={p.portrait} alt={p.name} fill sizes="72px" className="object-cover object-top" />
-                  ) : (
-                    <span className="font-serif text-xl text-[#c9a961]">{p.name.charAt(0)}</span>
-                  )}
-                </span>
-                <span className="text-center text-xs font-medium text-[#e8dcc4]">{p.name}</span>
+    <section className="bg-[#fffaf2] py-20 sm:py-28">
+      <Container>
+        <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#44a54a]/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[#276b2d]">
+              <Sparkles className="size-3.5" />
+              Your wellbeing team
+            </div>
+            <h2 className="mt-5 max-w-[11ch] text-h1 text-[#111]">Real specialist focus, coordinated around you.</h2>
+            <p className="mt-5 max-w-xl text-base leading-7 text-[#6f6b63]">
+              Makela is your concierge. When you need deeper support, she can connect you with the specialist whose role best matches the conversation while the wider journey stays connected.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link href="/assistant" className="brand-gradient inline-flex min-h-11 items-center justify-center rounded-full px-5 text-sm font-semibold text-[#111]">
+                Ask Makela
               </Link>
-            </li>
-          ))}
-        </ul>
+              <Link href="/specialists" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#c8bba8] px-5 text-sm font-semibold text-[#111] hover:bg-white">
+                Meet all specialists <ArrowRight className="size-4" />
+              </Link>
+            </div>
+          </div>
 
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-          <Button asChild size="lg" className="bg-[#c9a961] text-[#0a1420] hover:bg-[#d8bd7f]">
-            <Link href="/assistant">Ask Makela to guide me</Link>
-          </Button>
-          <Button asChild size="lg" intent="ghost" className="border border-white/25 text-white hover:bg-white/10">
-            <Link href="/specialists">
-              View all specialists <ArrowRight className="ml-1 size-4" />
-            </Link>
-          </Button>
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {profiles.map((profile, index) => (
+              <li key={profile.slug}>
+                <Link
+                  href={`/specialists/${profile.slug}`}
+                  className="group relative block overflow-hidden rounded-[1.45rem] border border-[#e5d7c2] bg-white p-3 shadow-[var(--shadow-soft)] transition-transform duration-300 hover:-translate-y-1"
+                >
+                  <div className="relative aspect-[4/5] overflow-hidden rounded-[1.05rem] bg-[#171717]">
+                    {profile.portrait ? (
+                      <Image
+                        src={profile.portrait}
+                        alt={profile.name}
+                        fill
+                        sizes="(max-width: 640px) 45vw, 20vw"
+                        className="object-cover object-top transition-transform duration-500 group-hover:scale-[1.03]"
+                      />
+                    ) : (
+                      <div className="grid h-full place-items-center font-serif text-5xl text-[#f2c92a]">{profile.name.charAt(0)}</div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-transparent to-transparent" />
+                    <span
+                      className="absolute right-3 top-3 grid size-7 place-items-center rounded-full text-xs font-bold text-[#111]"
+                      style={{ backgroundColor: ['#f2c92a', '#44a54a', '#ec922a', '#e04728'][index % 4] }}
+                    >
+                      {index + 1}
+                    </span>
+                    <div className="absolute inset-x-0 bottom-0 p-3 text-white">
+                      <p className="font-serif text-lg leading-tight">{profile.name}</p>
+                      <p className="mt-1 line-clamp-2 text-[0.68rem] uppercase tracking-[0.11em] text-white/55">{profile.role}</p>
+                    </div>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
-      </div>
+      </Container>
     </section>
   );
 }
