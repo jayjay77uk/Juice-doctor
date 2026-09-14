@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
+import { resolveModelSelection } from './agent-runtime';
 import { agents, type AgentPatch } from './agents';
 import { promptService } from './prompts';
 import { knowledge } from './knowledge';
@@ -73,8 +74,8 @@ const updateSchema = z.object({
   systemPrompt: z.string().optional().or(z.literal('')),
   welcomeMessage: z.string().optional().or(z.literal('')),
   responseBoundaries: z.string().optional().or(z.literal('')),
-  temperature: z.coerce.number().min(0).max(2),
-  maxOutputTokens: z.coerce.number().int().min(1).max(200000),
+  temperature: z.coerce.number().min(0).max(1),
+  maxOutputTokens: z.coerce.number().int().min(1).max(8192),
   visibility: z.enum(['private', 'organisation', 'public']),
 });
 
@@ -132,6 +133,12 @@ export async function updateAgentAction(_prev: ActionResult, formData: FormData)
       accent: (String(formData.get('productAccent') ?? 'teal')) as 'teal' | 'green' | 'amber' | 'sage',
     };
   }
+  try {
+    const current = await agents.byId(parsed.data.id);
+    if (!current.ok) return { status: 'error', message: 'Agent not found.' };
+    patch.defaultModelId = await resolveModelSelection(String(formData.get('defaultModelId') ?? ''), current.data.organisationId);
+  } catch (e) { return { status: 'error', message: e instanceof Error ? e.message : 'Model selection could not be saved.' }; }
+  if (!['daily', 'weekly', 'fortnightly', 'monthly'].includes(patch.followUpConfig!.cadence)) return { status: 'error', message: 'Choose daily, weekly, fortnightly or monthly follow-ups.' };
   const result = await agents.update(parsed.data.id, patch);
   if (!result.ok) return { status: 'error', message: result.error.message };
   await auditRepo.log({ actorId, action: 'agent.updated', entityType: 'ai_agents', entityId: parsed.data.id, after: { label: patch.name } });

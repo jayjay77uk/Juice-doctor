@@ -20,12 +20,13 @@ const RATES: Record<string, ModelRate> = {
   'claude-fable-5': { inputPerMTok: 10, outputPerMTok: 50 },
   // Opus 4.5+ moved to $5/$25; the bare 'claude-opus-4' prefix keeps the older
   // 4.0/4.1 models on their $15/$75 list price (longest-prefix wins).
+  'claude-opus-5': { inputPerMTok: 5, outputPerMTok: 25 },
   'claude-opus-4-8': { inputPerMTok: 5, outputPerMTok: 25 },
   'claude-opus-4-7': { inputPerMTok: 5, outputPerMTok: 25 },
   'claude-opus-4-6': { inputPerMTok: 5, outputPerMTok: 25 },
   'claude-opus-4-5': { inputPerMTok: 5, outputPerMTok: 25 },
   'claude-opus-4': { inputPerMTok: 15, outputPerMTok: 75 },
-  'claude-sonnet-5': { inputPerMTok: 3, outputPerMTok: 15 },
+  'claude-sonnet-5': { inputPerMTok: 2, outputPerMTok: 10 },
   'claude-sonnet-4': { inputPerMTok: 3, outputPerMTok: 15 },
   'claude-haiku-4': { inputPerMTok: 1, outputPerMTok: 5 },
   'claude-3-5-haiku': { inputPerMTok: 0.8, outputPerMTok: 4 },

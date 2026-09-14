@@ -27,16 +27,16 @@ describe('monitoring redaction', () => {
 
   it('analytics identifiers are one-way hashes, never the raw user id', () => {
     const raw = '11111111-2222-3333-4444-555555555555';
-    const hashed = analyticsId(raw);
+    const hashed = await analyticsId(raw);
     expect(hashed).not.toContain(raw.slice(0, 8));
     expect(hashed).toHaveLength(24);
-    expect(analyticsId(raw)).toBe(hashed);
+    await expect(analyticsId(raw)).resolves.toBe(hashed);
   });
 
   it('bounds error summaries', () => {
     const summary = safeErrorSummary(new Error('m'.repeat(500)));
     expect(summary.type).toBe('Error');
-    expect(summary.message).toHaveLength(200);
+    expect(summary.message).toBe('Server operation failed');
   });
 });
 
@@ -49,19 +49,13 @@ describe('event capture honesty', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('sends a redacted payload with a hashed identity when configured', async () => {
+  it('fails closed when a free-tier policy is not explicitly verified', async () => {
     vi.stubEnv('POSTHOG_API_KEY', 'ph-key');
     vi.stubEnv('POSTHOG_HOST', 'https://ph.example.com');
     const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
     vi.stubGlobal('fetch', fetchSpy);
     await track('escalation.raised', { trigger: 'emergency', reason: 'should be dropped' }, 'user-1');
-    expect(fetchSpy).toHaveBeenCalledOnce();
-    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('https://ph.example.com/capture/');
-    const body = JSON.parse(String(init.body)) as { event: string; distinct_id: string; properties: Record<string, unknown> };
-    expect(body.event).toBe('escalation.raised');
-    expect(body.distinct_id).not.toBe('user-1');
-    expect(body.properties).toEqual({ trigger: 'emergency' });
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
 

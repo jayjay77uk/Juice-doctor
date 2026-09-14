@@ -33,13 +33,12 @@ const MAX_RETRIES = 2;
 const TOTAL_TIMEOUT_MS = REQUEST_TIMEOUT_MS * (MAX_RETRIES + 1) + 5_000;
 
 function firstText(content: Anthropic.Messages.ContentBlock[]): string {
-  const block = content.find((b): b is Anthropic.Messages.TextBlock => b.type === 'text');
-  return block?.text ?? '';
+  return content.filter((b): b is Anthropic.Messages.TextBlock => b.type === 'text').map(b => b.text).join('\n');
 }
 
 /** Conservative ~4-chars-per-token estimate for the input budget guardrail. */
-export function estimateInputTokens(req: Pick<AiChatRequest, 'system' | 'messages'>): number {
-  const chars = (req.system?.length ?? 0) + req.messages.reduce((total, m) => total + m.content.length, 0);
+export function estimateInputTokens(req: Pick<AiChatRequest, 'system' | 'messages' | 'toolMessages' | 'tools'>): number {
+  const chars = (req.system?.length ?? 0) + (req.toolMessages ? JSON.stringify(req.toolMessages).length : req.messages.reduce((total, m) => total + m.content.length, 0)) + JSON.stringify(req.tools ?? []).length;
   return Math.ceil(chars / 4);
 }
 
@@ -151,7 +150,8 @@ export function createAnthropicProvider(): AiProvider {
       model: req.model ?? env.aiModel,
       max_tokens: req.maxTokens ?? DEFAULT_MAX_TOKENS,
       ...(req.system ? { system: req.system } : {}),
-      messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
+      messages: req.toolMessages ? req.toolMessages as Anthropic.Messages.MessageParam[] : req.messages.map((m) => ({ role: m.role, content: m.content })),
+      ...(req.tools?.length ? { tools: req.tools } : {}),
     };
   }
 
@@ -179,7 +179,7 @@ export function createAnthropicProvider(): AiProvider {
       const costUsd = estimateCostUsd(res.model, usage);
       const latencyMs = Date.now() - started;
       logAiTrace({ traceId, provider: 'anthropic', model: res.model, status: 'ok', latencyMs, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, costUsd, op: req.op });
-      return { text: firstText(res.content), model: res.model, usage, latencyMs, costUsd, traceId, stopReason: res.stop_reason ?? null };
+      return { contentBlocks: res.content, toolCalls: res.content.filter((b): b is Anthropic.Messages.ToolUseBlock => b.type === 'tool_use').map(b => ({ id: b.id, name: b.name, input: b.input })), text: firstText(res.content), model: res.model, usage, latencyMs, costUsd, traceId, stopReason: res.stop_reason ?? null };
     } catch (cause) {
       const err = classify(cause, traceId, timedOut());
       logAiTrace({ traceId, provider: 'anthropic', model, status: err.kind === 'aborted' ? 'aborted' : 'error', latencyMs: Date.now() - started, errorKind: err.kind, op: req.op });
@@ -201,6 +201,8 @@ export function createAnthropicProvider(): AiProvider {
     let stopReason: string | null = null;
     let resolvedModel = model;
     let text = '';
+    const blocks: unknown[] = [];
+    const toolInputs = new Map<number, string>();
     try {
       const params: Anthropic.Messages.MessageCreateParamsStreaming =
         req.temperature !== undefined ? { ...base, temperature: req.temperature, stream: true } : { ...base, stream: true };
@@ -215,11 +217,17 @@ export function createAnthropicProvider(): AiProvider {
         }
       }
       for await (const event of events) {
-        if (event.type === 'message_start') {
+        if (event.type === 'content_block_start') {
+          blocks[event.index] = { ...event.content_block };
+        } else if (event.type === 'content_block_delta' && event.delta.type === 'input_json_delta') {
+          toolInputs.set(event.index, (toolInputs.get(event.index) ?? '') + event.delta.partial_json);
+        } else if (event.type === 'message_start') {
           inputTokens = event.message.usage.input_tokens;
           resolvedModel = event.message.model || model;
         } else if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
           text += event.delta.text;
+          const block = blocks[event.index] as { type: string; text?: string } | undefined;
+          if (block?.type === 'text') block.text = (block.text ?? '') + event.delta.text;
           yield { type: 'delta', text: event.delta.text };
         } else if (event.type === 'message_delta') {
           outputTokens = event.usage.output_tokens;
@@ -230,7 +238,9 @@ export function createAnthropicProvider(): AiProvider {
       const costUsd = estimateCostUsd(resolvedModel, usage);
       const latencyMs = Date.now() - started;
       logAiTrace({ traceId, provider: 'anthropic', model: resolvedModel, status: 'ok', latencyMs, inputTokens, outputTokens, costUsd, op: req.op });
-      yield { type: 'final', result: { text, model: resolvedModel, usage, latencyMs, costUsd, traceId, stopReason } };
+      for (const [i, value] of toolInputs) (blocks[i] as { input: unknown }).input = JSON.parse(value);
+      const toolCalls = (blocks as Anthropic.Messages.ContentBlock[]).filter((b): b is Anthropic.Messages.ToolUseBlock => b.type === 'tool_use').map(b => ({ id: b.id, name: b.name, input: b.input }));
+      yield { type: 'final', result: { contentBlocks: blocks, toolCalls, text, model: resolvedModel, usage, latencyMs, costUsd, traceId, stopReason } };
     } catch (cause) {
       const err = classify(cause, traceId, timedOut());
       logAiTrace({ traceId, provider: 'anthropic', model, status: err.kind === 'aborted' ? 'aborted' : 'error', latencyMs: Date.now() - started, errorKind: err.kind, op: req.op });

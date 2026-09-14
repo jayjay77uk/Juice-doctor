@@ -1,3 +1,4 @@
+import { reserveProviderUsage } from '@/lib/providers/budget';
 import 'server-only';
 
 import { isPosthogConfigured } from '@/lib/env';
@@ -44,6 +45,7 @@ function posthogHost(): string {
  */
 export async function track(event: PlatformEvent, props: Record<string, unknown> = {}, userId?: string | null): Promise<void> {
   if (!isPosthogConfigured()) return;
+  if (!(await reserveProviderUsage('posthog'))) return;
   const safe: SafeProps = redactProps(props);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CAPTURE_TIMEOUT_MS);
@@ -54,7 +56,7 @@ export async function track(event: PlatformEvent, props: Record<string, unknown>
       body: JSON.stringify({
         api_key: process.env.POSTHOG_API_KEY,
         event,
-        distinct_id: userId ? analyticsId(userId) : 'server',
+        distinct_id: userId ? await analyticsId(userId) : 'server',
         properties: safe,
       }),
       signal: controller.signal,

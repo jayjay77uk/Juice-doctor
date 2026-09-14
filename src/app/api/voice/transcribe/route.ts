@@ -1,7 +1,8 @@
+import { createDistributedRateLimiter } from '@/lib/security/distributed-rate-limit';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSession } from '@/services/auth';
 import { getSttProvider, STT_MAX_BYTES, STT_SUPPORTED_MIME } from '@/lib/voice/stt';
-import { createInMemoryRateLimiter, enforceRateLimit } from '@/lib/security/rate-limit';
+import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { RateLimitError } from '@/lib/security/errors';
 
 /**
@@ -13,7 +14,7 @@ import { RateLimitError } from '@/lib/security/errors';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const limiter = createInMemoryRateLimiter({ limit: 10, windowMs: 60_000 });
+const limiter = createDistributedRateLimiter('route-transcribe-limiter', { limit: 10, windowMs: 60_000 });
 
 export async function POST(request: NextRequest) {
   const session = await getSession();

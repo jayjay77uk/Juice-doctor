@@ -1,3 +1,5 @@
+'use client';
+import { usePathname } from 'next/navigation';
 import * as React from 'react';
 import Link from 'next/link';
 import { site } from '@/content/site';
@@ -30,6 +32,8 @@ export function AppShell({
   practitionerHref?: string | undefined;
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  if (navVariant === 'dashboard' && pathname.startsWith('/dashboard/conversations')) return <main id="main" className="h-dvh overflow-hidden">{children}</main>;
   return (
     <div className="grid min-h-dvh grid-cols-1 bg-cream-100 lg:grid-cols-[16rem_1fr]">
       {/* Sidebar */}

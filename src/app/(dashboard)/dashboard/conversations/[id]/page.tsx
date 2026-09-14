@@ -1,9 +1,7 @@
 import { notFound } from 'next/navigation';
 import { createMetadata } from '@/config/metadata';
-import { AdminHeader } from '@/components/admin/admin-header';
 import { SpecialistChat } from '@/components/dashboard/specialist-chat';
 import { ConversationToolbar } from '@/components/dashboard/conversation-toolbar';
-import { ConversationAttachments } from '@/components/dashboard/conversation-attachments';
 import { conversations_service } from '@/services/conversations';
 import { conversationAttachmentsRepo } from '@/services/repositories/conversation-attachments-repo';
 import { agents } from '@/services/agents';
@@ -40,14 +38,11 @@ export default async function ConversationThreadPage({ params }: { params: Promi
   }
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6">
-      <AdminHeader
-        title={convo.data.title}
-        description={`With ${agentName}`}
-        breadcrumbs={[{ label: 'Conversations', href: '/dashboard/conversations' }, { label: convo.data.title }]}
-        actions={<ConversationToolbar conversationId={id} title={convo.data.title} />}
-      />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex h-14 shrink-0 items-center justify-between gap-3 px-5"><p className="truncate text-sm text-muted-foreground">{convo.data.title}</p><ConversationToolbar conversationId={id} title={convo.data.title}/></div>
       <SpecialistChat
+        key={id}
+        attachments={attachments}
         conversationId={id}
         agentName={agentName}
         {...(agentTitle ? { agentTitle } : {})}
@@ -56,7 +51,6 @@ export default async function ConversationThreadPage({ params }: { params: Promi
         remembered={rememberedResult.ok ? rememberedResult.data : []}
         voice={voiceStatus()}
       />
-      <ConversationAttachments conversationId={id} attachments={attachments} />
     </div>
   );
 }

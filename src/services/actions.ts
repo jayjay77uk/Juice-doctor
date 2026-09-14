@@ -1,4 +1,6 @@
 'use server';
+import { createDistributedRateLimiter } from '@/lib/security/distributed-rate-limit';
+
 
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
@@ -13,7 +15,7 @@ import { headers } from 'next/headers';
 import { isSupabaseConfigured } from '@/lib/env';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createInMemoryRateLimiter, enforceRateLimit, RATE_LIMIT_POLICIES } from '@/lib/security/rate-limit';
+import { enforceRateLimit, RATE_LIMIT_POLICIES } from '@/lib/security/rate-limit';
 import { RateLimitError } from '@/lib/security/errors';
 import { businessAddresses } from '@/config/addresses';
 import { marketingRepo } from './repositories/marketing-repo';
@@ -33,7 +35,7 @@ function continuePath(next: FormDataEntryValue | null): string {
  * an honest "not available yet" error — nothing is ever simulated.
  */
 
-const authLimiter = createInMemoryRateLimiter(RATE_LIMIT_POLICIES.auth);
+const authLimiter = createDistributedRateLimiter('actions-services-authLimiter', RATE_LIMIT_POLICIES.auth);
 
 /** Best-effort visitor key for rate limiting (per serverless instance). */
 async function visitorKey(): Promise<string> {

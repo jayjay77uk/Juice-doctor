@@ -17,7 +17,11 @@ import { carePlan, timeline, type CarePlan, type CarePlanAction, type TimelineEv
 import { buildWearableContext, type WearableContext } from './wearable/store';
 import { referralRules, escalationEngine, referralEngine, type ReferralRule } from './referrals';
 import { normalizeSpecialistRef, isWildcardRef, isHypotheticalHandoff } from './referral-matrix';
-import { windowHistory } from '@/lib/ai/history';
+import { env } from '@/lib/env';
+import { runtimeOptions, recallForAgent } from '../agent-runtime';
+import { onboardingContext } from '../onboarding';
+import { streamAgentTools } from '../agent-tools';
+import { fitHistory } from '@/lib/ai/history';
 import { activePrompt, type ActivePrompt } from './prompt-version';
 import { precheckInput, postcheckOutput, citedRecordIds, type SafetyCategory } from './safety-eval';
 import { isMemoryEnabled } from '../memory-prefs';
@@ -228,6 +232,7 @@ interface PreparedTurn {
   specialistName: string;
   started: number;
   rules: ReferralRule[];
+  options: Awaited<ReturnType<typeof runtimeOptions>>;
 }
 
 /**
@@ -244,7 +249,10 @@ async function prepareTurn(agent: AiAgent, history: ChatMessage[], query: string
 
   if (!profile || !provider) return { kind: 'blocked', reply: unavailable(specialistName, pref.language, Boolean(provider)) };
 
-  const pre = precheckInput(query);
+  const checked = precheckInput(query);
+  const blockedTopic = agent.safetyRules.blockedTopics.find(topic => topic.trim() && query.toLowerCase().includes(topic.toLowerCase()));
+  const configuredEscalation = agent.safetyRules.escalateOn.some(topic => topic.trim() && query.toLowerCase().includes(topic.toLowerCase()));
+  const pre = blockedTopic ? { ...checked, blocked: true, userMessage: 'This question is outside my supported scope. Please discuss it with a qualified professional.', reason: 'Configured specialist boundary', trigger: 'outside_scope' as const } : configuredEscalation ? { ...checked, escalate: true, reason: 'Configured human-review trigger', trigger: 'human_review' as const } : checked;
   if (pre.blocked) {
     await tryEscalate({ userId: ctx?.userId, conversationId: ctx?.conversationId, trigger: pre.trigger ?? 'emergency', reason: pre.reason ?? 'Safety pre-check', specialist: agent.slug, urgency: pre.urgency });
     await runLogRepo.log({ agentId: agent.id, actorId: ctx?.userId ?? null, input: query, output: pre.userMessage ?? '', status: 'blocked' });
@@ -264,10 +272,12 @@ async function prepareTurn(agent: AiAgent, history: ChatMessage[], query: string
   }
 
   const started = Date.now();
+  const options = await runtimeOptions(agent);
+  const onboarding = ctx?.userId ? await onboardingContext(ctx.userId) : null;
   const [retrieved, memory, dna, plan, wearable, active, rules, journey, attachments] = await Promise.all([
     retrieveForSpecialist(agent.slug, query, ctx?.goal ? { goal: ctx.goal } : {}),
     ctx?.userId || ctx?.conversationId
-      ? memoryRepo.recall({ userId: ctx?.userId ?? null, conversationId: ctx?.conversationId ?? null, limit: 6 })
+      ? recallForAgent(agent, ctx?.userId, ctx?.conversationId)
       : Promise.resolve([] as MemoryItem[]),
     sharedDna(),
     ctx?.userId ? carePlan.get(ctx.userId) : Promise.resolve<CarePlan | null>(null),
@@ -295,14 +305,16 @@ async function prepareTurn(agent: AiAgent, history: ChatMessage[], query: string
     assembleSystemPrompt({
       profile, dna, retrieved,
       langDirective: languageDirective(pref),
-      starter: active?.content ?? profile.starterPrompt,
+      starter: active?.content ?? (agent.systemPrompt || profile.starterPrompt),
       objective, plan, planActions, wearable, referralBoundaries, journey, attachments,
     }) +
+    `\n\nADMIN-CONFIGURED IDENTITY\nName: ${agent.name}\nRole: ${agent.role}\nPurpose: ${agent.purpose}\nStyle: ${agent.personality}\nAdditional boundaries: ${agent.responseBoundaries}` +
+    (onboarding ? `\n\n${onboarding}` : '') +
     (memory.length ? `\n\nWHAT YOU REMEMBER ABOUT THIS PERSON (respect it):\n${memory.map((m) => `- ${m.content}`).join('\n')}` : '');
 
   // windowHistory trims a leading assistant turn — the API 400s on one.
-  const messages: ChatMessage[] = [...windowHistory(history, 8), { role: 'user', content: query }];
-  return { kind: 'ready', provider, system, messages, retrieved, activeVer: active, pre, pref, profile, specialistName, started, rules };
+  const messages = fitHistory(history, query, system, env.aiMaxInputTokens);
+  return { kind: 'ready', provider, system, messages, retrieved, activeVer: active, pre, pref, profile, specialistName, started, rules, options };
 }
 
 interface RawResult { text: string; usage: AiUsage | null; model: string | null; costUsd: number; latencyMs: number; traceId: string | null; stopReason: string | null }
@@ -410,7 +422,7 @@ async function finalizeTurn(t: PreparedTurn, agent: AiAgent, query: string, ctx:
 
   if (ctx?.userId) {
     const mem = extractMemory(query);
-    if (mem && (await isMemoryEnabled(ctx.userId))) {
+    if (mem && agent.memoryConfig.useUserMemory && (await isMemoryEnabled(ctx.userId))) {
       await memoryRepo.remember({ scope: 'user', kind: mem.kind, key: `user:${mem.content.slice(0, 40)}`, content: mem.content, userId: ctx.userId, agentId: agent.id, importance: 3, source: 'chat' });
     }
   }
@@ -421,7 +433,7 @@ async function finalizeTurn(t: PreparedTurn, agent: AiAgent, query: string, ctx:
     specialist: specialistName,
     citations,
     retrieved,
-    grounded: retrieved.length > 0,
+    grounded: citations.length > 0,
     available: true,
     escalationRecommended: escalate,
     escalationReason: escalate ? (pre.reason ?? 'Human clinical review recommended.') : null,
@@ -441,7 +453,9 @@ export async function herneSpecialistReply(agent: AiAgent, history: ChatMessage[
   const prep = await prepareTurn(agent, history, query, ctx);
   if (prep.kind === 'blocked') return prep.reply;
   try {
-    const res = await prep.provider.chat({ system: prep.system, messages: prep.messages, maxTokens: 900, op: 'herne:reply', ...(ctx?.signal ? { signal: ctx.signal } : {}) });
+    let res: import('@/lib/ai').AiChatResult | null = null;
+    for await (const chunk of streamAgentTools(prep.provider, { system: prep.system, messages: prep.messages, ...prep.options, op: 'herne:reply', ...(ctx?.signal ? { signal: ctx.signal } : {}) }, ctx?.userId && ctx.conversationId ? { userId: ctx.userId, conversationId: ctx.conversationId, agent } : undefined)) if (chunk.type === 'final') res = chunk.result;
+    if (!res) throw new Error('Incomplete response.');
     return finalizeTurn(prep, agent, query, ctx, { text: res.text, usage: res.usage, model: res.model, costUsd: res.costUsd, latencyMs: res.latencyMs, traceId: res.traceId, stopReason: res.stopReason });
   } catch {
     await runLogRepo.log({ agentId: agent.id, actorId: ctx?.userId ?? null, input: query, output: '', latencyMs: Date.now() - prep.started, status: 'error' });
@@ -466,12 +480,12 @@ export async function* streamHerneReply(agent: AiAgent, history: ChatMessage[], 
   let text = '';
   let raw: RawResult = { text: '', usage: null, model: null, costUsd: 0, latencyMs: 0, traceId: null, stopReason: null };
   try {
-    for await (const chunk of prep.provider.stream({ system: prep.system, messages: prep.messages, maxTokens: 900, op: 'herne:stream', ...(ctx?.signal ? { signal: ctx.signal } : {}) })) {
+    for await (const chunk of streamAgentTools(prep.provider, { system: prep.system, messages: prep.messages, ...prep.options, op: 'herne:stream', ...(ctx?.signal ? { signal: ctx.signal } : {}) }, ctx?.userId && ctx.conversationId ? { userId: ctx.userId, conversationId: ctx.conversationId, agent } : undefined)) {
       if (chunk.type === 'delta') {
         text += chunk.text;
         yield { type: 'delta', text: chunk.text };
       } else {
-        raw = { text, usage: chunk.result.usage, model: chunk.result.model, costUsd: chunk.result.costUsd, latencyMs: chunk.result.latencyMs, traceId: chunk.result.traceId, stopReason: chunk.result.stopReason };
+        raw = { text: chunk.result.text, usage: chunk.result.usage, model: chunk.result.model, costUsd: chunk.result.costUsd, latencyMs: chunk.result.latencyMs, traceId: chunk.result.traceId, stopReason: chunk.result.stopReason };
       }
     }
     const reply = await finalizeTurn(prep, agent, query, ctx, raw);

@@ -1,3 +1,4 @@
+import { reserveProviderUsage } from '@/lib/providers/budget';
 import 'server-only';
 
 import type { MailMessage, MailProviderAdapter, MailSendResult } from './provider';
@@ -16,6 +17,7 @@ export function createResendAdapter(config: { apiKey: string; from: string }): M
   return {
     key: 'resend',
     async send(message: MailMessage, opts?: { signal?: AbortSignal }): Promise<MailSendResult> {
+      if (!(await reserveProviderUsage('resend'))) return { sent: false, retryable: true, error: 'free_allowance_unavailable' };
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), SEND_TIMEOUT_MS);
       const onCallerAbort = () => controller.abort();

@@ -1,3 +1,4 @@
+import { createDistributedRateLimiter } from '@/lib/security/distributed-rate-limit';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSession } from '@/services/auth';
 import { getTtsProvider, ttsFailureReason, TTS_MAX_CHARS } from '@/lib/voice/tts';
@@ -5,7 +6,7 @@ import { voiceForSpecialist } from '@/services/voice';
 import { systemSettings } from '@/services/system-settings';
 import { conversationsRepo } from '@/services/repositories/conversations-repo';
 import { agents } from '@/services/agents';
-import { createInMemoryRateLimiter, enforceRateLimit } from '@/lib/security/rate-limit';
+import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { RateLimitError } from '@/lib/security/errors';
 
 /**
@@ -17,7 +18,7 @@ import { RateLimitError } from '@/lib/security/errors';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const limiter = createInMemoryRateLimiter({ limit: 15, windowMs: 60_000 });
+const limiter = createDistributedRateLimiter('route-speak-limiter', { limit: 15, windowMs: 60_000 });
 
 export async function POST(request: NextRequest) {
   const session = await getSession();

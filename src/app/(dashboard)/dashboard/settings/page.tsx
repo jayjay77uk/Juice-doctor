@@ -69,17 +69,19 @@ export default async function SettingsPage() {
       >
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-3">
-            <Button intent="outline" disabled title="Data export is coming soon">
+            <Button asChild intent="outline">
+              <a href="/api/account/export" download="juice-doctor-data.json">
               <Shield className="size-4" />
-              Download my data (coming soon)
+              Download my data
+              </a>
             </Button>
             <Button asChild intent="ghost">
               <Link href="/privacy">Privacy policy</Link>
             </Button>
           </div>
           <p className="text-sm text-muted-foreground">
-            Your data is GDPR-backed. Self-service export and consent management are coming soon —
-            in the meantime, contact the team for any data request.
+            Your export is generated on demand and scoped to your account. Contact the team to correct,
+            delete or withdraw consent for information that cannot be changed here.
           </p>
         </div>
       </Panel>
@@ -91,21 +93,23 @@ export default async function SettingsPage() {
       >
         <div className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
-            Deactivating pauses your membership and hides your profile. Self-service deactivation is
-            coming soon — contact the team if you’d like your account paused.
+            Deactivating pauses your membership and hides your profile. Contact the team to request account
+            deletion or consent withdrawal so the request can be reviewed safely.
           </p>
           <div>
-            <Button intent="outline" disabled title="Coming soon" className="border-danger/50 text-danger">
+            <Button asChild intent="outline" className="border-danger/50 text-danger">
+              <a href="mailto:support@juicedoctor.example?subject=Account%20deactivation">
               <Settings className="size-4" />
-              Deactivate account (coming soon)
+              Request account deactivation
+              </a>
             </Button>
           </div>
         </div>
       </Panel>
 
       <p className="text-sm text-muted-foreground">
-        Your profile, language, memory, notification and subscription settings are live. Data export
-        and account deactivation are coming soon.
+        Your profile, language, memory, notification and subscription settings are live. Data export is
+        available above; deletion and consent withdrawal requests are reviewed by the support team.
       </p>
     </div>
   );

@@ -20,6 +20,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
+      - name: Secret scan
+        run: node scripts/check-secrets.mjs
       - name: Typecheck
         run: npm run typecheck
       - name: Lint

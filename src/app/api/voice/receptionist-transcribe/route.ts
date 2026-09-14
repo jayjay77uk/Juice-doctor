@@ -1,6 +1,7 @@
+import { createDistributedRateLimiter } from '@/lib/security/distributed-rate-limit';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSttProvider, STT_SUPPORTED_MIME } from '@/lib/voice/stt';
-import { createInMemoryRateLimiter, enforceRateLimit } from '@/lib/security/rate-limit';
+import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { RateLimitError } from '@/lib/security/errors';
 
 /**
@@ -14,8 +15,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const PUBLIC_MAX_BYTES = 4 * 1024 * 1024;
-const visitorLimiter = createInMemoryRateLimiter({ limit: 6, windowMs: 60_000 });
-const instanceLimiter = createInMemoryRateLimiter({ limit: 30, windowMs: 60_000 });
+const visitorLimiter = createDistributedRateLimiter('route-receptionist-transcribe-visitorLimiter', { limit: 6, windowMs: 60_000 });
+const instanceLimiter = createDistributedRateLimiter('route-receptionist-transcribe-instanceLimiter', { limit: 30, windowMs: 60_000 });
 
 function visitorKey(request: NextRequest): string {
   const fwd = request.headers.get('x-forwarded-for');

@@ -41,6 +41,7 @@ export function buildContentSecurityPolicy(options: { nonce?: string; dev?: bool
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob: https:`,
     `font-src 'self' data:`,
+    `media-src 'self' blob:`,
     // Same-origin XHR/fetch PLUS the Supabase origin: the password-reset flow
     // (forgot/reset forms) calls Supabase Auth from the browser via the
     // anon-key client — without this the call is CSP-blocked and no reset

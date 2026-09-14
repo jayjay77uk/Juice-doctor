@@ -7,7 +7,7 @@ export interface LegalSection {
   body: string;
 }
 
-/** Shared layout for legal/policy pages. Copy is placeholder pending client-supplied text. */
+/** Shared layout for legal and policy pages. */
 export function LegalPage({
   title,
   intro,
@@ -21,9 +21,9 @@ export function LegalPage({
     <>
       <PageHero eyebrow="Legal" title={title} lede={intro} />
       <Section tone="default" spacing="lg" containerSize="narrow">
-        <div className="rounded-xl border border-dashed border-border-strong bg-surface-muted px-5 py-4 text-sm text-muted-foreground">
-          Placeholder copy — the final, legally reviewed wording is pending from the client and
-          will replace the text below.
+        <div className="rounded-xl border border-border bg-surface-muted px-5 py-4 text-sm text-muted-foreground">
+          This information explains how Ask Juice Doctor currently operates. It does not replace
+          professional legal advice; contact the team if you need a copy of your records or have a question.
         </div>
         <div className="mt-10 flex flex-col gap-8">
           {sections.map((section, i) => (

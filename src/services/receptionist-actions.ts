@@ -1,11 +1,13 @@
 'use server';
+import { createDistributedRateLimiter } from '@/lib/security/distributed-rate-limit';
+
 
 import { headers } from 'next/headers';
 import { z } from 'zod';
 import { receptionist } from './receptionist';
 import { crm } from './crm';
 import { getSession } from './auth';
-import { createInMemoryRateLimiter, enforceRateLimit, RATE_LIMIT_POLICIES } from '@/lib/security/rate-limit';
+import { enforceRateLimit, RATE_LIMIT_POLICIES } from '@/lib/security/rate-limit';
 import { RateLimitError } from '@/lib/security/errors';
 import { track } from '@/lib/monitoring/events';
 import { signReply } from '@/lib/voice/reply-signature';
@@ -19,9 +21,9 @@ import type { ReceptionistRecommendation, ConsultAnswer, ConversationTurn } from
  * in-memory (per serverless instance) — best-effort back-pressure, not a quota.
  */
 
-const assessVisitorLimiter = createInMemoryRateLimiter({ limit: 10, windowMs: 60_000 });
-const assessInstanceLimiter = createInMemoryRateLimiter({ limit: 60, windowMs: 60_000 });
-const leadLimiter = createInMemoryRateLimiter(RATE_LIMIT_POLICIES.contact);
+const assessVisitorLimiter = createDistributedRateLimiter('receptionist-actions-services-assessVisitorLimiter', { limit: 10, windowMs: 60_000 });
+const assessInstanceLimiter = createDistributedRateLimiter('receptionist-actions-services-assessInstanceLimiter', { limit: 60, windowMs: 60_000 });
+const leadLimiter = createDistributedRateLimiter('receptionist-actions-services-leadLimiter', RATE_LIMIT_POLICIES.contact);
 
 const BUSY_MESSAGE = 'The receptionist is helping a lot of people right now — please try again in a minute.';
 

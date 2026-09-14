@@ -1,3 +1,4 @@
+import { reserveProviderUsage } from '@/lib/providers/budget';
 import 'server-only';
 
 import { isSentryConfigured } from '@/lib/env';
@@ -35,6 +36,7 @@ export async function captureServerError(error: unknown, context: { route?: stri
     console.error(`[capture] ${summary.type}: ${summary.message}`, context.route ?? '');
     return;
   }
+  if (!(await reserveProviderUsage('sentry'))) return;
   const dsn = parseDsn(process.env.SENTRY_DSN ?? '');
   if (!dsn) return;
 

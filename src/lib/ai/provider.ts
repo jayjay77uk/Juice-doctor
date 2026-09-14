@@ -12,6 +12,8 @@ export interface ChatMessage {
 }
 
 export interface AiChatRequest {
+  tools?: { name: string; description: string; input_schema: { type: 'object'; properties: Record<string, unknown>; required?: string[]; additionalProperties?: boolean } }[];
+  toolMessages?: { role: 'user' | 'assistant'; content: unknown[] | string }[];
   system?: string;
   messages: ChatMessage[];
   model?: string;
@@ -29,6 +31,8 @@ export interface AiUsage {
 }
 
 export interface AiChatResult {
+  toolCalls?: { id: string; name: string; input: unknown }[];
+  contentBlocks?: unknown[];
   text: string;
   model: string;
   usage: AiUsage | null;

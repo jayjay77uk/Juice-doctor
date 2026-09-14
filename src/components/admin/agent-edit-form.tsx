@@ -92,10 +92,11 @@ export function AgentEditForm({ agent, models }: { agent: AiAgent; models: Model
         </div>
       </Panel>
 
-      <Panel title="Model configuration" description="Stored for reference. Live calls currently use the platform-wide model and token limits from the AI environment (see Configuration), not these values.">
+      <Panel title="Model configuration" description="Applied to live inference. Output is capped by the platform budget. Temperature applies only to Claude models that support sampling controls.">
         <div className="grid gap-5 sm:grid-cols-3">
           <Field label="Default model" name="defaultModelId">
             <Select id="defaultModelId" name="defaultModelId" defaultValue={agent.defaultModelId ?? ''}>
+              {agent.defaultModelId && !models.some(m => m.id === agent.defaultModelId) && <option value={agent.defaultModelId}>Saved model selection</option>}
               <option value="">— Not set —</option>
               {models.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -105,7 +106,7 @@ export function AgentEditForm({ agent, models }: { agent: AiAgent; models: Model
             </Select>
           </Field>
           <Field label="Temperature" name="temperature" hint="0 = precise, 2 = creative" error={fe?.temperature?.[0]}>
-            <Input id="temperature" name="temperature" type="number" step="0.1" min="0" max="2" defaultValue={agent.temperature} />
+            <Input id="temperature" name="temperature" type="number" step="0.1" min="0" max="1" defaultValue={agent.temperature} />
           </Field>
           <Field label="Max output tokens" name="maxOutputTokens" error={fe?.maxOutputTokens?.[0]}>
             <Input id="maxOutputTokens" name="maxOutputTokens" type="number" min="1" defaultValue={agent.maxOutputTokens ?? 1024} />

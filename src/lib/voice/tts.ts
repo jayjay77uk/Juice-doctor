@@ -1,3 +1,4 @@
+import { reserveProviderUsage, verifyElevenLabsFreeAllowance } from '@/lib/providers/budget';
 import 'server-only';
 import { isTtsConfigured } from '@/lib/env';
 
@@ -33,7 +34,7 @@ export function ttsFailureReason(result: Extract<TtsResult, { ok: false }>): str
     case 403:
       return 'The voice service rejected our credentials — check ELEVENLABS_API_KEY.';
     case 402:
-      return 'This ElevenLabs plan cannot use the selected voice via the API. Add a voice to “My Voices” in ElevenLabs (or upgrade the plan) — the platform will use it automatically.';
+      return 'This ElevenLabs plan cannot use the selected voice via the API. Add a voice to “My Voices” in ElevenLabs — the platform will use it automatically.';
     case 404:
       return 'The configured voice was not found — check the voice ID.';
     case 429:
@@ -67,7 +68,7 @@ export async function listAccountVoices(force = false): Promise<AccountVoice[]> 
     });
     if (!res.ok) {
       lastDiscovery = { status: res.status, count: 0, at: Date.now() };
-      return voiceCache?.voices ?? [];
+      return [];
     }
     const body = (await res.json().catch(() => null)) as { voices?: { voice_id?: string; name?: string; category?: string }[] } | null;
     const voices = (body?.voices ?? [])
@@ -77,7 +78,7 @@ export async function listAccountVoices(force = false): Promise<AccountVoice[]> 
     lastDiscovery = { status: res.status, count: voices.length, at: Date.now() };
     return voices;
   } catch {
-    return voiceCache?.voices ?? [];
+    return [];
   } finally {
     clearTimeout(timer);
   }
@@ -92,6 +93,7 @@ async function fallbackVoice(exclude: string): Promise<AccountVoice | null> {
 
 function createElevenLabsAdapter(apiKey: string): TtsProviderAdapter {
   const call = async (text: string, voiceId: string): Promise<TtsResult> => {
+    if (!(await verifyElevenLabsFreeAllowance(apiKey, Math.min(text.length, TTS_MAX_CHARS))) || !(await reserveProviderUsage('elevenlabs', Math.min(text.length, TTS_MAX_CHARS)))) return { ok: false, error: 'provider_error', providerStatus: 429, detail: 'free_allowance_unavailable' };
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TTS_TIMEOUT_MS);
     try {

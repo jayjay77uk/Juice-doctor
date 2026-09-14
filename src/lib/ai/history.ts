@@ -14,3 +14,18 @@ export function windowHistory(history: ChatMessage[], max = 8): ChatMessage[] {
   while (win.length && win[0]!.role !== 'user') win.shift();
   return win;
 }
+
+/** Retain complete recent turns within the remaining prompt budget. Never cuts a user
+ * message in half or starts with an assistant. Persistent goals/memory live outside this window. */
+export function fitHistory(history: ChatMessage[], query: string, system: string, maxTokens: number): ChatMessage[] {
+  const budget = Math.max(0, maxTokens * 3 - system.length - query.length - 512);
+  let used = 0;
+  const kept: ChatMessage[] = [];
+  for (const m of [...history].reverse()) {
+    if (!m.content.trim()) continue;
+    if (used + m.content.length > budget) break;
+    kept.unshift(m); used += m.content.length;
+  }
+  while (kept.length && kept[0]!.role !== 'user') kept.shift();
+  return [...kept, { role: 'user', content: query }];
+}

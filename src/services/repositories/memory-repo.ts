@@ -62,6 +62,8 @@ export const memoryRepo = {
     try {
       let sel = sb.from('ai_memory').select('id').eq('scope', input.scope).eq('memory_key', input.key);
       sel = userId ? sel.eq('user_id', userId) : sel.is('user_id', null);
+      sel = conversationId ? sel.eq('conversation_id', conversationId) : sel.is('conversation_id', null);
+      sel = agentId ? sel.eq('agent_id', agentId) : sel.is('agent_id', null);
       const existing = await sel.maybeSingle();
       if (existing.data) {
         await sb
@@ -89,38 +91,25 @@ export const memoryRepo = {
   },
 
   /** Recall memory relevant to a customer + optional conversation, most important first. */
-  async recall(input: { userId?: string | null; conversationId?: string | null; limit?: number }): Promise<MemoryItem[]> {
+  async recall(input: { userId?: string | null; conversationId?: string | null; organisationId?: string; config?: import('@/types/ai').AgentMemoryConfig; limit?: number }): Promise<MemoryItem[]> {
     const sb = createAdminClient();
-    const userId = uuidOrNull(input.userId);
-    const conversationId = uuidOrNull(input.conversationId);
-    if (!sb || (!userId && !conversationId)) return [];
-    const items: MemoryItem[] = [];
-    const map = (rows: Record<string, unknown>[]) =>
-      rows
-        .filter((r) => typeof r.content === 'string' && r.content)
-        .map((r) => ({ kind: String(r.kind), content: String(r.content), importance: Number(r.importance) || 1 }));
-
-    if (userId) {
-      const { data } = await sb
-        .from('ai_memory')
-        .select('kind, content, importance')
-        .eq('user_id', userId)
-        .order('importance', { ascending: false })
-        .limit(input.limit ?? 8);
-      items.push(...map(data ?? []));
+    if (!sb || input.limit === 0) return [];
+    const uid = uuidOrNull(input.userId), cid = uuidOrNull(input.conversationId);
+    const cfg = input.config ?? { useUserMemory: true, useConversationMemory: true, useOrganisationMemory: false, useGlobalMemory: false };
+    const queries = [];
+    const base = () => sb.from('ai_memory').select('kind, content, importance').or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`).order('importance', { ascending: false }).limit(Math.min(input.limit ?? 8, 20));
+    if (uid && cfg.useUserMemory) queries.push(base().eq('scope', 'user').eq('user_id', uid));
+    if (uid && cid && cfg.useConversationMemory) {
+      const owner = await sb.from('conversations').select('id').eq('id', cid).eq('user_id', uid).maybeSingle();
+      if (owner.data) queries.push(base().eq('scope', 'conversation').eq('conversation_id', cid).eq('user_id', uid));
     }
-    if (conversationId) {
-      const { data } = await sb
-        .from('ai_memory')
-        .select('kind, content, importance')
-        .eq('conversation_id', conversationId)
-        .order('importance', { ascending: false })
-        .limit(input.limit ?? 8);
-      items.push(...map(data ?? []));
-    }
-    // de-dup by content
+    if (input.organisationId && cfg.useOrganisationMemory) queries.push(base().eq('scope', 'organisation').eq('organisation_id', input.organisationId).is('user_id', null));
+    if (cfg.useGlobalMemory) queries.push(base().eq('scope', 'global').is('organisation_id', null).is('user_id', null));
+    const results = await Promise.all(queries);
     const seen = new Set<string>();
-    return items.filter((i) => (seen.has(i.content) ? false : (seen.add(i.content), true))).slice(0, input.limit ?? 8);
+    return results.flatMap(r => r.error ? [] : r.data ?? []).filter(r => typeof r.content === 'string' && r.content && !seen.has(r.content) && seen.add(r.content))
+      .map(r => ({ kind: String(r.kind), content: String(r.content).slice(0, 1000), importance: Number(r.importance) || 1 }))
+      .sort((a,b) => b.importance - a.importance).slice(0, input.limit ?? 8);
   },
 
   /** List a person's own stored memories (for the memory-management UI). */

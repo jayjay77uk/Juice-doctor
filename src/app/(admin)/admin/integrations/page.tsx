@@ -1,3 +1,4 @@
+import { providerBudgetStatus } from '@/lib/providers/budget';
 import type { Metadata } from 'next';
 import { createMetadata } from '@/config/metadata';
 import {
@@ -52,6 +53,7 @@ interface Row {
 }
 
 export default async function IntegrationsPage() {
+  const budgets = await providerBudgetStatus();
   const [mail, outbox, paymentStatus, webhookEvents, wearableStats, lastRuns, voices, lastTtsError, elevenVoices, voiceDiag] = await Promise.all([
     mailStatus(),
     mailRepo.recent(5),
@@ -106,7 +108,7 @@ export default async function IntegrationsPage() {
     {
       name: 'ElevenLabs (read-aloud)',
       state: isTtsConfigured() ? 'connected' : 'not_configured',
-      detail: `${elevenVoices.length} voice(s) usable on this ElevenLabs account${elevenVoices.length ? `: ${elevenVoices.slice(0, 6).map((v) => `${v.name} (${v.voiceId})`).join(', ')}` : ` — none usable (ElevenLabs /v1/voices returned HTTP ${voiceDiag?.status ?? 'no response'}${voiceDiag?.status === 401 ? ': the API key is rejected — check ELEVENLABS_API_KEY' : voiceDiag?.status === 402 ? ': this plan does not allow API voice access — upgrade to use read-aloud' : ''})`}. ${Object.keys(voices).length} specialist voice(s) configured below.${
+      detail: `${elevenVoices.length} voice(s) usable on this ElevenLabs account${elevenVoices.length ? `: ${elevenVoices.slice(0, 6).map((v) => `${v.name} (${v.voiceId})`).join(', ')}` : ` — none usable (ElevenLabs /v1/voices returned HTTP ${voiceDiag?.status ?? 'no response'}${voiceDiag?.status === 401 ? ': the API key is rejected — check ELEVENLABS_API_KEY' : voiceDiag?.status === 402 ? ': this plan does not allow API voice access — read-aloud is blocked under the free-only policy' : ''})`}. ${Object.keys(voices).length} specialist voice(s) configured below.${
         ttsError?.detail ? ` Last voice error (${ttsError.at ? new Date(ttsError.at).toLocaleString('en-GB') : ''}): ${ttsError.detail.slice(0, 160)}` : ''
       }`,
       requirements: 'ELEVENLABS_API_KEY, ELEVENLABS_DEFAULT_VOICE_ID',
@@ -154,6 +156,13 @@ export default async function IntegrationsPage() {
         description="Real configuration state of every external service — nothing here is simulated. Each unconnected provider lists exactly what the final connection stage needs."
         breadcrumbs={[{ label: 'Integrations' }]}
       />
+
+      <Panel title="Provider spending policy" description="Claude is the only paid exception. All other outbound calls require a confirmed free account with provider-side overages disabled. Missing or exhausted allowances block calls. Infrastructure account plans must also be verified by the account owner.">
+        <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th>Provider</th><th>Declared tier</th><th>Reserved / limit</th><th>Status</th></tr></thead><tbody>
+          {budgets.map(b => <tr key={b.provider} className="border-t border-border"><td className="py-3">{b.provider}</td><td>{b.tier}</td><td>{b.used ?? 'Unavailable'} / {b.month} {b.unit}{b.provider === 'deepgram' ? ' (trial total)' : ' / month'}</td><td>{b.allowed && b.remaining !== null && b.remaining > 0 ? 'Allowance available' : 'Blocked'}</td></tr>)}
+        </tbody></table></div>
+        <p className="mt-3 text-xs text-muted-foreground">Counts reserve usage before sending, including failed requests. ElevenLabs additionally verifies the current Free subscription before each synthesis. Free voice is for testing. See the operator guide for the required billing caps.</p>
+      </Panel>
 
       <Panel padded={false}>
         <ul className="divide-y divide-border">

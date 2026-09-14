@@ -1,3 +1,4 @@
+import { providerPolicy } from './providers/policy';
 import 'server-only';
 function num(value: string | undefined, fallback: number): number { const n = value != null && value !== '' ? Number(value) : NaN; return Number.isFinite(n) && n > 0 ? n : fallback; }
 function str(value: string | undefined): string | undefined { const v = value?.trim(); return v ? v : undefined; }
@@ -7,12 +8,12 @@ export const env = {
   aiProvider: str(process.env.AI_PROVIDER) ?? 'anthropic', anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '', aiModel: str(process.env.ANTHROPIC_DEFAULT_MODEL) ?? str(process.env.AI_MODEL) ?? 'claude-sonnet-5', aiMaxInputTokens: num(process.env.AI_MAX_INPUT_TOKENS, 14_000), aiMaxOutputTokens: num(process.env.AI_MAX_OUTPUT_TOKENS, 1_024), aiRequestTimeoutMs: timeoutMs(process.env.AI_REQUEST_TIMEOUT, 60_000), aiDailyUserLimit: num(process.env.AI_DAILY_USER_LIMIT, 50), aiMonthlyUserLimit: num(process.env.AI_MONTHLY_USER_LIMIT, 500),
   siteUrl: str(process.env.NEXT_PUBLIC_SITE_URL) ?? (str(process.env.VERCEL_PROJECT_PRODUCTION_URL) ? `https://${str(process.env.VERCEL_PROJECT_PRODUCTION_URL)}` : undefined) ?? (str(process.env.VERCEL_URL) ? `https://${str(process.env.VERCEL_URL)}` : undefined) ?? 'http://localhost:3011',
 } as const;
-export const isMailConfigured = (): boolean => Boolean(process.env.RESEND_API_KEY && process.env.MAIL_FROM_ADDRESS);
-export const isSttConfigured = (): boolean => Boolean(process.env.DEEPGRAM_API_KEY);
+export const isMailConfigured = (): boolean => providerPolicy('resend').allowed && Boolean(process.env.RESEND_API_KEY && process.env.MAIL_FROM_ADDRESS);
+export const isSttConfigured = (): boolean => providerPolicy('deepgram').allowed && Boolean(process.env.DEEPGRAM_API_KEY);
 /** TTS needs only the provider key; a known free premade voice is used when no voice ID is configured. */
-export const isTtsConfigured = (): boolean => Boolean(process.env.ELEVENLABS_API_KEY);
-export const isSentryConfigured = (): boolean => Boolean(process.env.SENTRY_DSN);
-export const isPosthogConfigured = (): boolean => Boolean(process.env.POSTHOG_API_KEY);
+export const isTtsConfigured = (): boolean => providerPolicy('elevenlabs').allowed && Boolean(process.env.ELEVENLABS_API_KEY);
+export const isSentryConfigured = (): boolean => providerPolicy('sentry').allowed && Boolean(process.env.SENTRY_DSN);
+export const isPosthogConfigured = (): boolean => providerPolicy('posthog').allowed && Boolean(process.env.POSTHOG_API_KEY);
 export const isCronConfigured = (): boolean => Boolean(process.env.CRON_SECRET);
 export const isSupabaseConfigured = (): boolean => Boolean(env.supabaseUrl && env.supabaseAnonKey);
 export const isSupabaseAdminConfigured = (): boolean => Boolean(env.supabaseUrl && env.supabaseServiceRoleKey);

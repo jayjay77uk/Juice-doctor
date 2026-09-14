@@ -20,18 +20,9 @@ which is operator-run with the server-only service-role key, refuses to run once
 exists, and never stores credentials. Further administrators are invited in-app from
 **Admin → Users → Invite user**.
 
-## Administrator access (operational)
+## Administrator access
 
-| Role | Email | Password | Lands on |
-|---|---|---|---|
-| **Administrator** | `admin@prototypeai.app` | `ChangeMe!Admin2026` | `/admin` (admin portal) |
-
-Use this account for the admin portal walkthrough (HERNE hub, referrals, wearable, shared DNA,
-AI Playground, usage/cost). **Recommend the owner rotates or removes this legacy engineering
-login now that the owner account exists.**
-
-The former fictional member, customer and practitioner accounts — and all fictional records —
-have been **deleted from the live database**.
+Use individually invited administrator accounts. The legacy engineering login must be disabled and its sessions revoked in the Juice Doctor Supabase account. No reusable credentials belong in this repository.
 
 ## Viewing the member experience
 

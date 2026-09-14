@@ -1,12 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { Send, LifeBuoy, ThumbsUp, ThumbsDown, Square, FileText, AlertTriangle, ArrowRightLeft, Mic, Volume2 } from 'lucide-react';
+import { Send, LifeBuoy, ThumbsUp, ThumbsDown, Square, FileText, AlertTriangle, ArrowRightLeft, Mic, Volume2, Copy, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { requestSupportAction, messageFeedbackAction } from '@/services/conversation-actions';
 import { VoiceInputButton, SpeakButton, VoiceModeSwitch, useReplyAudio, useVoiceLoop } from '@/components/dashboard/voice-controls';
 import { voiceModesFor, type VoiceMode } from '@/lib/voice/modes';
 import type { Message, MessageCitation } from '@/types/conversation';
+import { MessageMarkdown } from '@/components/dashboard/message-markdown';
+import { ComposerAttachments } from '@/components/dashboard/composer-attachments';
+import type { ConversationAttachment } from '@/services/repositories/conversation-attachments-repo';
 
 const now = () => new Date().toISOString();
 
@@ -41,6 +44,7 @@ export function SpecialistChat({
   specialistSlug,
   initialMessages,
   remembered,
+  attachments = [],
   voice = { sttConfigured: false, ttsConfigured: false },
 }: {
   conversationId: string;
@@ -50,6 +54,7 @@ export function SpecialistChat({
   specialistSlug?: string;
   initialMessages: Message[];
   remembered: string[];
+  attachments?: ConversationAttachment[];
   /** Real server-side voice configuration — controls stay honest when unset. */
   voice?: { sttConfigured: boolean; ttsConfigured: boolean };
 }) {
@@ -58,6 +63,7 @@ export function SpecialistChat({
   const [input, setInput] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [attachmentBusy, setAttachmentBusy] = React.useState(false);
   const [rated, setRated] = React.useState<Record<string, 'up' | 'down'>>({});
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const abortRef = React.useRef<AbortController | null>(null);
@@ -191,8 +197,17 @@ export function SpecialistChat({
     await messageFeedbackAction(messageId, rating);
   }
 
+  async function copyReply(text: string) {
+    try { await navigator.clipboard.writeText(text); } catch { setError('Copy is unavailable in this browser.'); }
+  }
+
+  function regenerate() {
+    const last = [...messages].reverse().find((m) => m.role === 'user');
+    if (last) void send(last.content);
+  }
+
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-border bg-surface">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface">
       {/* Active specialist header + communication-mode switch */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-muted/60 px-5 py-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -216,21 +231,13 @@ export function SpecialistChat({
         </div>
       )}
 
-      <div ref={scrollRef} className="flex max-h-[28rem] flex-col gap-3 overflow-y-auto px-5 py-6">
+      <div ref={scrollRef} className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-6 sm:px-8">
         {messages.map((msg) => (
           <div key={msg.id} className="flex flex-col gap-1">
             <div className={msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-              <p
-                className={
-                  msg.role === 'user'
-                    ? 'max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground'
-                    : msg.role === 'system'
-                      ? 'max-w-[90%] whitespace-pre-wrap rounded-xl bg-amber-50 px-4 py-2.5 text-sm text-foreground'
-                      : 'max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-surface-muted px-4 py-2.5 text-sm text-foreground'
-                }
-              >
-                {msg.content}
-              </p>
+              <div className={msg.role === 'user' ? 'max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground' : msg.role === 'system' ? 'max-w-[90%] rounded-xl bg-amber-50 px-4 py-2.5 text-sm text-foreground' : 'max-w-[85%] text-sm leading-7 text-foreground'}>
+                {msg.role === 'assistant' ? <MessageMarkdown text={msg.content} /> : <p className="whitespace-pre-wrap">{msg.content}</p>}
+              </div>
             </div>
             {msg.role === 'assistant' && msg.citations && msg.citations.length > 0 && <Citations citations={msg.citations} />}
             {msg.role === 'assistant' && msg.escalated && (
@@ -253,15 +260,15 @@ export function SpecialistChat({
                   <ThumbsDown className="size-3.5" />
                 </button>
                 {voice.ttsConfigured && <SpeakButton messageId={msg.id} />}
+                <button type="button" aria-label="Copy response" onClick={() => void copyReply(msg.content)} className="rounded p-1 text-muted-foreground hover:text-foreground"><Copy className="size-3.5" /></button>
+                {msg.id === [...messages].reverse().find((m) => m.role === 'assistant')?.id && <button type="button" aria-label="Regenerate response" onClick={regenerate} className="rounded p-1 text-muted-foreground hover:text-foreground"><RefreshCw className="size-3.5" /></button>}
               </div>
             )}
           </div>
         ))}
         {streaming !== null && (
           <div className="flex justify-start">
-            <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-surface-muted px-4 py-2.5 text-sm text-foreground">
-              {streaming || <span className="text-muted-foreground">{agentName} is thinking…</span>}
-            </p>
+            <div className="max-w-[85%] text-sm leading-7 text-foreground">{streaming ? <MessageMarkdown text={streaming} /> : <span className="text-muted-foreground">{agentName} is thinking…</span>}</div>
           </div>
         )}
 
@@ -289,9 +296,11 @@ export function SpecialistChat({
         )}
       </div>
 
-      <div className="border-t border-border p-4">
+      <div className="sticky bottom-0 border-t border-border bg-surface/95 p-3 backdrop-blur sm:p-4">
         {error && <p className="mb-2 text-sm text-danger" role="alert">{error}</p>}
-        <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="flex items-end gap-2">
+        <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="mx-auto max-w-4xl rounded-2xl border border-border bg-surface-muted/40 p-2 shadow-sm">
+          <ComposerAttachments conversationId={conversationId} files={attachments} disabled={busy || attachmentBusy} onBusy={setAttachmentBusy} />
+          <div className="flex items-end gap-2 pt-1">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -315,6 +324,7 @@ export function SpecialistChat({
               <Send className="size-4" />
             </Button>
           )}
+          </div>
         </form>
         <div className="mt-3 flex items-center justify-between gap-3">
           <Button type="button" intent="ghost" size="sm" onClick={requestSupport} disabled={busy}>

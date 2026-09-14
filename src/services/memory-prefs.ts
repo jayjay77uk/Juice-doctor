@@ -17,8 +17,9 @@ const KEY = 'memory_enabled';
 export async function isMemoryEnabled(userId: string | null | undefined): Promise<boolean> {
   if (!userId) return false;
   const sb = createAdminClient();
-  if (!sb) return true;
-  const { data } = await sb.from('user_preferences').select('preferences').eq('user_id', userId).maybeSingle();
+  if (!sb) return false;
+  const { data, error } = await sb.from('user_preferences').select('preferences').eq('user_id', userId).maybeSingle();
+  if (error) return false;
   const prefs = (data?.preferences ?? null) as Record<string, unknown> | null;
   return prefs?.[KEY] === false ? false : true;
 }

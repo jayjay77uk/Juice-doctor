@@ -1,3 +1,4 @@
+import { headers } from 'next/headers';
 import type { Metadata, Viewport } from 'next';
 import { baseMetadata } from '@/config/metadata';
 import './globals.css';
@@ -17,7 +18,8 @@ export const viewport: Viewport = {
   colorScheme: 'light',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  await headers(); // Per-request CSP nonces require dynamic rendering.
   return (
     <html lang="en">
       <body>

@@ -1,10 +1,11 @@
+import { createDistributedRateLimiter } from '@/lib/security/distributed-rate-limit';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getTtsProvider, ttsFailureReason, TTS_MAX_CHARS } from '@/lib/voice/tts';
 import { voiceForSpecialist } from '@/services/voice';
 import { systemSettings } from '@/services/system-settings';
 import { verifyReplySignature } from '@/lib/voice/reply-signature';
 import { RECEPTIONIST_SLUG } from '@/lib/voice/modes';
-import { createInMemoryRateLimiter, enforceRateLimit } from '@/lib/security/rate-limit';
+import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { RateLimitError } from '@/lib/security/errors';
 
 /**
@@ -17,8 +18,8 @@ import { RateLimitError } from '@/lib/security/errors';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const visitorLimiter = createInMemoryRateLimiter({ limit: 10, windowMs: 60_000 });
-const instanceLimiter = createInMemoryRateLimiter({ limit: 40, windowMs: 60_000 });
+const visitorLimiter = createDistributedRateLimiter('route-receptionist-speak-visitorLimiter', { limit: 10, windowMs: 60_000 });
+const instanceLimiter = createDistributedRateLimiter('route-receptionist-speak-instanceLimiter', { limit: 40, windowMs: 60_000 });
 
 function visitorKey(request: NextRequest): string {
   const fwd = request.headers.get('x-forwarded-for');

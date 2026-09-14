@@ -1,3 +1,4 @@
+import { reserveProviderUsage } from '@/lib/providers/budget';
 import 'server-only';
 
 import { isSttConfigured } from '@/lib/env';
@@ -26,12 +27,14 @@ export interface SttProviderAdapter {
   transcribe(audio: ArrayBuffer, mimeType: string): Promise<SttResult>;
 }
 
-const DEEPGRAM_ENDPOINT = 'https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&language=en';
+const speechModel = process.env.DEEPGRAM_MODEL?.trim() || 'nova-3';
+const DEEPGRAM_ENDPOINT = `https://api.deepgram.com/v1/listen?model=${encodeURIComponent(speechModel)}&smart_format=true&language=en&mip_opt_out=true`;
 
 function createDeepgramAdapter(apiKey: string): SttProviderAdapter {
   return {
     key: 'deepgram',
     async transcribe(audio: ArrayBuffer, mimeType: string): Promise<SttResult> {
+      if (!(await reserveProviderUsage('deepgram'))) return { ok: false, error: 'provider_error', detail: 'free_allowance_unavailable' };
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), STT_TIMEOUT_MS);
       try {

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { securityHeaders } from '@/lib/security/headers';
+import { buildContentSecurityPolicy, securityHeaders } from '@/lib/security/headers';
 import { isSameOrigin } from '@/lib/security/csrf';
 import { updateSession } from '@/lib/supabase/middleware';
 
@@ -15,14 +15,14 @@ import { updateSession } from '@/lib/supabase/middleware';
  */
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-const PROTECTED_PREFIXES = ['/dashboard', '/admin'];
+const PROTECTED_PREFIXES = ['/dashboard', '/admin', '/practitioner'];
 const supabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 );
 
-function withSecurityHeaders(response: NextResponse, isHttps: boolean): NextResponse {
+function withSecurityHeaders(response: NextResponse, isHttps: boolean, nonce: string): NextResponse {
   const isDev = process.env.NODE_ENV !== 'production';
-  const headersToSet = securityHeaders({ hsts: isHttps, dev: isDev });
+  const headersToSet = securityHeaders({ hsts: isHttps, dev: isDev, nonce });
   for (const [key, value] of Object.entries(headersToSet)) response.headers.set(key, value);
   return response;
 }
@@ -30,6 +30,9 @@ function withSecurityHeaders(response: NextResponse, isHttps: boolean): NextResp
 export default async function proxy(request: NextRequest): Promise<NextResponse> {
   const { nextUrl, method, headers } = request;
   const isHttps = nextUrl.protocol === 'https:';
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  request.headers.set('x-nonce', nonce);
+  request.headers.set('Content-Security-Policy', buildContentSecurityPolicy({ nonce, dev: process.env.NODE_ENV !== 'production' }));
   const path = nextUrl.pathname;
 
   // 1. CSRF: mutating requests must be same-origin.
@@ -37,7 +40,7 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
     const origin = headers.get('origin');
     const host = headers.get('host');
     if (origin && !isSameOrigin(origin, host)) {
-      return withSecurityHeaders(new NextResponse('Cross-origin request blocked', { status: 403 }), isHttps);
+      return withSecurityHeaders(new NextResponse('Cross-origin request blocked', { status: 403 }), isHttps, nonce);
     }
   }
 
@@ -49,13 +52,13 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
     if (isProtected && !user) {
       const loginUrl = new URL('/login', nextUrl);
       loginUrl.searchParams.set('next', path);
-      return withSecurityHeaders(NextResponse.redirect(loginUrl), isHttps);
+      return withSecurityHeaders(NextResponse.redirect(loginUrl), isHttps, nonce);
     }
-    return withSecurityHeaders(response, isHttps);
+    return withSecurityHeaders(response, isHttps, nonce);
   }
 
   // No Supabase configured (local dev without keys) — render openly, headers only.
-  return withSecurityHeaders(NextResponse.next(), isHttps);
+  return withSecurityHeaders(NextResponse.next({ request }), isHttps, nonce);
 }
 
 export const config = {

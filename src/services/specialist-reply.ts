@@ -1,9 +1,11 @@
+import { runtimeOptions, recallForAgent } from './agent-runtime';
+import { fitHistory } from '@/lib/ai/history';
+import { env } from '@/lib/env';
 import 'server-only';
 
 import type { AiAgent } from '@/types/ai';
 import type { ChatMessage } from '@/lib/ai';
 import { getAiProvider } from '@/lib/ai';
-import { windowHistory } from '@/lib/ai/history';
 import { knowledgeRepo } from './repositories/knowledge-repo';
 import { runLogRepo } from './repositories/run-log-repo';
 import { memoryRepo, extractMemory, type MemoryItem } from './repositories/memory-repo';
@@ -74,7 +76,7 @@ export async function specialistReply(
   const started = Date.now();
   const [chunks, memory, pref] = await Promise.all([
     knowledgeRepo.retrieve(agent.id, userText, 4),
-    ctx ? memoryRepo.recall({ userId: ctx.userId ?? null, conversationId: ctx.conversationId ?? null, limit: 6 }) : Promise.resolve([] as MemoryItem[]),
+    ctx ? recallForAgent(agent, ctx.userId, ctx.conversationId) : Promise.resolve([] as MemoryItem[]),
     ctx?.language ? Promise.resolve(ctx.language) : ctx?.userId ? getLanguagePreferenceFor(ctx.userId) : Promise.resolve<LanguagePreference>(HERNE_DEFAULT_PREFERENCE),
   ]);
   const knowledgeBlock = chunks.length
@@ -84,11 +86,12 @@ export async function specialistReply(
   try {
     // windowHistory trims a leading assistant turn (e.g. the welcome message) —
     // the API rejects an assistant-first messages array.
-    const messages: ChatMessage[] = [...windowHistory(history, 8), { role: 'user', content: userText }];
+    const system = buildSystemPrompt(agent, knowledgeBlock, memory, languageDirective(pref));
+    const messages = fitHistory(history, userText, system, env.aiMaxInputTokens);
     const res = await provider.chat({
-      system: buildSystemPrompt(agent, knowledgeBlock, memory, languageDirective(pref)),
+      system,
       messages,
-      maxTokens: 700,
+      ...(await runtimeOptions(agent)),
       op: 'specialist:reply',
     });
     const citations = [...new Set(chunks.map((c) => c.documentTitle))];
@@ -107,7 +110,7 @@ export async function specialistReply(
       traceId: res.traceId,
     });
     // Extract + persist a durable preference/fact the customer stated (consent-gated).
-    if (ctx?.userId && (await isMemoryEnabled(ctx.userId))) {
+    if (ctx?.userId && agent.memoryConfig.useUserMemory && (await isMemoryEnabled(ctx.userId))) {
       const mem = extractMemory(userText);
       if (mem) {
         await memoryRepo.remember({

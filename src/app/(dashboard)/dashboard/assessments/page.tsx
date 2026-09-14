@@ -73,9 +73,7 @@ export default async function AssessmentsPage() {
                     </dd>
                   </div>
                 </dl>
-                <Button intent="outline" className="w-full" disabled title="Detailed results view is coming soon">
-                  View details (coming soon)
-                </Button>
+                <Button asChild intent="outline" className="w-full"><Link href={`/dashboard/assessments/${assessment.id}`}>View details</Link></Button>
               </div>
             </Panel>
           ))}
