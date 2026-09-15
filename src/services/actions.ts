@@ -12,9 +12,9 @@ import {
   signInSchema,
 } from '@/lib/validation';
 import { headers } from 'next/headers';
-import { isSupabaseConfigured } from '@/lib/env';
+import { env, isSupabaseConfigured } from '@/lib/env';
+import { provisionMember } from './provision-member';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { enforceRateLimit, RATE_LIMIT_POLICIES } from '@/lib/security/rate-limit';
 import { RateLimitError } from '@/lib/security/errors';
 import { businessAddresses } from '@/config/addresses';
@@ -154,6 +154,7 @@ export async function signIn(_prev: ActionResult, formData: FormData): Promise<A
   if (!supabase) return { status: 'error', message: 'Sign-in is currently unavailable. Please try again later.' };
   const { data: signedIn, error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
   if (error) return { status: 'error', message: 'Incorrect email or password.' };
+  if (signedIn.user && !(await provisionMember(signedIn.user))) return { status: 'error', message: 'Your account could not be prepared. Please contact support.' };
   if (signedIn.user) await track('member.signed_in', {}, signedIn.user.id);
 
   // The session cookie is set on THIS response; resolve the role-based landing on
@@ -174,17 +175,18 @@ export async function register(_prev: ActionResult, formData: FormData): Promise
   if (await authRateLimited('register')) {
     return { status: 'error', message: 'Too many attempts. Please wait a minute and try again.' };
   }
-  const next = formData.get('next');
   if (!isSupabaseConfigured()) {
     return { status: 'error', message: 'Registration is currently unavailable. Please try again later.' };
   }
-  const admin = createAdminClient();
   const supabase = await createSupabaseServerClient();
-  if (!admin || !supabase) return { status: 'error', message: 'Registration is currently unavailable. Please try again later.' };
+  if (!supabase) return { status: 'error', message: 'Registration is currently unavailable. Please try again later.' };
 
   const email = parsed.data.email;
   const password = parsed.data.password;
-  const { data: created, error: createErr } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+  const { data: created, error: createErr } = await supabase.auth.signUp({ email, password, options: {
+    data: { full_name: parsed.data.name },
+    emailRedirectTo: new URL('/auth/callback', env.siteUrl).toString(),
+  } });
   if (createErr || !created.user) {
     return { status: 'error', message: createErr?.message?.includes('already') ? 'An account with that email already exists.' : 'Could not create the account. Please try again.' };
   }
@@ -204,8 +206,11 @@ export async function register(_prev: ActionResult, formData: FormData): Promise
   await track('member.registered', {}, created.user.id);
   // Sign the new user in to establish a session, then resolve their landing on
   // the next request via /continue (a fresh member lands on /dashboard).
-  await supabase.auth.signInWithPassword({ email, password });
-  redirect(continuePath(next));
+  if (created.session && created.user.email_confirmed_at) {
+    if (!(await provisionMember(created.user))) return { status: 'error', message: 'Your account could not be prepared. Please contact support.' };
+    redirect('/continue');
+  }
+  return { status: 'success', message: 'Check your email to confirm your account before signing in.' };
 }
 
 /** Sign the current user out (clears the Supabase session) and return home. */

@@ -20,7 +20,7 @@ const controlClass =
 
 const LOCATION_META: Record<string, { label: string; icon: typeof Video }> = {
   video: { label: 'Video call', icon: Video },
-  phone: { label: 'Phone call', icon: Phone },
+  phone: { label: 'Audio Call', icon: Phone },
   in_person: { label: 'In person', icon: MapPin },
 };
 
@@ -125,7 +125,7 @@ export function BookingManager({
 }) {
   const router = useRouter();
   const [service, setService] = React.useState(services[0]?.slug ?? '');
-  const [location, setLocation] = React.useState('video');
+  const location = 'phone';
   const [time, setTime] = React.useState(minSlotValue());
   const [notes, setNotes] = React.useState('');
   const [busy, setBusy] = React.useState(false);
@@ -154,7 +154,7 @@ export function BookingManager({
 
   return (
     <div className="flex flex-col gap-8">
-      <Panel title="Book a session" description="Choose a service and a time — the team confirms every request.">
+      <Panel title="Book a 15-minute Audio Call" description="Choose a preferred time — the team confirms availability for every request.">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
             Service
@@ -165,12 +165,8 @@ export function BookingManager({
             </select>
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-            How you’d like to meet
-            <select value={location} onChange={(e) => setLocation(e.target.value)} className={controlClass}>
-              <option value="video">Video call</option>
-              <option value="phone">Phone call</option>
-              <option value="in_person">In person</option>
-            </select>
+            Format
+            <input readOnly value="15-minute Audio Call" className={controlClass} />
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
             Date &amp; time

@@ -1,7 +1,8 @@
 import 'server-only';
 
 import { cache } from 'react';
-import type { AppRole } from './roles';
+import { APP_ROLES, type AppRole } from './roles';
+import { PERMISSIONS } from '@/config/permissions';
 import type { AuthContext } from './permissions';
 import type { PermissionKey } from '@/config/permissions';
 import { isSupabaseConfigured } from '@/lib/env';
@@ -49,12 +50,12 @@ async function loadSession(): Promise<Session | null> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return null;
+  if (!user || !user.email_confirmed_at) return null;
 
   let role: AppRole = 'member';
   let organisationId: string | null = null;
   let name = user.email ?? 'User';
-  let email = user.email ?? '';
+  const email = user.email ?? '';
 
   // Resolve the caller's OWN profile. Prefer the RLS-scoped user client — the
   // `profile_self_read` policy (id = auth.uid()) lets a user read their own row —
@@ -62,7 +63,7 @@ async function loadSession(): Promise<Session | null> {
   // back to the admin client only if the self-read fails. This prevents a missing
   // SUPABASE_SERVICE_ROLE_KEY from silently demoting an administrator to 'member'
   // (which would then be denied at the /admin gate).
-  const cols = 'role, organisation_id, email, full_name, display_name';
+  const cols = 'role, organisation_id, email, full_name, display_name, status';
   let profile: Record<string, unknown> | null = null;
   const selfRead = await supabase.from('profiles').select(cols).eq('id', user.id).maybeSingle();
   if (!selfRead.error && selfRead.data) {
@@ -75,18 +76,28 @@ async function loadSession(): Promise<Session | null> {
     }
   }
 
-  if (profile) {
+  if (profile && profile.status === 'active' && APP_ROLES.includes(profile.role as AppRole)) {
     role = (profile.role as AppRole | null) ?? 'member';
     organisationId = (profile.organisation_id as string | null) ?? null;
     name = (profile.display_name as string | null) ?? (profile.full_name as string | null) ?? name;
-    email = (profile.email as string | null) ?? email;
   } else {
     // No profile row for an authenticated user is an anomaly — surface it in the
     // server logs rather than silently treating a possible admin as a member.
-    console.warn(`[auth] no profiles row for user ${user.id}; defaulting role to 'member'`);
+    return null;
   }
 
-  return { user: { id: user.id, name, email, role, organisationId } };
+  const overrides = await supabase.from('user_permission_overrides')
+    .select('permission_key, effect, expires_at').eq('user_id', user.id);
+  if (overrides.error) return null;
+  const grants: PermissionKey[] = [];
+  const denies: PermissionKey[] = [];
+  for (const row of overrides.data ?? []) {
+    if (row.expires_at && new Date(row.expires_at).getTime() <= Date.now()) continue;
+    if (!Object.hasOwn(PERMISSIONS, row.permission_key)) continue;
+    if (row.effect === 'grant') grants.push(row.permission_key as PermissionKey);
+    if (row.effect === 'deny') denies.push(row.permission_key as PermissionKey);
+  }
+  return { user: { id: user.id, name, email, role, organisationId, grants, denies } };
 }
 
 /**

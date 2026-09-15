@@ -19,15 +19,16 @@ export async function GET() {
   const admin = createAdminClient();
   if (admin) {
     try {
-      const { error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 });
-      db = { ok: !error, error: error?.message ?? null };
-    } catch (e) {
-      db = { ok: false, error: e instanceof Error ? e.message : 'db check failed' };
+      const { error } = await admin.from('profiles').select('id').limit(1);
+      db = { ok: !error, error: error ? 'database check failed' : null };
+    } catch {
+      db = { ok: false, error: 'database check failed' };
     }
   }
 
+  const ready = isSupabaseConfigured() && isSupabaseAdminConfigured() && db.ok && isAiConfigured();
   return NextResponse.json({
-    ok: true,
+    ok: ready,
     commit,
     vercelEnv,
     supabase: {
@@ -37,5 +38,5 @@ export async function GET() {
     },
     ai: { configured: isAiConfigured() },
     time: new Date().toISOString(),
-  });
+  }, { status: ready ? 200 : 503, headers: { 'Cache-Control': 'no-store' } });
 }

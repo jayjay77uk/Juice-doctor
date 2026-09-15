@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { assertRole } from '@/lib/auth/authorize';
 import { consultationsRepo } from './repositories/consultations-repo';
 import { auditRepo } from './repositories/audit-repo';
+import { hasConsent } from './consents';
 
 /** Staff-level consultation workflow: append notes, approve or request changes. */
 
@@ -12,7 +13,7 @@ async function canActOnCase(caseId: string, session: Awaited<ReturnType<typeof a
   if (!result) return false;
   // Practitioners are least-privilege: only their assigned cases. Staff/admin
   // retain the existing operational oversight available from /admin.
-  return session.user.role !== 'practitioner' || result.consultation.practitionerId === session.user.id;
+  return session.user.role !== 'practitioner' || (result.consultation.practitionerId === session.user.id && await hasConsent(result.consultation.memberId, 'health_data_sharing'));
 }
 
 export async function addConsultationNoteAction(formData: FormData): Promise<void> {

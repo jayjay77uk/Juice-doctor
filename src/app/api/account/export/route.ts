@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/services/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { exportAccount } from '@/services/account-export';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,11 +13,12 @@ export async function GET() {
   const sb = createAdminClient();
   if (!sb) return NextResponse.json({ error: 'Export is temporarily unavailable.' }, { status: 503 });
   const uid = session.user.id;
-  const tables = ['profiles', 'health_profiles', 'user_preferences', 'goals', 'conversations', 'messages', 'consents', 'member_onboarding'];
-  const entries = await Promise.all(tables.map(async (table) => {
-    const column = table === 'conversations' || table === 'messages' ? 'user_id' : 'user_id';
-    const result = await sb.from(table).select('*').eq(column, uid);
-    return [table, result.error ? [] : (result.data ?? [])] as const;
-  }));
-  return NextResponse.json({ exportedAt: new Date().toISOString(), userId: uid, data: Object.fromEntries(entries) }, { headers: { 'Cache-Control': 'no-store' } });
+  try {
+    const data = await exportAccount(sb, uid);
+    return NextResponse.json({ exportedAt: new Date().toISOString(), userId: uid, data }, {
+      headers: { 'Cache-Control': 'no-store', 'Content-Disposition': 'attachment; filename="juice-doctor-account.json"' },
+    });
+  } catch {
+    return NextResponse.json({ error: 'Your complete export could not be generated. Please try again later.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+  }
 }

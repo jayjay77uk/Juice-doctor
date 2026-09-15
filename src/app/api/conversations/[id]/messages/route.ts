@@ -6,6 +6,7 @@ import { streamHerneReply, isHerneSpecialist } from '@/services/herne/reply';
 import { specialistReply } from '@/services/specialist-reply';
 import { checkUsageLimit, acquireSlot, releaseSlot } from '@/services/ai-usage';
 import { subscriptionsService } from '@/services/subscriptions';
+import { hasConsent } from '@/services/consents';
 
 /**
  * Streaming specialist turn (NDJSON). The client POSTs { content }; we authenticate,
@@ -45,6 +46,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
   if (!content) return NextResponse.json({ error: 'Please enter a message.' }, { status: 400 });
   if (content.length > 4000) return NextResponse.json({ error: 'Message is too long (max 4000 characters).' }, { status: 400 });
+  if (!(await hasConsent(userId, 'ai_processing'))) return NextResponse.json({ error: 'AI processing consent is required. Review your consent in Settings.' }, { status: 403 });
 
   // Per-user usage limits (daily/monthly, counted from ai_run_logs).
   const limit = await checkUsageLimit(userId);
@@ -52,7 +54,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const agentResult = conv.data.agentId ? await agents.byId(conv.data.agentId) : { ok: false as const };
   const agent = agentResult.ok ? agentResult.data : null;
-  if (agent && agent.status !== 'active') return NextResponse.json({ error: 'This specialist is currently unavailable.' }, { status: 410 });
+  if (!agent || agent.status !== 'active') return NextResponse.json({ error: 'This specialist is currently unavailable.' }, { status: 410 });
 
   // Subscription access: chatting with a specialist requires an active
   // subscription that covers it — enforced here as well as at creation. A

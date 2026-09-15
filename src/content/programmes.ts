@@ -68,36 +68,11 @@ export const programmes: Programme[] = [
   },
 ];
 
-/** Consultation types. Placeholder content pending client-supplied copy. */
-export const consultations: Consultation[] = [
-  {
-    id: 'con-1',
-    slug: 'consultation-1',
-    title: 'Consultation one',
-    summary: 'A short summary of consultation one goes here, describing what the session covers.',
-    durationLabel: 'Duration placeholder',
-    priceLabel: 'Price on request',
-    forWhom: 'Who this consultation is for goes here.',
-    includes: ['Included item one', 'Included item two'],
-  },
-  {
-    id: 'con-2',
-    slug: 'consultation-2',
-    title: 'Consultation two',
-    summary: 'A short summary of consultation two goes here, describing what the session covers.',
-    durationLabel: 'Duration placeholder',
-    priceLabel: 'Price on request',
-    forWhom: 'Who this consultation is for goes here.',
-    includes: ['Included item one', 'Included item two', 'Included item three'],
-  },
-  {
-    id: 'con-3',
-    slug: 'consultation-3',
-    title: 'Consultation three',
-    summary: 'A short summary of consultation three goes here, describing what the session covers.',
-    durationLabel: 'Duration placeholder',
-    priceLabel: 'Price on request',
-    forWhom: 'Who this consultation is for goes here.',
-    includes: ['Included item one', 'Included item two', 'Included item three'],
-  },
-];
+/** Agreed booking format; availability is confirmed by the team. */
+export const consultations: Consultation[] = [{
+  id: 'audio-call', slug: 'audio-call', title: 'Audio Call',
+  summary: 'Request a 15-minute audio call with the team.',
+  durationLabel: '15 minutes', priceLabel: 'Price on request',
+  forWhom: 'Members who would like to speak with the team.',
+  includes: ['A 15-minute audio conversation', 'Confirmation from the team before the appointment'],
+}];

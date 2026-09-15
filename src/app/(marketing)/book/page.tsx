@@ -1,77 +1,24 @@
-import type { Metadata } from 'next';
-import { Check } from 'lucide-react';
+import Link from 'next/link';
 import { createMetadata } from '@/config/metadata';
-import { ph } from '@/content/placeholder';
-import { programmes as programmesService, consultations as consultationsService } from '@/services';
 import { Section } from '@/components/ui/section';
 import { PageHero } from '@/components/sections/page-hero';
-import { BookingFlow, type BookingService } from '@/components/sections/booking-flow';
+import { Button } from '@/components/ui/button';
+import { getSession } from '@/services/auth';
 
-export const metadata: Metadata = createMetadata({
-  title: 'Book an appointment',
-  description: ph.metaDescription,
-  path: '/book',
-});
+export const metadata = createMetadata({ title: 'Book an Audio Call', description: 'Request a 15-minute Audio Call with the team.', path: '/book' });
 
-export default async function BookPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ service?: string }>;
-}) {
-  const { service } = await searchParams;
-  const [progResult, consResult] = await Promise.all([
-    programmesService.list(),
-    consultationsService.list(),
-  ]);
-
-  const services: BookingService[] = [
-    { slug: 'consultation-1', title: 'Initial consultation', priceLabel: ph.price },
-    { slug: 'assessment', title: 'Assessment', priceLabel: ph.price },
-    ...(consResult.ok
-      ? consResult.data.map((c) => ({ slug: c.slug, title: c.title, priceLabel: c.priceLabel }))
-      : []),
-    ...(progResult.ok
-      ? progResult.data.items.map((p) => ({ slug: p.slug, title: p.title, priceLabel: p.priceLabel }))
-      : []),
-  ].filter(
-    (svc, index, all) => all.findIndex((other) => other.slug === svc.slug) === index,
-  );
-
-  return (
-    <>
-      <PageHero
-        eyebrow="Book"
-        title="Book an appointment"
-        lede="This is placeholder text in clear English. Final wording will be supplied later."
-      />
-      <Section tone="default" spacing="lg" containerSize="narrow">
-        <div className="grid gap-8 lg:grid-cols-[1.6fr_1fr]">
-          <BookingFlow services={services} {...(service ? { initialService: service } : {})} />
-          <aside className="flex flex-col gap-4 lg:sticky lg:top-[calc(var(--header-h)+2rem)] lg:h-fit">
-            <div className="rounded-2xl border border-border bg-surface p-6">
-              <h2 className="font-serif text-lg text-foreground">What to expect</h2>
-              <ul className="mt-4 flex flex-col gap-3 text-sm text-muted-foreground">
-                {[
-                  'Point one — placeholder detail in clear English.',
-                  'Point two — placeholder detail in clear English.',
-                  'Point three — placeholder detail in clear English.',
-                ].map(
-                  (item, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <Check className="mt-0.5 size-4 shrink-0 text-secondary" />
-                      {item}
-                    </li>
-                  ),
-                )}
-              </ul>
-            </div>
-            <p className="rounded-xl bg-surface-muted px-5 py-4 text-xs text-muted-foreground">
-              Online booking from this page is not yet available — submitting this form does not
-              reserve an appointment. Please contact us directly to book.
-            </p>
-          </aside>
-        </div>
-      </Section>
-    </>
-  );
+export default async function BookPage() {
+  const session = await getSession();
+  return <>
+    <PageHero eyebrow="Book" title="Book a 15-minute Audio Call" lede="Choose a preferred time from your member account. The team will confirm availability before your appointment." />
+    <Section tone="default" spacing="lg" containerSize="narrow">
+      <div className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-6">
+        <h2 className="text-h2">Audio Call</h2>
+        <p>Your request is saved in your account, where you can check its status, reschedule or cancel. No video appointment is required.</p>
+        <p className="text-sm text-muted-foreground">Price on request. Submitting a request does not take payment or guarantee a time slot.</p>
+        <Button asChild><Link href={session ? '/dashboard/bookings' : '/login?next=%2Fdashboard%2Fbookings'}>{session ? 'Choose a preferred time' : 'Sign in to request a call'}</Link></Button>
+        {!session && <Link href="/register" className="text-primary underline">Create an account</Link>}
+      </div>
+    </Section>
+  </>;
 }

@@ -13,12 +13,18 @@ import { getNotificationPrefs } from '@/services/notification-prefs';
 import { getMemoryEnabled } from '@/services/memory-prefs';
 import { memoryRepo } from '@/services/repositories/memory-repo';
 import { getSession } from '@/services/auth';
+import { consentHistory, hasConsent } from '@/services/consents';
+import { ConsentControl } from '@/components/settings/consent-control';
 
 export const metadata = createMetadata({ title: 'Settings' });
 export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
   const session = await getSession();
+  const consent = session ? await Promise.all([
+    hasConsent(session.user.id, 'ai_processing'), hasConsent(session.user.id, 'health_data_sharing'),
+    consentHistory(session.user.id).catch(() => null),
+  ]) : null;
   const [languagePreference, memoryEnabled, memories, notificationPrefs] = await Promise.all([
     getLanguagePreference(),
     getMemoryEnabled(),
@@ -62,6 +68,17 @@ export default async function SettingsPage() {
       <MemoryCard enabled={memoryEnabled} memories={memories} />
 
       <NotificationPrefsCard initial={notificationPrefs} />
+
+      <Panel title="Consent" description="Control AI processing and sharing with your assigned practitioner. Withdrawal does not delete existing records.">
+        {consent && consent[2] !== null ? <div className="flex flex-col gap-4">
+          <ConsentControl type="ai_processing" label="Allow AI processing of my wellbeing information" granted={consent[0]} />
+          <ConsentControl type="health_data_sharing" label="Share my wellbeing information with my assigned practitioner" granted={consent[1]} />
+          <details><summary>Recent consent history</summary><ul className="mt-3 space-y-2 text-sm">
+            {consent[2].map(row => <li key={String(row.id)}>{String(row.created_at)} · {row.consent_type === 'ai_processing' ? 'AI processing' : 'Practitioner sharing'} · {row.granted ? 'Granted' : 'Withdrawn'}</li>)}
+            {!consent[2].length && <li>No changes recorded here yet. Your original onboarding choices apply.</li>}
+          </ul></details>
+        </div> : <p role="alert">Consent settings are temporarily unavailable. Please try again.</p>}
+      </Panel>
 
       <Panel
         title="Privacy & data"

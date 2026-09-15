@@ -25,36 +25,39 @@ export interface FlagContext {
 const ORG = '00000000-0000-0000-0000-000000000001';
 
 const cache = new Map<FeatureFlagKey, boolean>();
-let loaded = false;
+let loadedAt = 0;
+const CACHE_TTL_MS = 15_000;
 
 async function load(): Promise<void> {
   const sb = createAdminClient();
   if (!sb) return;
   try {
-    const { data } = await sb.from('feature_flags').select('key, enabled').eq('organisation_id', ORG);
+    const { data, error } = await sb.from('feature_flags').select('key, enabled').eq('organisation_id', ORG);
+    if (error) throw error;
+    cache.clear();
     for (const row of data ?? []) {
       const key = String(row.key);
       if ((ALL_FEATURE_FLAG_KEYS as string[]).includes(key)) cache.set(key as FeatureFlagKey, Boolean(row.enabled));
     }
-    loaded = true;
+    loadedAt = Date.now();
   } catch {
-    // registry defaults remain the fallback
+    cache.clear();
+    loadedAt = 0;
   }
 }
 
 async function persist(key: FeatureFlagKey, enabled: boolean): Promise<void> {
   const sb = createAdminClient();
-  if (!sb) return;
-  try {
+  if (!sb) throw new Error('Feature flag storage unavailable.');
     const existing = await sb.from('feature_flags').select('id').eq('organisation_id', ORG).eq('key', key).maybeSingle();
+    if (existing.error) throw new Error('Feature flag could not be read.');
     if (existing.data?.id) {
-      await sb.from('feature_flags').update({ enabled, updated_at: new Date().toISOString() }).eq('id', existing.data.id);
+      const { data, error } = await sb.from('feature_flags').update({ enabled, updated_at: new Date().toISOString() }).eq('id', existing.data.id).select('id').single();
+      if (error || !data) throw new Error('Feature flag could not be saved.');
     } else {
-      await sb.from('feature_flags').insert({ organisation_id: ORG, key, description: FEATURE_FLAGS[key].description, enabled });
+      const { error } = await sb.from('feature_flags').insert({ organisation_id: ORG, key, description: FEATURE_FLAGS[key].description, enabled });
+      if (error) throw new Error('Feature flag could not be saved.');
     }
-  } catch {
-    // cache holds the value for this instance; next toggle retries
-  }
 }
 
 function resolve(key: FeatureFlagKey): boolean {
@@ -63,11 +66,11 @@ function resolve(key: FeatureFlagKey): boolean {
 
 export const featureFlags = {
   async isEnabled(key: FeatureFlagKey, _ctx: FlagContext = {}): Promise<boolean> {
-    if (!loaded) await load();
+    if (Date.now() - loadedAt >= CACHE_TTL_MS) await load();
     return resolve(key);
   },
   async all(): Promise<(FeatureFlagDef & { enabled: boolean; overridden: boolean })[]> {
-    if (!loaded) await load();
+    if (Date.now() - loadedAt >= CACHE_TTL_MS) await load();
     return ALL_FEATURE_FLAG_KEYS.map((k) => ({
       ...FEATURE_FLAGS[k],
       enabled: resolve(k),
@@ -75,10 +78,10 @@ export const featureFlags = {
     }));
   },
   async toggle(key: FeatureFlagKey): Promise<boolean> {
-    if (!loaded) await load();
+    await load();
     const next = !resolve(key);
-    cache.set(key, next);
     await persist(key, next);
+    cache.set(key, next);
     return next;
   },
   isValidKey(key: string): key is FeatureFlagKey {

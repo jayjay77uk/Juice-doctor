@@ -8,6 +8,7 @@ import { AdminHeader } from '@/components/admin/admin-header';
 import { Panel } from '@/components/admin/panel';
 import { StatusBadge } from '@/components/admin/status-badge';
 import { Button } from '@/components/ui/button';
+import { hasConsent } from '@/services/consents';
 
 export const metadata = createMetadata({ title: 'Practitioner case' });
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,7 @@ export default async function PractitionerCasePage({ params }: { params: Promise
   const { id } = await params;
   const result = await consultationsRepo.byId(id);
   if (!result || result.consultation.practitionerId !== session.user.id) notFound();
+  if (!(await hasConsent(result.consultation.memberId, 'health_data_sharing'))) notFound();
   const { consultation: CASE, events } = result;
   const reviewable = ['awaiting_review', 'in_progress', 'scheduled'].includes(CASE.status);
 

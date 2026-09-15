@@ -7,6 +7,8 @@ import { subscriptionsService } from './subscriptions';
 import { assertSession } from '@/lib/auth/authorize';
 import { track } from '@/lib/monitoring/events';
 import { escalationEngine } from './herne/referrals';
+import { checkUsageLimit, acquireSlot, releaseSlot } from './ai-usage';
+import { hasConsent } from './consents';
 import type { Message, FeedbackRating } from '@/types/conversation';
 
 const MSG_RES = 'Please sign in.';
@@ -34,10 +36,28 @@ export async function sendMessageAction(
   } catch {
     return { ok: false, error: MSG_RES };
   }
-  if (!(await assertOwnedConversation(conversationId, userId))) return { ok: false, error: MSG_OWN };
-  const result = await conversations_service.send(conversationId, content);
-  if (!result.ok) return { ok: false, error: result.error.message };
-  return { ok: true, messages: result.data };
+  const conv = await conversations_service.byId(conversationId);
+  if (!conv.ok || conv.data.userId !== userId || conv.data.status === 'deleted') return { ok: false, error: MSG_OWN };
+  if (conv.data.status !== 'active') return { ok: false, error: 'This conversation is archived.' };
+  if (typeof content !== 'string' || !content.trim() || content.trim().length > 4000) return { ok: false, error: 'Enter a message of 1–4000 characters.' };
+  if (!(await hasConsent(userId, 'ai_processing'))) return { ok: false, error: 'Review AI processing consent in Settings before chatting.' };
+  const found = conv.data.agentId ? await agents.byId(conv.data.agentId) : null;
+  if (!found?.ok || found.data.status !== 'active') return { ok: false, error: 'This specialist is currently unavailable.' };
+  if (found.data.kind === 'specialist') {
+    const access = await subscriptionsService.memberAccess(userId);
+    if (!access.ok) return { ok: false, error: 'We could not check your subscription. Please try again shortly.' };
+    if (!access.data.includes(found.data.slug)) return { ok: false, error: 'Your plan does not include this specialist.' };
+  }
+  if (!acquireSlot(userId)) return { ok: false, error: 'Please wait for your current reply to finish.' };
+  try {
+    const limit = await checkUsageLimit(userId);
+    if (!limit.allowed) return { ok: false, error: limit.message };
+    const result = await conversations_service.send(conversationId, content.trim());
+    if (!result.ok) return { ok: false, error: result.error.message };
+    return { ok: true, messages: result.data };
+  } finally {
+    releaseSlot(userId);
+  }
 }
 
 export async function requestSupportAction(

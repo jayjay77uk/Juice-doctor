@@ -15,8 +15,8 @@ import { consultations } from '@/content/programmes';
  * 'requested' until a member of the team confirms them.
  */
 
-const LOCATIONS = ['video', 'phone', 'in_person'] as const;
-const DEFAULT_DURATION_MINS = 45;
+const LOCATIONS = ['phone'] as const;
+const DEFAULT_DURATION_MINS = 15;
 const MIN_LEAD_MS = 60 * 60_000; // at least 1 hour ahead
 const MAX_AHEAD_MS = 90 * 86_400_000; // at most 90 days ahead
 
@@ -33,7 +33,7 @@ function serviceTitle(slug: string): string {
   return consultations.find((c) => c.slug === slug)?.title ?? slug.replaceAll('-', ' ');
 }
 
-const LOCATION_LABELS: Record<string, string> = { video: 'Video call', phone: 'Phone call', in_person: 'In person' };
+const LOCATION_LABELS: Record<string, string> = { phone: 'Audio Call' };
 
 /**
  * Queue a member appointment email — best-effort and honest: the outbox

@@ -13,6 +13,7 @@ import { herneSpecialistReply, isHerneSpecialist } from './herne/reply';
 import { languageDirective, HERNE_DEFAULT_PREFERENCE, type LanguagePreference } from './herne/language';
 import { getLanguagePreferenceFor } from './herne/language-store';
 import { isMemoryEnabled } from './memory-prefs';
+import { precheckInput, postcheckOutput, UNSUPPORTED_CLAIM_MESSAGE } from './herne/safety-eval';
 
 /**
  * The real specialist-AI turn: retrieve the specialist's assigned knowledge
@@ -63,6 +64,11 @@ export async function specialistReply(
     return { text, citations, grounded: h.grounded, available: h.available };
   }
 
+  // All agent types share the same provider-independent safety boundary.
+  const safety = precheckInput(userText);
+  if (safety.blocked || safety.escalate) {
+    return { text: safety.userMessage ?? UNSUPPORTED_CLAIM_MESSAGE, citations: [], grounded: false, available: true };
+  }
   const provider = getAiProvider();
   if (!provider) {
     return {
@@ -94,12 +100,13 @@ export async function specialistReply(
       ...(await runtimeOptions(agent)),
       op: 'specialist:reply',
     });
-    const citations = [...new Set(chunks.map((c) => c.documentTitle))];
+    const checked = postcheckOutput(res.text, []);
+    const citations = checked.ok ? [...new Set(chunks.map((c) => c.documentTitle))] : [];
     await runLogRepo.log({
       agentId: agent.id,
       actorId: ctx?.userId ?? null,
       input: userText,
-      output: res.text,
+      output: checked.text,
       retrieved: chunks.map((c) => ({ title: c.documentTitle, chunkIndex: c.chunkIndex })),
       tokensInput: res.usage?.inputTokens ?? null,
       tokensOutput: res.usage?.outputTokens ?? null,
@@ -125,7 +132,7 @@ export async function specialistReply(
         });
       }
     }
-    return { text: res.text.trim(), citations, grounded: chunks.length > 0, available: true };
+    return { text: checked.text.trim(), citations, grounded: checked.ok && chunks.length > 0, available: true };
   } catch {
     await runLogRepo.log({
       agentId: agent.id,

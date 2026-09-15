@@ -35,11 +35,15 @@ export interface InviteResult {
 
 export async function inviteUserAction(_prev: InviteResult, formData: FormData): Promise<InviteResult> {
   let actorId: string;
+  let organisationId: string | null;
   try {
-    actorId = (await assertRole('administrator')).user.id;
+    const session = await assertRole('administrator');
+    actorId = session.user.id;
+    organisationId = session.user.organisationId;
   } catch {
     return { ok: false, error: 'Not authorised.' };
   }
+  if (!organisationId) return { ok: false, error: 'Your organisation must be configured before inviting users.' };
   const parsed = inviteSchema.safeParse({
     email: formData.get('email'),
     role: formData.get('role'),
@@ -57,14 +61,16 @@ export async function inviteUserAction(_prev: InviteResult, formData: FormData):
   }
 
   // Role + name on the profile (created by the registration trigger).
-  await sb
+  const { data: profile, error: profileError } = await sb
     .from('profiles')
-    .update({ role: parsed.data.role, ...(parsed.data.fullName ? { full_name: parsed.data.fullName } : {}) })
-    .eq('id', created.user.id);
+    .update({ role: parsed.data.role, organisation_id: organisationId, ...(parsed.data.fullName ? { full_name: parsed.data.fullName } : {}) })
+    .eq('id', created.user.id).select('id').single();
+  if (profileError || !profile) return { ok: false, error: 'The account was created but its profile could not be configured. Contact support before retrying.' };
 
   // One-time password-setup link (Supabase recovery link, generated — not emailed by Supabase).
   const { data: link, error: linkError } = await sb.auth.admin.generateLink({ type: 'recovery', email });
   const setupUrl = !linkError ? (link.properties?.action_link ?? '') : '';
+  if (!setupUrl) return { ok: false, error: 'The account was created, but a setup link could not be generated. Use password recovery to finish setup.' };
 
   await auditRepo.log({
     actorId,

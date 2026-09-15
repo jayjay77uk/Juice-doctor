@@ -8,6 +8,7 @@ import { Panel } from '@/components/admin/panel';
 import { DataTable, type Column } from '@/components/admin/data-table';
 import { StatusBadge } from '@/components/admin/status-badge';
 import { EmptyState } from '@/components/admin/empty-state';
+import { hasConsent } from '@/services/consents';
 
 export const metadata = createMetadata({ title: 'Practitioner console' });
 export const dynamic = 'force-dynamic';
@@ -31,7 +32,9 @@ const columns: Column<ConsultationCase>[] = [
 export default async function PractitionerConsolePage() {
   const session = await requireRole('practitioner', '/practitioner');
   const all = await consultationsRepo.list();
-  const cases = all.filter((c) => c.practitionerId === session.user.id);
+  const assigned = all.filter((c) => c.practitionerId === session.user.id);
+  const permitted = await Promise.all(assigned.map(c => hasConsent(c.memberId, 'health_data_sharing')));
+  const cases = assigned.filter((_, index) => permitted[index]);
   const awaiting = cases.filter((c) => c.status === 'awaiting_review');
 
   return (
