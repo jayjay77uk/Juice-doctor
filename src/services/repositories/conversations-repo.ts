@@ -166,6 +166,7 @@ export const conversationsRepo = {
     const sb = createAdminClient();
     if (!sb) return err({ code: 'unavailable', message: 'Conversation store unavailable.' });
     const agent = await resolveAgent(input.agentId);
+    if (!agent || agent.status !== 'active') return err({ code: 'invalid', message: 'This specialist is currently unavailable.' });
     const agentId = agent?.id ?? null;
     const { data, error } = await sb
       .from('conversations')
@@ -196,9 +197,9 @@ export const conversationsRepo = {
     if (conv.data.status !== 'active') return err({ code: 'invalid', message: 'This conversation is archived. Start a new conversation to continue.' });
     if (!content.trim()) return err({ code: 'invalid', message: 'Please enter a message.' });
 
-    await sb.from('messages').insert({ conversation_id: conversationId, role: 'user', content: content.trim() });
-
     const agent = await resolveAgent(conv.data.agentId);
+    if (agent && agent.status !== 'active') return err({ code: 'invalid', message: 'This specialist is currently unavailable.' });
+    await sb.from('messages').insert({ conversation_id: conversationId, role: 'user', content: content.trim() });
     let replyText: string;
     let modelKey: string | null = null;
     if (!agent) {

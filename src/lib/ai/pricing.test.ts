@@ -3,7 +3,7 @@ import { rateForModel, estimateCostUsd } from './pricing';
 
 describe('AI cost estimation', () => {
   it('matches a model by longest prefix', () => {
-    expect(rateForModel('claude-sonnet-5-20991231').inputPerMTok).toBe(3);
+    expect(rateForModel('claude-sonnet-4-20991231').inputPerMTok).toBe(3);
     expect(rateForModel('claude-3-5-haiku-latest').inputPerMTok).toBe(0.8);
   });
 
@@ -26,7 +26,7 @@ describe('AI cost estimation', () => {
 
   it('estimates cost from token usage', () => {
     // 1M input @ $3 + 1M output @ $15 = $18
-    expect(estimateCostUsd('claude-sonnet-5', { inputTokens: 1_000_000, outputTokens: 1_000_000 })).toBeCloseTo(18, 5);
+    expect(estimateCostUsd('claude-sonnet-4', { inputTokens: 1_000_000, outputTokens: 1_000_000 })).toBeCloseTo(18, 5);
     // small call rounds to micro-dollars, never negative
     const c = estimateCostUsd('claude-sonnet-5', { inputTokens: 1200, outputTokens: 300 });
     expect(c).toBeGreaterThan(0);

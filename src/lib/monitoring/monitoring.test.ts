@@ -3,6 +3,8 @@ import { redactProps, analyticsId, safeErrorSummary } from './redact';
 import { track } from './events';
 import { captureServerError } from './capture';
 
+vi.mock('@/lib/providers/budget', () => ({ reserveProviderUsage: vi.fn().mockResolvedValue(true) }));
+
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
@@ -25,7 +27,7 @@ describe('monitoring redaction', () => {
     expect(safe).toEqual({ specialistSlug: 'serena', confidence: 0.82, escalate: true });
   });
 
-  it('analytics identifiers are one-way hashes, never the raw user id', () => {
+  it('analytics identifiers are one-way hashes, never the raw user id', async () => {
     const raw = '11111111-2222-3333-4444-555555555555';
     const hashed = await analyticsId(raw);
     expect(hashed).not.toContain(raw.slice(0, 8));
@@ -71,6 +73,9 @@ describe('error capture honesty', () => {
   });
 
   it('sends a bounded envelope to the DSN endpoint when configured', async () => {
+    vi.stubEnv('FREE_SENTRY_TIER', 'free');
+    vi.stubEnv('FREE_SENTRY_HARD_CAP_CONFIRMED', 'true');
+    vi.stubEnv('FREE_SENTRY_VERIFIED_UNTIL', new Date(Date.now() + 86400_000).toISOString());
     vi.stubEnv('SENTRY_DSN', 'https://publickey@o123.ingest.sentry.io/456');
     const fetchSpy = vi.fn().mockResolvedValue(new Response('', { status: 200 }));
     vi.stubGlobal('fetch', fetchSpy);

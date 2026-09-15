@@ -38,7 +38,7 @@ function firstText(content: Anthropic.Messages.ContentBlock[]): string {
 
 /** Conservative ~4-chars-per-token estimate for the input budget guardrail. */
 export function estimateInputTokens(req: Pick<AiChatRequest, 'system' | 'messages' | 'toolMessages' | 'tools'>): number {
-  const chars = (req.system?.length ?? 0) + (req.toolMessages ? JSON.stringify(req.toolMessages).length : req.messages.reduce((total, m) => total + m.content.length, 0)) + JSON.stringify(req.tools ?? []).length;
+  const chars = (req.system?.length ?? 0) + (req.toolMessages ? JSON.stringify(req.toolMessages).length : req.messages.reduce((total, m) => total + m.content.length, 0)) + (req.tools?.length ? JSON.stringify(req.tools).length : 0);
   return Math.ceil(chars / 4);
 }
 

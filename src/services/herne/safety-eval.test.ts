@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { postcheckOutput, citedRecordIds } from './safety-eval';
+import { postcheckOutput, citedRecordIds, UNSUPPORTED_CLAIM_MESSAGE } from './safety-eval';
 
 const ALLOWED = ['HERNE-H-001', 'HERNE-N-003'];
 
@@ -38,6 +38,8 @@ describe('diagnosis detection — no false clinical-review escalations', () => {
       const result = postcheckOutput(text, ALLOWED);
       expect(result.issues, text).toContain('unsupported_diagnosis');
       expect(result.mustEscalate, text).toBe(true);
+      expect(result.text).toBe(UNSUPPORTED_CLAIM_MESSAGE);
+      expect(result.text).not.toBe(text);
     }
   });
 });

@@ -154,6 +154,9 @@ const DIAGNOSIS_CLAIM = new RegExp(
  * cite. Any bracketed record-id-shaped token NOT in that set is a fabricated
  * citation and is stripped from the text.
  */
+export const UNSUPPORTED_CLAIM_MESSAGE =
+  'I can’t diagnose or confirm a medical condition. Please speak with a qualified healthcare professional for an assessment. I can still help with general wellbeing information.';
+
 export function postcheckOutput(text: string, allowedRecordIds: string[]): SafetyPostcheck {
   const allowed = new Set(allowedRecordIds);
   const fabricated: string[] = [];
@@ -169,7 +172,7 @@ export function postcheckOutput(text: string, allowedRecordIds: string[]): Safet
   const text2 = cleaned.replace(/[ \t]{2,}/g, ' ').replace(/ +([.,;:])/g, '$1').trim();
   return {
     ok: issues.length === 0,
-    text: text2,
+    text: issues.includes('unsupported_diagnosis') ? UNSUPPORTED_CLAIM_MESSAGE : text2,
     issues,
     fabricatedCitations: [...new Set(fabricated)],
     mustEscalate: issues.includes('unsupported_diagnosis'),

@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { ok, err, type Result } from '../result';
 import type { SpecialistPlan, CustomerSubscription, ManualPayment, SubscriptionScope, SubscriptionState } from '@/types/crm';
 import { specialists } from '../specialists';
+import { hasDemoAccess } from '@/config/demo-access';
 
 /** Real repository for the AI specialist subscription tables. */
 
@@ -16,7 +17,6 @@ const STARTER_PLANS = [
 
 // Temporary client-demo access. This is intentionally limited to the named test account
 // and can be removed once real specialist subscriptions/checkout are configured.
-const DEMO_ALL_ACCESS_EMAILS = new Set(['jimohmujeeb820@gmail.com']);
 
 let plansSeeded = false;
 
@@ -102,7 +102,7 @@ export const subscriptionsRepo = {
     // This avoids depending on a profile row existing for the account.
     const authUser = await sb.auth.admin.getUserById(memberId);
     const email = authUser.data.user?.email?.trim().toLowerCase();
-    if (email && DEMO_ALL_ACCESS_EMAILS.has(email)) {
+    if (hasDemoAccess(email)) {
       return ok(await resolveAccess('all', []));
     }
 

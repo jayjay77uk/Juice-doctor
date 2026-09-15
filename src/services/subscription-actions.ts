@@ -8,6 +8,7 @@ import type { CustomerSubscription, SubscriptionScope, SubscriptionState } from 
 import { assertRole, assertSession } from '@/lib/auth/authorize';
 import { admin } from './admin';
 import { auditRepo } from './repositories/audit-repo';
+import { hasDemoAccess } from '@/config/demo-access';
 
 async function queueStateMail(sub: CustomerSubscription): Promise<void> { if (!sub.customerEmail) return; try { await sendTemplateMail({ to: sub.customerEmail, template: 'subscription.state_changed', params: { planName: sub.planName, state: sub.state }, dedupeKey: `sub-state:${sub.id}:${sub.state}:${sub.updatedAt}` }); } catch {} }
 const MEMBER_LIVE_STATES: SubscriptionState[] = ['active', 'trialing'];
@@ -24,6 +25,7 @@ export async function recordPaymentAction(id: string, note: string): Promise<Res
 
 export async function customerSubscribeAction(planId: string): Promise<Res> {
   let session; try { session = await assertSession(); } catch { return { ok: false, error: 'Please sign in.' }; }
+  if (!hasDemoAccess(session.user.email)) return { ok: false, error: 'Please contact the team to arrange and approve access. Online checkout is not connected yet.' };
   const plan = await subscriptionsService.plans.byId(planId); if (!plan.ok || plan.data.status !== 'active') return { ok: false, error: 'That plan is not available.' };
   const existing = await subscriptionsService.byMember(session.user.id); if (existing.ok && existing.data.some((s) => MEMBER_LIVE_STATES.includes(s.state) && s.planId === planId)) return { ok: true };
   const customerName = session.user.name || session.user.email?.split('@')[0] || 'Member';
@@ -33,7 +35,18 @@ export async function customerSubscribeAction(planId: string): Promise<Res> {
 
 export async function customerSubscribeFormAction(formData: FormData): Promise<void> { const result = await customerSubscribeAction(String(formData.get('planId') ?? '')); if (!result.ok) throw new Error(result.error); }
 export async function customerCancelAction(id: string): Promise<Res> { let userId: string; try { userId = (await assertSession()).user.id; } catch { return { ok: false, error: 'Please sign in.' }; } const gate = await assertOwnLiveSubscription(id, userId); if (!gate.ok) return gate; const r = await subscriptionsService.cancel(id); if (r.ok) await queueStateMail(r.data); revalidateAll(); return r.ok ? { ok: true } : { ok: false, error: r.error.message }; }
-export async function customerChangePlanAction(id: string, planId: string): Promise<Res> { let userId: string; try { userId = (await assertSession()).user.id; } catch { return { ok: false, error: 'Please sign in.' }; } const gate = await assertOwnLiveSubscription(id, userId); if (!gate.ok) return gate; const plan = await subscriptionsService.plans.byId(planId); if (!plan.ok || plan.data.status !== 'active') return { ok: false, error: 'That plan is not available.' }; const r = await subscriptionsService.changePlan(id, planId); if (r.ok) await queueStateMail(r.data); revalidateAll(); return r.ok ? { ok: true } : { ok: false, error: r.error.message }; }
+export async function customerChangePlanAction(id: string, planId: string): Promise<Res> {
+  let session; try { session = await assertSession(); } catch { return { ok: false, error: 'Please sign in.' }; }
+  if (!hasDemoAccess(session.user.email)) return { ok: false, error: 'Please contact the team to approve a plan change. Online checkout is not connected yet.' };
+  const gate = await assertOwnLiveSubscription(id, session.user.id);
+  if (!gate.ok) return gate;
+  const plan = await subscriptionsService.plans.byId(planId);
+  if (!plan.ok || plan.data.status !== 'active') return { ok: false, error: 'That plan is not available.' };
+  const result = await subscriptionsService.changePlan(id, planId);
+  if (result.ok) await queueStateMail(result.data);
+  revalidateAll();
+  return result.ok ? { ok: true } : { ok: false, error: result.error.message };
+}
 
 /**
  * Grant a registered member access to a plan (administrator). The operational

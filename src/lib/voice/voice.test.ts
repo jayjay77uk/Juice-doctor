@@ -1,6 +1,19 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { getSttProvider } from './stt';
 import { getTtsProvider, defaultVoiceId } from './tts';
+
+// No live provider or database calls: these tests exercise adapter behaviour.
+vi.mock('@/lib/providers/budget', () => ({
+  reserveProviderUsage: vi.fn().mockResolvedValue(true),
+  verifyElevenLabsFreeAllowance: vi.fn().mockResolvedValue(true),
+}));
+beforeEach(() => {
+  for (const provider of ['DEEPGRAM', 'ELEVENLABS']) {
+    vi.stubEnv(`FREE_${provider}_TIER`, 'free');
+    vi.stubEnv(`FREE_${provider}_HARD_CAP_CONFIRMED`, 'true');
+    vi.stubEnv(`FREE_${provider}_VERIFIED_UNTIL`, new Date(Date.now() + 86400_000).toISOString());
+  }
+});
 
 afterEach(() => {
   vi.unstubAllEnvs();

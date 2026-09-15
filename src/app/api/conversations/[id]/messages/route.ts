@@ -52,6 +52,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const agentResult = conv.data.agentId ? await agents.byId(conv.data.agentId) : { ok: false as const };
   const agent = agentResult.ok ? agentResult.data : null;
+  if (agent && agent.status !== 'active') return NextResponse.json({ error: 'This specialist is currently unavailable.' }, { status: 410 });
 
   // Subscription access: chatting with a specialist requires an active
   // subscription that covers it — enforced here as well as at creation. A

@@ -247,12 +247,12 @@ async function prepareTurn(agent: AiAgent, history: ChatMessage[], query: string
   const specialistName = profile?.name ?? agent.name;
   const pref = await resolvePreference(ctx);
 
-  if (!profile || !provider) return { kind: 'blocked', reply: unavailable(specialistName, pref.language, Boolean(provider)) };
+  if (!profile) return { kind: 'blocked', reply: unavailable(specialistName, pref.language, Boolean(provider)) };
 
   const checked = precheckInput(query);
   const blockedTopic = agent.safetyRules.blockedTopics.find(topic => topic.trim() && query.toLowerCase().includes(topic.toLowerCase()));
   const configuredEscalation = agent.safetyRules.escalateOn.some(topic => topic.trim() && query.toLowerCase().includes(topic.toLowerCase()));
-  const pre = blockedTopic ? { ...checked, blocked: true, userMessage: 'This question is outside my supported scope. Please discuss it with a qualified professional.', reason: 'Configured specialist boundary', trigger: 'outside_scope' as const } : configuredEscalation ? { ...checked, escalate: true, reason: 'Configured human-review trigger', trigger: 'human_review' as const } : checked;
+  const pre = checked.blocked ? checked : blockedTopic ? { ...checked, blocked: true, userMessage: 'This question is outside my supported scope. Please discuss it with a qualified professional.', reason: 'Configured specialist boundary', trigger: 'outside_scope' as const } : configuredEscalation ? { ...checked, escalate: true, reason: 'Configured human-review trigger', trigger: 'human_review' as const } : checked;
   if (pre.blocked) {
     await tryEscalate({ userId: ctx?.userId, conversationId: ctx?.conversationId, trigger: pre.trigger ?? 'emergency', reason: pre.reason ?? 'Safety pre-check', specialist: agent.slug, urgency: pre.urgency });
     await runLogRepo.log({ agentId: agent.id, actorId: ctx?.userId ?? null, input: query, output: pre.userMessage ?? '', status: 'blocked' });
@@ -270,6 +270,8 @@ async function prepareTurn(agent: AiAgent, history: ChatMessage[], query: string
       },
     };
   }
+
+  if (!provider) return { kind: 'blocked', reply: unavailable(specialistName, pref.language, false) };
 
   const started = Date.now();
   const options = await runtimeOptions(agent);
@@ -477,20 +479,21 @@ export async function* streamHerneReply(agent: AiAgent, history: ChatMessage[], 
     yield { type: 'final', reply: prep.reply };
     return;
   }
-  let text = '';
   let raw: RawResult = { text: '', usage: null, model: null, costUsd: 0, latencyMs: 0, traceId: null, stopReason: null };
+  let completed = false;
   try {
     for await (const chunk of streamAgentTools(prep.provider, { system: prep.system, messages: prep.messages, ...prep.options, op: 'herne:stream', ...(ctx?.signal ? { signal: ctx.signal } : {}) }, ctx?.userId && ctx.conversationId ? { userId: ctx.userId, conversationId: ctx.conversationId, agent } : undefined)) {
-      if (chunk.type === 'delta') {
-        text += chunk.text;
-        yield { type: 'delta', text: chunk.text };
-      } else {
+      // Never expose raw provider output before the safety post-check.
+      if (chunk.type === 'final') {
+        completed = true;
         raw = { text: chunk.result.text, usage: chunk.result.usage, model: chunk.result.model, costUsd: chunk.result.costUsd, latencyMs: chunk.result.latencyMs, traceId: chunk.result.traceId, stopReason: chunk.result.stopReason };
       }
     }
+    if (!completed) throw new Error('Incomplete provider response.');
     const reply = await finalizeTurn(prep, agent, query, ctx, raw);
     yield { type: 'final', reply };
   } catch {
+    if (ctx?.signal?.aborted) return;
     await runLogRepo.log({ agentId: agent.id, actorId: ctx?.userId ?? null, input: query, output: '', latencyMs: Date.now() - prep.started, status: 'error' });
     yield {
       type: 'final',

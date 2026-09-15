@@ -3,6 +3,9 @@ import { getMailProvider } from './provider';
 import { createResendAdapter } from './resend';
 import { renderMailTemplate } from './templates';
 
+// Adapter tests isolate delivery from the separately tested allowance ledger.
+vi.mock('@/lib/providers/budget', () => ({ reserveProviderUsage: vi.fn().mockResolvedValue(true) }));
+
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
