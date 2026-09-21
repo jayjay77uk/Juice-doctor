@@ -43,14 +43,16 @@ export interface AdminMetrics {
 
 export const admin = {
   users: {
-    async list(q: ListQuery = {}): Promise<Result<Page<Profile>>> {
+    async list(q: ListQuery = {}, organisationId?: string): Promise<Result<Page<Profile>>> {
       const sb = createAdminClient();
       if (!sb || !isSupabaseAdminConfigured()) return ok({ items: [], nextCursor: null });
-      const { data, error } = await sb
+      let query = sb
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(q.limit ?? 100);
+      if (organisationId) query = query.eq('organisation_id', organisationId);
+      const { data, error } = await query;
       // A query failure must surface — an ok-empty here would render a
       // confidently false "No users yet" over a live platform.
       if (error) return err({ code: 'unavailable', message: 'Could not load users from the database.' });

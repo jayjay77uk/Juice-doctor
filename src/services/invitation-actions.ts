@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { assertRole } from '@/lib/auth/authorize';
+import { assertPermission } from '@/lib/auth/authorize';
+import { ROLE_RANK, type AppRole } from '@/lib/auth/roles';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { auditRepo } from './repositories/audit-repo';
 import { sendTemplateMail } from './mail';
@@ -35,10 +36,13 @@ export interface InviteResult {
 
 export async function inviteUserAction(_prev: InviteResult, formData: FormData): Promise<InviteResult> {
   let actorId: string;
+  let actorRole: AppRole;
   let organisationId: string | null;
   try {
-    const session = await assertRole('administrator');
+    const session = await assertPermission('users.create');
+    await assertPermission('roles.assign');
     actorId = session.user.id;
+    actorRole = session.user.role;
     organisationId = session.user.organisationId;
   } catch {
     return { ok: false, error: 'Not authorised.' };
@@ -50,6 +54,9 @@ export async function inviteUserAction(_prev: InviteResult, formData: FormData):
     fullName: formData.get('fullName'),
   });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the fields.' };
+  if (ROLE_RANK[actorRole] < ROLE_RANK.administrator || ROLE_RANK[parsed.data.role] >= ROLE_RANK[actorRole]) {
+    return { ok: false, error: 'You can only invite users with roles below your own.' };
+  }
 
   const sb = createAdminClient();
   if (!sb) return { ok: false, error: 'User management is not available right now.' };

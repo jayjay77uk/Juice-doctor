@@ -10,6 +10,9 @@ import { EmptyState } from '@/components/admin/empty-state';
 import { InviteUserForm } from '@/components/admin/invite-user-form';
 import { admin } from '@/services/admin';
 import type { Profile } from '@/types/identity';
+import { requirePermission } from '@/lib/auth/authorize';
+import { mayManageUser } from '@/lib/auth/user-management';
+import { UserAccessForm } from '@/components/admin/user-access-form';
 
 export const metadata: Metadata = createMetadata({
   title: 'Users',
@@ -30,6 +33,7 @@ const columns: Column<Profile>[] = [
     ),
   },
   { header: 'Role', cell: (u) => <StatusBadge status={u.role} /> },
+  { header: 'Status', cell: (u) => <StatusBadge status={u.status} /> },
   {
     header: 'Onboarding',
     cell: (u) => <StatusBadge status={u.onboardingCompleted ? 'completed' : 'pending'} />,
@@ -39,7 +43,8 @@ const columns: Column<Profile>[] = [
 ];
 
 export default async function UsersPage() {
-  const result = await admin.users.list();
+  const { user } = await requirePermission('users.read', '/admin/users');
+  const result = await admin.users.list({}, user.organisationId ?? '00000000-0000-0000-0000-000000000000');
   const items = result.ok ? result.data.items : [];
   const loadError = result.ok ? null : result.error.message;
 
@@ -71,7 +76,8 @@ export default async function UsersPage() {
 
       <Panel padded={false}>
         <DataTable
-          columns={columns}
+          columns={[...columns, { header: 'Access', cell: (profile) => mayManageUser(user, profile, profile.role)
+            ? <UserAccessForm profile={profile} actorRole={user.role} /> : <span className="text-muted-foreground">Protected</span> }]}
           rows={items}
           getKey={(u) => u.id}
           empty={

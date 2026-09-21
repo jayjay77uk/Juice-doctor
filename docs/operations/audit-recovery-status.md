@@ -21,7 +21,7 @@ This document records only rebuilt work.
 
 ## Still pending
 
-Programme delivery and progress; user administration UI; follow-up producers; runtime feature-flag consumers;
+Programme delivery and progress; permission-override administration UI; follow-up producers; runtime feature-flag consumers;
 approved public content and final client handover documentation. Flag persistence
 and readiness reporting are fixed, but this does not mean every flag has a consumer.
 
@@ -59,8 +59,15 @@ and readiness reporting are fixed, but this does not mean every flag has a consu
   it reserves the entire free allowance first and returns an error, not partial
   audio, on synthesis failure or excess length. No live voice calls were made.
 
-Verification on 21 September: 226 tests passed, including journal RLS in embedded
-PostgreSQL, handoff privacy checks and complete-audio/error-path tests.
+Verification on 21 September: 234 tests passed, including journal RLS in embedded
+PostgreSQL, handoff privacy checks, complete-audio/error-path tests and user access
+hierarchy tests. Type-checking, lint and the production build passed.
+
+User access administration now includes role/status editing with a reason,
+permission checks, organisation scoping, optimistic concurrency and protected
+self/peer/owner accounts. Invitations also enforce subordinate roles and effective
+permissions. Permission-override editing remains pending. Audit logging uses the
+existing best-effort repository; this is not a claim of transactional audit logging.
 
 Deployment prerequisites: apply the Journal/Journey migration to the correct
 Juice Doctor project, enable Supabase email confirmation, allow the production
