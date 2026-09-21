@@ -11,6 +11,8 @@ const SOURCES = [
   ['conversations', 'user_id', 'id'],
   ['user_consents', 'user_id', 'id'],
   ['member_onboarding', 'user_id', 'user_id'],
+  ['member_journal', 'user_id', 'id'],
+  ['member_journeys', 'user_id', 'user_id'],
   ['messages', 'conversations.user_id', 'id'],
 ] as const;
 

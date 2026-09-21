@@ -20,6 +20,8 @@ import { normalizeSpecialistRef, isWildcardRef, isHypotheticalHandoff } from './
 import { env } from '@/lib/env';
 import { runtimeOptions, recallForAgent } from '../agent-runtime';
 import { onboardingContext } from '../onboarding';
+import { journeyContext } from '../journey-context';
+import { handoffContext } from '../handoff-context';
 import { streamAgentTools } from '../agent-tools';
 import { fitHistory } from '@/lib/ai/history';
 import { activePrompt, type ActivePrompt } from './prompt-version';
@@ -275,9 +277,10 @@ async function prepareTurn(agent: AiAgent, history: ChatMessage[], query: string
 
   const started = Date.now();
   const options = await runtimeOptions(agent);
-  const onboarding = ctx?.userId ? await onboardingContext(ctx.userId) : null;
+  const [onboarding, selectedFocus] = ctx?.userId ? await Promise.all([onboardingContext(ctx.userId), journeyContext(ctx.userId)]) : [null, ''];
+  const handoff = ctx?.userId && ctx.conversationId ? await handoffContext(ctx.userId, ctx.conversationId) : '';
   const [retrieved, memory, dna, plan, wearable, active, rules, journey, attachments] = await Promise.all([
-    retrieveForSpecialist(agent.slug, query, ctx?.goal ? { goal: ctx.goal } : {}),
+    retrieveForSpecialist(agent.slug, query, { agentId: agent.id, ...(ctx?.goal ? { goal: ctx.goal } : {}) }),
     ctx?.userId || ctx?.conversationId
       ? recallForAgent(agent, ctx?.userId, ctx?.conversationId)
       : Promise.resolve([] as MemoryItem[]),
@@ -312,6 +315,8 @@ async function prepareTurn(agent: AiAgent, history: ChatMessage[], query: string
     }) +
     `\n\nADMIN-CONFIGURED IDENTITY\nName: ${agent.name}\nRole: ${agent.role}\nPurpose: ${agent.purpose}\nStyle: ${agent.personality}\nAdditional boundaries: ${agent.responseBoundaries}` +
     (onboarding ? `\n\n${onboarding}` : '') +
+    (selectedFocus ? `\n\n${selectedFocus}` : '') +
+    (handoff ? `\n\n${handoff}` : '') +
     (memory.length ? `\n\nWHAT YOU REMEMBER ABOUT THIS PERSON (respect it):\n${memory.map((m) => `- ${m.content}`).join('\n')}` : '');
 
   // windowHistory trims a leading assistant turn — the API 400s on one.
@@ -456,7 +461,7 @@ export async function herneSpecialistReply(agent: AiAgent, history: ChatMessage[
   if (prep.kind === 'blocked') return prep.reply;
   try {
     let res: import('@/lib/ai').AiChatResult | null = null;
-    for await (const chunk of streamAgentTools(prep.provider, { system: prep.system, messages: prep.messages, ...prep.options, op: 'herne:reply', ...(ctx?.signal ? { signal: ctx.signal } : {}) }, ctx?.userId && ctx.conversationId ? { userId: ctx.userId, conversationId: ctx.conversationId, agent } : undefined)) if (chunk.type === 'final') res = chunk.result;
+    for await (const chunk of streamAgentTools(prep.provider, { system: prep.system, messages: prep.messages, ...prep.options, op: 'herne:reply', ...(ctx?.signal ? { signal: ctx.signal } : {}) }, ctx?.userId && ctx.conversationId ? { userId: ctx.userId, conversationId: ctx.conversationId, agent, allowedEvidenceIds: prep.retrieved.map(record => record.recordId) } : undefined)) if (chunk.type === 'final') res = chunk.result;
     if (!res) throw new Error('Incomplete response.');
     return finalizeTurn(prep, agent, query, ctx, { text: res.text, usage: res.usage, model: res.model, costUsd: res.costUsd, latencyMs: res.latencyMs, traceId: res.traceId, stopReason: res.stopReason });
   } catch {
@@ -482,7 +487,7 @@ export async function* streamHerneReply(agent: AiAgent, history: ChatMessage[], 
   let raw: RawResult = { text: '', usage: null, model: null, costUsd: 0, latencyMs: 0, traceId: null, stopReason: null };
   let completed = false;
   try {
-    for await (const chunk of streamAgentTools(prep.provider, { system: prep.system, messages: prep.messages, ...prep.options, op: 'herne:stream', ...(ctx?.signal ? { signal: ctx.signal } : {}) }, ctx?.userId && ctx.conversationId ? { userId: ctx.userId, conversationId: ctx.conversationId, agent } : undefined)) {
+    for await (const chunk of streamAgentTools(prep.provider, { system: prep.system, messages: prep.messages, ...prep.options, op: 'herne:stream', ...(ctx?.signal ? { signal: ctx.signal } : {}) }, ctx?.userId && ctx.conversationId ? { userId: ctx.userId, conversationId: ctx.conversationId, agent, allowedEvidenceIds: prep.retrieved.map(record => record.recordId) } : undefined)) {
       // Never expose raw provider output before the safety post-check.
       if (chunk.type === 'final') {
         completed = true;

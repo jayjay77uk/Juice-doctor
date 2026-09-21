@@ -5,6 +5,9 @@ import { Panel } from '@/components/admin/panel';
 import { StatusBadge } from '@/components/admin/status-badge';
 import { EmptyState } from '@/components/admin/empty-state';
 import { member } from '@/services/member';
+import { assertSession } from '@/lib/auth/authorize';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { JourneySelection } from '@/components/dashboard/journal-form';
 
 export const metadata = createMetadata({ title: 'Your journey' });
 
@@ -23,6 +26,9 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 export default async function JourneyPage() {
+  const { user } = await assertSession();
+  const sb = await createSupabaseServerClient();
+  const selection = sb ? await sb.from('member_journeys').select('focus').eq('user_id', user.id).maybeSingle() : null;
   const journeyResult = await member.journey();
   const events = journeyResult.ok ? journeyResult.data : [];
 
@@ -32,6 +38,9 @@ export default async function JourneyPage() {
         title="Your journey"
         description="Every milestone since you started."
       />
+      <Panel title="Choose your focus" description="A wellbeing priority you can change as your needs change. Specialists can use this focus in future chats when you allow AI processing.">
+        {selection && !selection.error ? <JourneySelection focus={selection.data?.focus ?? ''} /> : <p role="alert">Journey selection is temporarily unavailable.</p>}
+      </Panel>
 
       <Panel
         title="Your progress story"

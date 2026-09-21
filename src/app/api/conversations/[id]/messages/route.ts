@@ -7,6 +7,8 @@ import { specialistReply } from '@/services/specialist-reply';
 import { checkUsageLimit, acquireSlot, releaseSlot } from '@/services/ai-usage';
 import { subscriptionsService } from '@/services/subscriptions';
 import { hasConsent } from '@/services/consents';
+import { pendingToolRequests } from '@/services/agent-tools';
+import { regenerationInput } from '@/lib/chat-regeneration';
 
 /**
  * Streaming specialist turn (NDJSON). The client POSTs { content }; we authenticate,
@@ -38,14 +40,29 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   let content = '';
+  let regenerate = false;
+  let regenerated: ReturnType<typeof regenerationInput> = null;
   try {
-    const body = (await request.json()) as { content?: unknown };
+    const body = (await request.json()) as { content?: unknown; regenerate?: unknown };
+    regenerate = body.regenerate === true;
     content = typeof body.content === 'string' ? body.content.trim() : '';
   } catch {
     content = '';
   }
+  if (regenerate) {
+    const stored = await conversationsRepo.messages(id);
+    if (!stored.ok) return NextResponse.json({ error: 'Conversation history unavailable.' }, { status: 503 });
+    regenerated = regenerationInput(stored.data);
+    if (!regenerated) return NextResponse.json({ error: 'There is no message to regenerate.' }, { status: 400 });
+    content = regenerated.content;
+  }
   if (!content) return NextResponse.json({ error: 'Please enter a message.' }, { status: 400 });
   if (content.length > 4000) return NextResponse.json({ error: 'Message is too long (max 4000 characters).' }, { status: 400 });
+  if (conv.data.context.human_takeover === true) {
+    if (regenerate) return NextResponse.json({ error: 'AI is paused while the care team handles this conversation.' }, { status: 409 });
+    await conversationsRepo.insertUserMessage(id, content);
+    return new Response(`${JSON.stringify({ type: 'accepted', humanTakeover: true })}\n`, { headers: { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store' } });
+  }
   if (!(await hasConsent(userId, 'ai_processing'))) return NextResponse.json({ error: 'AI processing consent is required. Review your consent in Settings.' }, { status: 403 });
 
   // Per-user usage limits (daily/monthly, counted from ai_run_logs).
@@ -80,8 +97,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   let history;
   try {
-    history = await conversationsRepo.historyFor(id);
-    await conversationsRepo.insertUserMessage(id, content);
+    history = regenerated?.history ?? await conversationsRepo.historyFor(id);
+    if (!regenerate) await conversationsRepo.insertUserMessage(id, content);
   } catch (e) {
     releaseSlot(userId);
     throw e;
@@ -112,6 +129,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 promptVersionId: r.promptVersion?.id ?? null,
               };
               const message = await conversationsRepo.insertAssistantMessage(id, turn);
+              if (!message) throw new Error('Reply could not be saved.');
               controller.enqueue(line({ type: 'final', message, escalated: r.escalationRecommended, referral: r.referralSuggestion, citations: r.citations, escalationReason: r.escalationReason }));
             }
           }
@@ -120,8 +138,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           const reply = agent
             ? await specialistReply(agent, history, content, { userId, conversationId: id })
             : { text: 'Thanks for your message. A member of the team will follow up with you.', citations: [], grounded: false, available: false };
-          controller.enqueue(line({ type: 'delta', text: reply.text }));
           const message = await conversationsRepo.insertAssistantMessage(id, { content: reply.text, model: agent?.defaultModelId ?? null });
+          if (!message) throw new Error('Reply could not be saved.');
           controller.enqueue(line({ type: 'final', message, escalated: false, referral: null, citations: [] }));
         }
       } catch {
@@ -136,4 +154,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   return new Response(stream, {
     headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' },
   });
+}
+
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
+  const { id } = await params;
+  const conv = await conversationsRepo.byId(id);
+  if (!conv.ok || conv.data.userId !== session.user.id || conv.data.status === 'deleted') return NextResponse.json({ error: 'Conversation not found.' }, { status: 404 });
+  const [messages, pending] = await Promise.all([conversationsRepo.messages(id), pendingToolRequests(session.user.id, id)]);
+  if (!messages.ok) return NextResponse.json({ error: 'Messages unavailable.' }, { status: 503 });
+  return NextResponse.json({ messages: messages.data, pending, humanTakeover: conv.data.context.human_takeover === true }, { headers: { 'Cache-Control': 'no-store' } });
 }

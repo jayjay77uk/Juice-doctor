@@ -1,9 +1,12 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
+import { acceptSpecialistHandoff } from '@/services/handoff-actions';
 import { Send, LifeBuoy, ThumbsUp, ThumbsDown, Square, FileText, AlertTriangle, ArrowRightLeft, Mic, Volume2, Copy, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { requestSupportAction, messageFeedbackAction } from '@/services/conversation-actions';
+import { confirmSupportToolAction } from '@/services/tool-confirmation-actions';
 import { VoiceInputButton, SpeakButton, VoiceModeSwitch, useReplyAudio, useVoiceLoop } from '@/components/dashboard/voice-controls';
 import { voiceModesFor, type VoiceMode } from '@/lib/voice/modes';
 import type { Message, MessageCitation } from '@/types/conversation';
@@ -59,12 +62,15 @@ export function SpecialistChat({
   voice?: { sttConfigured: boolean; ttsConfigured: boolean };
 }) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
+  const router = useRouter();
   const [streaming, setStreaming] = React.useState<string | null>(null);
   const [input, setInput] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [attachmentBusy, setAttachmentBusy] = React.useState(false);
   const [rated, setRated] = React.useState<Record<string, 'up' | 'down'>>({});
+  const [pendingTools, setPendingTools] = React.useState<{ id: string; reason: string }[]>([]);
+  const [humanTakeover, setHumanTakeover] = React.useState(false);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const abortRef = React.useRef<AbortController | null>(null);
 
@@ -111,13 +117,39 @@ export function SpecialistChat({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, streaming]);
 
-  async function send(text: string) {
+  // Refresh durable replies and newly proposed confirmations after each turn,
+  // and while idle so care-team messages appear without reloading the page.
+  React.useEffect(() => {
+    if (busy) return;
+    const controller = new AbortController();
+    let loading = false;
+    async function refresh() {
+      if (loading || document.visibilityState === 'hidden') return;
+      loading = true;
+      try {
+        const response = await fetch(`/api/conversations/${conversationId}/messages`, { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) return;
+        const data = await response.json() as { messages: Message[]; pending: { id: string; reason: string }[]; humanTakeover: boolean };
+        if (!controller.signal.aborted) {
+          setMessages(previous => JSON.stringify(previous) === JSON.stringify(data.messages) ? previous : data.messages);
+          setPendingTools(data.pending);
+          setHumanTakeover(data.humanTakeover);
+        }
+      } catch { /* Keep the last durable view on transient refresh failure. */ }
+      finally { loading = false; }
+    }
+    void refresh();
+    const interval = setInterval(() => void refresh(), 8000);
+    return () => { controller.abort(); clearInterval(interval); };
+  }, [conversationId, busy]);
+
+  async function send(text: string, regenerate = false) {
     const content = text.trim();
     if (!content || busy) return;
     setError(null);
     setBusy(true);
     setInput('');
-    setMessages((m) => [...m, blankMessage({ id: `local_${m.length}`, conversationId, role: 'user', content })]);
+    if (!regenerate) setMessages((m) => [...m, blankMessage({ id: `local_${m.length}`, conversationId, role: 'user', content })]);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -126,7 +158,7 @@ export function SpecialistChat({
       const resp = await fetch(`/api/conversations/${conversationId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, regenerate }),
         signal: controller.signal,
       });
       if (!resp.ok || !resp.body) {
@@ -203,7 +235,28 @@ export function SpecialistChat({
 
   function regenerate() {
     const last = [...messages].reverse().find((m) => m.role === 'user');
-    if (last) void send(last.content);
+    if (last) void send(last.content, true);
+  }
+
+  async function decideTool(id: string, confirm: boolean) {
+    if (busy) return;
+    setBusy(true); setError(null);
+    try {
+      const result = await confirmSupportToolAction(id, confirm);
+      if (!result.ok) setError(result.error ?? 'The action could not be completed.');
+    } catch { setError('The action could not be completed.'); }
+    finally { setBusy(false); }
+  }
+
+  async function handoff(messageId: string) {
+    if (busy) return;
+    setBusy(true); setError(null);
+    try {
+      const result = await acceptSpecialistHandoff(messageId);
+      if (result.ok) router.push(`/dashboard/conversations/${result.conversationId}`);
+      else setError(result.error);
+    } catch { setError('The handoff could not be completed.'); }
+    finally { setBusy(false); }
   }
 
   return (
@@ -240,6 +293,7 @@ export function SpecialistChat({
               </div>
             </div>
             {msg.role === 'assistant' && msg.citations && msg.citations.length > 0 && <Citations citations={msg.citations} />}
+            {msg.referral && ['makela','serena','atlas','aqua','sage','luca','felix','optimus'].includes(msg.referral.toRole.trim().toLowerCase()) && <Button type="button" intent="outline" disabled={busy} onClick={() => void handoff(msg.id)}>Continue with {msg.referral.toRole} — share this conversation’s context</Button>}
             {msg.role === 'assistant' && msg.escalated && (
               <div className="ml-1 mt-1 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
@@ -297,6 +351,11 @@ export function SpecialistChat({
       </div>
 
       <div className="sticky bottom-0 border-t border-border bg-surface/95 p-3 backdrop-blur sm:p-4">
+        {humanTakeover && <p role="status" className="mb-2 text-sm">The care team is handling this conversation. AI replies are paused; your messages are saved for the team. This is not an emergency service.</p>}
+        {pendingTools.map(tool => <div key={tool.id} className="mb-3 rounded-xl border border-border p-3">
+          <p className="text-sm">Request human support: {tool.reason}</p>
+          <div className="mt-2 flex gap-2"><Button type="button" disabled={busy} onClick={() => void decideTool(tool.id, true)}>Confirm request</Button><Button type="button" intent="ghost" disabled={busy} onClick={() => void decideTool(tool.id, false)}>Decline</Button></div>
+        </div>)}
         {error && <p className="mb-2 text-sm text-danger" role="alert">{error}</p>}
         <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="mx-auto max-w-4xl rounded-2xl border border-border bg-surface-muted/40 p-2 shadow-sm">
           <ComposerAttachments conversationId={conversationId} files={attachments} disabled={busy || attachmentBusy} onBusy={setAttachmentBusy} />

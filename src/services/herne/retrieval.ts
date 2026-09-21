@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { HERNE_ORG } from './records';
 import { ensureIngested } from './ingestion';
 import { scoreEvidence, type ScoreBreakdown, type RetrievalWeights } from './scoring';
+import { knowledgeRepo } from '../repositories/knowledge-repo';
 
 export { DEFAULT_WEIGHTS, scoreEvidence } from './scoring';
 export type { RetrievalWeights, ScoreBreakdown, ScoreInput } from './scoring';
@@ -34,15 +35,15 @@ type Row = Record<string, unknown>;
 export async function retrieveForSpecialist(
   specialistId: string,
   query: string,
-  opts?: { goal?: string; limit?: number; weights?: RetrievalWeights },
+  opts?: { goal?: string; limit?: number; weights?: RetrievalWeights; agentId?: string },
 ): Promise<HerneRetrieved[]> {
   const sb = createAdminClient();
   if (!sb) return [];
   await ensureIngested();
 
-  const { data } = await sb.from('herne_evidence_records').select('*').eq('organisation_id', HERNE_ORG);
+  const { data } = await sb.from('herne_evidence_records').select('*').eq('organisation_id', HERNE_ORG)
+    .in('status', ['reviewed_seed', 'reviewed', 'approved', 'published']);
   const rows = (data ?? []) as Row[];
-  if (!rows.length) return [];
   const limit = opts?.limit ?? 4; // 3–6 default band
 
   const scored: HerneRetrieved[] = rows.map((r) => {
@@ -78,5 +79,14 @@ export async function retrieveForSpecialist(
     };
   });
 
-  return scored.sort((a, b) => b.score.final - a.score.final).slice(0, limit);
+  const assigned = opts?.agentId ? await knowledgeRepo.retrieve(opts.agentId, query, limit) : [];
+  const documents: HerneRetrieved[] = assigned.map(chunk => ({
+    recordId: `DOC-${chunk.documentId.toUpperCase()}-${chunk.chunkIndex}`,
+    claim: `Assigned reference: ${chunk.documentTitle}`,
+    documentText: chunk.content, primaryPillar: null, sourceTitle: chunk.documentTitle,
+    sourceUrl: '', evidenceStrength: 'Organisation-published reference; clinical evidence strength not independently assessed',
+    role: 'background', safety: {}, responseGuidance: {},
+    score: scoreEvidence({ specialistRelevance: {}, primaryPillar: null, evidenceStrength: '', status: 'published', safetyHasReviewFlag: false, text: chunk.content }, specialistId, query),
+  }));
+  return [...scored.sort((a, b) => b.score.final - a.score.final).slice(0, limit), ...documents];
 }

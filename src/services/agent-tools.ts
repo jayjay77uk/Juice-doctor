@@ -5,18 +5,22 @@ import type { AiChatRequest, AiProvider, AiStreamChunk, AiChatResult } from '@/l
 import { createAdminClient } from '@/lib/supabase/admin';
 import { carePlan } from './herne/care-plan';
 import { subscriptionsService } from './subscriptions';
+import { careProposalSchema, safeCareProposal } from '@/lib/care-proposal';
+import { hasConsent } from './consents';
 
 const EMPTY = z.object({}).strict();
 const SUPPORT = z.object({ reason: z.string().trim().min(1).max(200) }).strict();
+const PROPOSAL = careProposalSchema;
 export const TOOL_HANDLERS = {
   'member.read_goals': { name: 'read_goals', description: 'Read the signed-in member’s saved wellbeing goals.', schema: EMPTY, sensitive: false },
   'member.read_care_plan': { name: 'read_care_plan', description: 'Read the signed-in member’s shared care plan and current recommendations.', schema: EMPTY, sensitive: false },
   'member.read_appointments': { name: 'read_appointments', description: 'Read the signed-in member’s appointment records. Does not book or pay.', schema: EMPTY, sensitive: false },
   'member.request_human_support': { name: 'request_human_support', description: 'Prepare an in-app request for human support. The member must confirm it before it is submitted. Never claim the team was notified until confirmed.', schema: SUPPORT, sensitive: true },
+  'member.propose_care_plan_action': { name: 'propose_care_plan_action', description: 'Propose a general wellbeing action in the shared care plan. This is only a proposal; the member must accept it in their care plan. Never diagnose, change medication or prescribe treatment. Cite only evidence supplied in this turn.', schema: PROPOSAL, sensitive: false },
 } as const;
 type HandlerKey = keyof typeof TOOL_HANDLERS;
 type ToolBinding = { id: string; handler: HandlerKey; sensitive: boolean };
-export type ToolContext = { userId: string; conversationId: string; agent: AiAgent };
+export type ToolContext = { userId: string; conversationId: string; agent: AiAgent; allowedEvidenceIds?: string[] };
 
 export function validateToolInput(handler: string, input: unknown) {
   const def = TOOL_HANDLERS[handler as HandlerKey];
@@ -40,6 +44,7 @@ async function execute(ctx: ToolContext, binding: ToolBinding, call: { id: strin
   const current = await sb.from('conversations').select('id').eq('id', ctx.conversationId).eq('user_id', ctx.userId).eq('agent_id', ctx.agent.id).eq('status', 'active').maybeSingle();
   const access = await subscriptionsService.memberAccess(ctx.userId);
   if (!current.data || !access.ok || !access.data.includes(ctx.agent.slug)) throw new Error('Tool access denied.');
+  if (!(await hasConsent(ctx.userId, 'ai_processing'))) throw new Error('AI processing consent required.');
   // Re-read the allowlist at execution time so a revoked binding cannot finish a pending run.
   if (!(await bindings(ctx)).some(b => b.id === binding.id && b.handler === binding.handler)) throw new Error('Tool was disabled.');
   const parsed = validateToolInput(binding.handler, call.input);
@@ -53,6 +58,14 @@ async function execute(ctx: ToolContext, binding: ToolBinding, call: { id: strin
       const r = await sb.from('goals').select('title, category, status, progress').eq('user_id', ctx.userId).limit(20); if (r.error) throw r.error; output = r.data;
     } else if (binding.handler === 'member.read_care_plan') {
       const plan = await carePlan.get(ctx.userId); output = plan ? { goals: plan.goals, concerns: plan.concerns, actions: await carePlan.actions(plan.id) } : { plan: null };
+    } else if (binding.handler === 'member.propose_care_plan_action') {
+      const proposal = safeCareProposal(call.input, ctx.allowedEvidenceIds ?? []);
+      if (!proposal) throw new Error('Proposal requires review.');
+      const plan = await carePlan.getOrCreate(ctx.userId);
+      if (!plan) throw new Error('Care plan unavailable.');
+      const proposed = await carePlan.addAction(plan.id, { specialist: ctx.agent.slug, title: proposal.title, detail: proposal.detail, evidenceRefs: proposal.evidenceRefs, status: 'proposed' });
+      if (!proposed.action) throw new Error('Proposal was not added; it may already exist. Check the care plan.');
+      output = { status: 'proposed', actionId: proposed.action.id, message: 'Saved as a proposal for the member to review in their care plan. Not yet accepted.' };
     } else {
       const r = await sb.from('appointments').select('id, scheduled_start, scheduled_end, status, location_type').eq('member_id', ctx.userId).order('scheduled_start', { ascending: false }).limit(10); if (r.error) throw r.error; output = r.data;
     }
@@ -72,6 +85,12 @@ export async function* streamAgentTools(provider: AiProvider, request: AiChatReq
   if (!ctx || !allowed.length) { yield* provider.stream(request); return; }
   const tools: NonNullable<AiChatRequest['tools']> = allowed.map(b => {
     const d = TOOL_HANDLERS[b.handler];
+    if (b.handler === 'member.propose_care_plan_action') return {
+      name: d.name, description: d.description, input_schema: { type: 'object', properties: {
+        title: { type: 'string', minLength: 1, maxLength: 120 }, detail: { type: 'string', minLength: 1, maxLength: 1500 },
+        evidenceRefs: { type: 'array', items: { type: 'string' }, maxItems: 6 },
+      }, additionalProperties: false, required: ['title', 'detail', 'evidenceRefs'] },
+    };
     return { name: d.name, description: d.description, input_schema: { type: 'object', properties: b.handler === 'member.request_human_support' ? { reason: { type: 'string', minLength: 1, maxLength: 200 } } : {}, additionalProperties: false, required: b.handler === 'member.request_human_support' ? ['reason'] : [] } };
   });
   const toolMessages: NonNullable<AiChatRequest['toolMessages']> = request.messages.map(m => ({ ...m }));
@@ -111,6 +130,6 @@ export async function* streamAgentTools(provider: AiProvider, request: AiChatReq
 
 export async function pendingToolRequests(userId: string, conversationId: string) {
   const sb = createAdminClient(); if (!sb) return [];
-  const { data } = await sb.from('ai_tool_executions').select('id, input, created_at').eq('user_id', userId).eq('conversation_id', conversationId).eq('status','awaiting_confirmation');
+  const { data } = await sb.from('ai_tool_executions').select('id, input, created_at, ai_tools!inner(handler_ref)').eq('ai_tools.handler_ref', 'member.request_human_support').eq('user_id', userId).eq('conversation_id', conversationId).eq('status','awaiting_confirmation');
   return (data ?? []).map(r => ({ id: String(r.id), reason: String((r.input as { reason?: string })?.reason ?? 'Request human support') }));
 }

@@ -28,7 +28,7 @@ export interface SttProviderAdapter {
 }
 
 const speechModel = process.env.DEEPGRAM_MODEL?.trim() || 'nova-3';
-const DEEPGRAM_ENDPOINT = `https://api.deepgram.com/v1/listen?model=${encodeURIComponent(speechModel)}&smart_format=true&language=en&mip_opt_out=true`;
+const DEEPGRAM_ENDPOINT = `https://api.deepgram.com/v1/listen?model=${encodeURIComponent(speechModel)}&smart_format=true&detect_language=true&mip_opt_out=true`;
 
 function createDeepgramAdapter(apiKey: string): SttProviderAdapter {
   return {

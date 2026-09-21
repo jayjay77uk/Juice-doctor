@@ -35,6 +35,7 @@ export function CareTeamMessageForm({ conversationId }: { conversationId: string
           {state.message}
         </p>
       )}
+      <label className="flex items-center gap-2 text-xs"><input type="checkbox" name="resumeAi" />Return this conversation to AI after sending (otherwise AI stays paused).</label>
       <div className="flex items-center gap-2">
         <Button type="submit" size="sm" disabled={pending}>
           {pending ? <Loader2 className="size-4 animate-spin" /> : null} Send

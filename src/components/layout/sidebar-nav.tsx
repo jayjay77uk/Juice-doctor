@@ -119,6 +119,7 @@ const NAV: Record<NavVariant, ShellNavSection[]> = {
         { label: 'Health profile', href: '/dashboard/profile', icon: HeartPulse },
         { label: 'Assessments', href: '/dashboard/assessments', icon: ClipboardList },
         { label: 'Journey', href: '/dashboard/journey', icon: Route },
+        { label: 'Journal', href: '/dashboard/journal', icon: BookOpen },
         { label: 'Bookings', href: '/dashboard/bookings', icon: CalendarDays },
         { label: 'Notifications', href: '/dashboard/notifications', icon: Bell },
         { label: 'Settings', href: '/dashboard/settings', icon: Settings },

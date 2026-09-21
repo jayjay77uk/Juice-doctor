@@ -162,7 +162,7 @@ export const conversationsRepo = {
     return ok(conversations.map((c) => ({ ...c, messageCount: counts.get(c.id) ?? 0 })));
   },
 
-  async create(input: { userId: string; agentId: string; title?: string }): Promise<Result<Conversation>> {
+  async create(input: { userId: string; agentId: string; title?: string; context?: Record<string, unknown> }): Promise<Result<Conversation>> {
     const sb = createAdminClient();
     if (!sb) return err({ code: 'unavailable', message: 'Conversation store unavailable.' });
     const agent = await resolveAgent(input.agentId);
@@ -176,7 +176,7 @@ export const conversationsRepo = {
         agent_id: agentId,
         title: input.title?.trim() || (agent ? `Chat with ${agent.name}` : 'New conversation'),
         status: 'active',
-        context: {},
+        context: input.context ?? {},
         last_message_at: nowIso(),
       })
       .select('*')
@@ -233,7 +233,8 @@ export const conversationsRepo = {
   /** Chat history (user/assistant only) for building the model context. */
   async historyFor(conversationId: string): Promise<ChatMessage[]> {
     const prior = await conversationsRepo.messages(conversationId);
-    return (prior.ok ? prior.data : [])
+    if (!prior.ok) throw new Error('Conversation history unavailable.');
+    return prior.data
       .filter((m) => m.role === 'user' || m.role === 'assistant')
       .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
   },
@@ -241,8 +242,9 @@ export const conversationsRepo = {
   /** Insert a user turn. */
   async insertUserMessage(conversationId: string, content: string): Promise<void> {
     const sb = createAdminClient();
-    if (!sb) return;
-    await sb.from('messages').insert({ conversation_id: conversationId, role: 'user', content: content.trim() });
+    if (!sb) throw new Error('Conversation store unavailable.');
+    const { error } = await sb.from('messages').insert({ conversation_id: conversationId, role: 'user', content: content.trim() });
+    if (error) throw new Error('Message could not be saved.');
   },
 
   /** Insert an assistant turn with its rich HERNE metadata; returns the persisted message. */
@@ -277,8 +279,9 @@ export const conversationsRepo = {
   /** Insert a plain system notice (e.g. a specialist handoff). */
   async insertSystemMessage(conversationId: string, content: string): Promise<void> {
     const sb = createAdminClient();
-    if (!sb) return;
-    await sb.from('messages').insert({ conversation_id: conversationId, role: 'system', content });
+    if (!sb) throw new Error('Conversation store unavailable.');
+    const { error } = await sb.from('messages').insert({ conversation_id: conversationId, role: 'system', content });
+    if (error) throw new Error('Message could not be saved.');
     await sb.from('conversations').update({ last_message_at: nowIso(), updated_at: nowIso() }).eq('id', conversationId);
   },
 

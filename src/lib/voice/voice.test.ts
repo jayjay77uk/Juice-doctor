@@ -54,6 +54,9 @@ describe('deepgram adapter', () => {
     );
     const result = await getSttProvider()!.transcribe(new ArrayBuffer(8), 'audio/webm');
     expect(result).toEqual({ ok: true, transcript: 'hello there' });
+    const url = new URL(vi.mocked(fetch).mock.calls[0]![0] as string);
+    expect(url.searchParams.get('detect_language')).toBe('true');
+    expect(url.searchParams.has('language')).toBe(false);
   });
 
   it('reports empty_transcript when no speech was detected', async () => {
@@ -79,6 +82,38 @@ describe('deepgram adapter', () => {
 });
 
 describe('elevenlabs adapter', () => {
+  it('speaks the whole reply in bounded chunks without dropping Unicode', async () => {
+    vi.stubEnv('ELEVENLABS_API_KEY', 'el-key');
+    const text = 'a'.repeat(1999) + '😀' + 'b'.repeat(2300);
+    const spoken: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
+      spoken.push(JSON.parse(String(init.body)).text);
+      return new Response(new Uint8Array([1, 2]));
+    }));
+    const result = await getTtsProvider()!.speak(text, 'Voice123456');
+    expect(result.ok).toBe(true);
+    expect(spoken.join('')).toBe(text);
+    expect(spoken.every(chunk => chunk.length <= 2000)).toBe(true);
+    if (result.ok) expect((await new Response(result.audio).arrayBuffer()).byteLength).toBe(6);
+    const { reserveProviderUsage } = await import('@/lib/providers/budget');
+    expect(reserveProviderUsage).toHaveBeenLastCalledWith('elevenlabs', text.length);
+  });
+
+  it('does not return partial audio if a later chunk fails', async () => {
+    vi.stubEnv('ELEVENLABS_API_KEY', 'el-key');
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(new Uint8Array([1])))
+      .mockResolvedValueOnce(new Response('unavailable', { status: 503 })));
+    expect((await getTtsProvider()!.speak('a'.repeat(2500), 'Voice123456')).ok).toBe(false);
+  });
+
+  it('rejects over-limit replies before any synthesis', async () => {
+    vi.stubEnv('ELEVENLABS_API_KEY', 'el-key');
+    vi.stubGlobal('fetch', vi.fn());
+    expect(await getTtsProvider()!.speak('a'.repeat(10001), 'Voice123456')).toMatchObject({ ok: false, providerStatus: 413 });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('returns the audio stream on success', async () => {
     vi.stubEnv('ELEVENLABS_API_KEY', 'el-key');
     vi.stubEnv('ELEVENLABS_DEFAULT_VOICE_ID', 'Voice123456');

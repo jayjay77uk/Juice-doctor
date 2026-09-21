@@ -1,6 +1,6 @@
 import { createDistributedRateLimiter } from '@/lib/security/distributed-rate-limit';
 import { NextResponse, type NextRequest } from 'next/server';
-import { getTtsProvider, ttsFailureReason, TTS_MAX_CHARS } from '@/lib/voice/tts';
+import { getTtsProvider, ttsFailureReason } from '@/lib/voice/tts';
 import { voiceForSpecialist } from '@/services/voice';
 import { systemSettings } from '@/services/system-settings';
 import { verifyReplySignature } from '@/lib/voice/reply-signature';
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     headers: {
       'Content-Type': result.contentType,
       'Cache-Control': 'no-store',
-      'X-Audio-Truncated': text.length > TTS_MAX_CHARS ? 'true' : 'false',
+      'X-Audio-Truncated': 'false',
     },
   });
 }

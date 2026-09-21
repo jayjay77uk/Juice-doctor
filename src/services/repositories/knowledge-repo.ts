@@ -95,7 +95,7 @@ export const knowledgeRepo = {
         slug: slugify(input.title),
         source_type: input.sourceType ?? 'manual',
         current_version: 1,
-        publish_status: 'published',
+        publish_status: 'draft',
         index_state: 'available',
         visibility: 'organisation',
         owner_id: owner,
@@ -155,15 +155,20 @@ export const knowledgeRepo = {
     });
     if (verErr) return err({ code: 'unavailable', message: verErr.message });
 
-    await sb.from('knowledge_chunks').delete().eq('document_id', documentId);
+    // Remove the document from live retrieval before replacing any content.
+    const paused = await sb.from('knowledge_documents').update({ publish_status: 'draft' }).eq('id', documentId);
+    if (paused.error) return err({ code: 'unavailable', message: 'Could not pause the document for review.' });
+    const removed = await sb.from('knowledge_chunks').delete().eq('document_id', documentId);
+    if (removed.error) return err({ code: 'unavailable', message: 'Could not replace the document index.' });
     const rows = chunks.map((content, idx) => ({ document_id: documentId, version, chunk_index: idx, content, metadata: {} }));
     const { error: chunkErr } = await sb.from('knowledge_chunks').insert(rows);
     if (chunkErr) return err({ code: 'unavailable', message: chunkErr.message });
 
-    await sb
+    const updated = await sb
       .from('knowledge_documents')
-      .update({ current_version: version, index_state: 'available', updated_at: new Date().toISOString() })
+      .update({ current_version: version, publish_status: 'draft', index_state: 'available', updated_at: new Date().toISOString() })
       .eq('id', documentId);
+    if (updated.error) return err({ code: 'unavailable', message: 'Could not finish indexing the document.' });
     return ok({ version, chunks: rows.length });
   },
 

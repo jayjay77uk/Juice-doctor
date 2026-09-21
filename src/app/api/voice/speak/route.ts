@@ -1,7 +1,7 @@
 import { createDistributedRateLimiter } from '@/lib/security/distributed-rate-limit';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSession } from '@/services/auth';
-import { getTtsProvider, ttsFailureReason, TTS_MAX_CHARS } from '@/lib/voice/tts';
+import { getTtsProvider, ttsFailureReason } from '@/lib/voice/tts';
 import { voiceForSpecialist } from '@/services/voice';
 import { systemSettings } from '@/services/system-settings';
 import { conversationsRepo } from '@/services/repositories/conversations-repo';
@@ -68,10 +68,7 @@ export async function POST(request: NextRequest) {
     await systemSettings.setValue('voice.last_tts_error', { at: new Date().toISOString(), surface: 'speak', detail: (result.detail ?? result.error).slice(0, 400) });
     return NextResponse.json({ error: ttsFailureReason(result) }, { status: result.error === 'timeout' ? 504 : 502 });
   }
-  // Long replies are spoken up to the provider limit; signal partial audio
-  // honestly rather than presenting truncated speech as the whole reply.
-  const truncated = message.data.content.length > TTS_MAX_CHARS;
   return new Response(result.audio, {
-    headers: { 'Content-Type': result.contentType, 'Cache-Control': 'no-store', 'X-Audio-Truncated': truncated ? 'true' : 'false' },
+    headers: { 'Content-Type': result.contentType, 'Cache-Control': 'no-store', 'X-Audio-Truncated': 'false' },
   });
 }

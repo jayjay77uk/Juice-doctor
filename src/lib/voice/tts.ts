@@ -13,7 +13,8 @@ import { isTtsConfigured } from '@/lib/env';
  * configured voice takes over automatically once the plan allows it.
  */
 
-export const TTS_MAX_CHARS = 2_000;
+export const TTS_MAX_CHARS = 10_000;
+const TTS_CHUNK_CHARS = 2_000;
 export const TTS_TIMEOUT_MS = 30_000;
 /** Rachel — the historical premade id; kept as a last-resort hint only. */
 export const FREE_PREMADE_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
@@ -25,6 +26,7 @@ export type TtsResult =
 export interface AccountVoice { voiceId: string; name: string; category: string }
 
 export function ttsFailureReason(result: Extract<TtsResult, { ok: false }>): string {
+  if (result.providerStatus === 413) return 'This reply is too long for read-aloud. Please use the full text reply.';
   if (result.error === 'timeout') return 'The voice service timed out — please try again.';
   switch (result.providerStatus) {
     case 400:
@@ -93,14 +95,23 @@ async function fallbackVoice(exclude: string): Promise<AccountVoice | null> {
 
 function createElevenLabsAdapter(apiKey: string): TtsProviderAdapter {
   const call = async (text: string, voiceId: string): Promise<TtsResult> => {
-    if (!(await verifyElevenLabsFreeAllowance(apiKey, Math.min(text.length, TTS_MAX_CHARS))) || !(await reserveProviderUsage('elevenlabs', Math.min(text.length, TTS_MAX_CHARS)))) return { ok: false, error: 'provider_error', providerStatus: 429, detail: 'free_allowance_unavailable' };
+    if (!text.trim() || text.length > TTS_MAX_CHARS) return { ok: false, error: 'provider_error', providerStatus: 413, detail: 'reply_length_limit' };
+    // Reserve the ENTIRE reply before synthesis. Failed attempts remain charged
+    // locally; neither partial playback nor a retry can bypass the free budget.
+    if (!(await verifyElevenLabsFreeAllowance(apiKey, text.length)) || !(await reserveProviderUsage('elevenlabs', text.length))) return { ok: false, error: 'provider_error', providerStatus: 429, detail: 'free_allowance_unavailable' };
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TTS_TIMEOUT_MS);
     try {
+      const chunks: ArrayBuffer[] = [];
+      let bytes = 0;
+      for (let offset = 0; offset < text.length;) {
+        let end = Math.min(offset + TTS_CHUNK_CHARS, text.length);
+        // Never split a Unicode surrogate pair at a chunk boundary.
+        if (end < text.length && /[\uD800-\uDBFF]/.test(text.charAt(end - 1))) end--;
       const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`, {
         method: 'POST',
         headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
-        body: JSON.stringify({ text: text.slice(0, TTS_MAX_CHARS), model_id: 'eleven_multilingual_v2' }),
+        body: JSON.stringify({ text: text.slice(offset, end), model_id: 'eleven_multilingual_v2' }),
         signal: controller.signal,
         cache: 'no-store',
       });
@@ -108,7 +119,15 @@ function createElevenLabsAdapter(apiKey: string): TtsProviderAdapter {
         const detail = await res.text().catch(() => '');
         return { ok: false, error: 'provider_error', providerStatus: res.status, detail: `elevenlabs_http_${res.status}${detail ? `: ${detail.slice(0, 200)}` : ''}` };
       }
-      return { ok: true, audio: res.body, contentType: res.headers.get('content-type') ?? 'audio/mpeg' };
+        const audio = await res.arrayBuffer();
+        bytes += audio.byteLength;
+        if (!audio.byteLength || bytes > 20 * 1024 * 1024) return { ok: false, error: 'provider_error', detail: 'invalid_audio_size' };
+        chunks.push(audio);
+        offset = end;
+      }
+      // MP3 frames can be concatenated. Buffer all chunks before returning so
+      // a failed later chunk cannot be presented as a complete spoken reply.
+      return { ok: true, audio: new Blob(chunks, { type: 'audio/mpeg' }).stream(), contentType: 'audio/mpeg' };
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') return { ok: false, error: 'timeout' };
       return { ok: false, error: 'provider_error', detail: e instanceof Error ? e.message.slice(0, 200) : 'unknown' };

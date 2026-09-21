@@ -9,6 +9,7 @@ import { track } from '@/lib/monitoring/events';
 import { escalationEngine } from './herne/referrals';
 import { checkUsageLimit, acquireSlot, releaseSlot } from './ai-usage';
 import { hasConsent } from './consents';
+import { conversationsRepo } from './repositories/conversations-repo';
 import type { Message, FeedbackRating } from '@/types/conversation';
 
 const MSG_RES = 'Please sign in.';
@@ -40,6 +41,11 @@ export async function sendMessageAction(
   if (!conv.ok || conv.data.userId !== userId || conv.data.status === 'deleted') return { ok: false, error: MSG_OWN };
   if (conv.data.status !== 'active') return { ok: false, error: 'This conversation is archived.' };
   if (typeof content !== 'string' || !content.trim() || content.trim().length > 4000) return { ok: false, error: 'Enter a message of 1–4000 characters.' };
+  if (conv.data.context?.human_takeover === true) {
+    await conversationsRepo.insertUserMessage(conversationId, content.trim());
+    const stored = await conversations_service.messages(conversationId);
+    return stored.ok ? { ok: true, messages: stored.data } : { ok: false, error: 'Your message was saved but the conversation could not be refreshed.' };
+  }
   if (!(await hasConsent(userId, 'ai_processing'))) return { ok: false, error: 'Review AI processing consent in Settings before chatting.' };
   const found = conv.data.agentId ? await agents.byId(conv.data.agentId) : null;
   if (!found?.ok || found.data.status !== 'active') return { ok: false, error: 'This specialist is currently unavailable.' };
@@ -97,6 +103,7 @@ export async function requestSupportAction(
   } catch {
     notified = false;
   }
+  if (!notified) return { ok: false, error: 'The support request could not be recorded. Please try again.' };
 
   const result = await conversations_service.requestSupport(conversationId, { notified });
   if (!result.ok) return { ok: false, error: result.error.message };
