@@ -26,7 +26,7 @@ export async function markAllNotificationsReadAction(): Promise<void> {
 export async function saveNotificationPrefsAction(input: {
   emailCheckins: boolean;
   dailyNudges: boolean;
-  sharePractitioner: boolean;
+  inAppFollowups: boolean;
 }): Promise<{ ok: boolean }> {
   try {
     await assertSession();
@@ -36,7 +36,7 @@ export async function saveNotificationPrefsAction(input: {
   const done = await saveNotificationPrefs({
     emailCheckins: Boolean(input.emailCheckins),
     dailyNudges: Boolean(input.dailyNudges),
-    sharePractitioner: Boolean(input.sharePractitioner),
+    inAppFollowups: Boolean(input.inAppFollowups),
   });
   revalidatePath('/dashboard/settings');
   return { ok: done };

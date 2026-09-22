@@ -13,5 +13,6 @@ platform. None of these documents contain production secrets, API keys or databa
 | 05 | [Outstanding Client Approvals](05-outstanding-client-approvals.md) | What we need from the client |
 | 06 | [Production Implementation Roadmap](06-production-implementation-roadmap.md) | Remaining phased work to full launch |
 | 07 | [Production Requirements Checklist](07-production-requirements-checklist.md) | What must be in place for full production |
+| 08 | [Current implementation handover](08-implementation-handover.md) | 21 September changes, migration steps, acceptance checks and current blockers |
 
 **Live environment:** `https://juice-doctor.vercel.app`

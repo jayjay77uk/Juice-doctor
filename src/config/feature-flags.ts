@@ -1,11 +1,8 @@
 /**
  * Feature-flag registry.
  *
- * Unlike Phase 1 (where "coming soon" was a hardcoded-false constant), Phase 2
- * introduces real flags with two live values, targeting, and an admin surface —
- * so this registry now earns its keep. Each flag has a default; production layers
- * per-organisation, per-role and per-user overrides on top (see feature_flags +
- * feature_flag_overrides tables, migration 0013).
+ * Primary-organisation runtime controls. Reserved capabilities without a
+ * connected implementation remain disabled. There is no per-user targeting.
  */
 
 export interface FeatureFlagDef {
@@ -15,42 +12,54 @@ export interface FeatureFlagDef {
   defaultEnabled: boolean;
   /** Grouping for the admin UI. */
   category: 'ai' | 'platform' | 'commerce' | 'experimental';
+  operable: boolean;
 }
 
 export const FEATURE_FLAGS = {
   'ai.chat': {
     key: 'ai.chat',
-    description: 'The AI chat experience (specialist chat is live today; flag reserved for future gating).',
-    defaultEnabled: false,
+    description:
+      'Allow receptionist and specialist AI inference. Safety responses remain available when disabled.',
+    defaultEnabled: true,
+    operable: true,
     category: 'ai',
   },
   'ai.selfie_scan_inference': {
     key: 'ai.selfie_scan_inference',
+    operable: true,
     description: 'Real inference for the Remote Selfie Scan (the scan is not yet available today).',
     defaultEnabled: false,
     category: 'ai',
   },
   'knowledge.vector_search': {
     key: 'knowledge.vector_search',
-    description: 'Vector search over the knowledge base (needs pgvector).',
+    operable: false,
+    description:
+      'Unavailable: no vector retrieval provider is connected. Published knowledge uses full-text search.',
     defaultEnabled: false,
     category: 'ai',
   },
   'commerce.checkout': {
     key: 'commerce.checkout',
-    description: 'Live payments and checkout.',
+    operable: false,
+    description:
+      'Unavailable until a payment provider is selected and approved. Manual payment records remain available.',
     defaultEnabled: false,
     category: 'commerce',
   },
   'platform.live_booking': {
     key: 'platform.live_booking',
-    description: 'Real-time availability calendars (basic appointment booking is already live).',
+    operable: false,
+    description:
+      'Unavailable: no live availability provider is connected. Appointment requests remain available.',
     defaultEnabled: false,
     category: 'platform',
   },
   'platform.notifications': {
     key: 'platform.notifications',
-    description: 'Outbound notifications (email/SMS/push).',
+    operable: true,
+    description:
+      'Enable email delivery and scheduled member follow-ups. Provider configuration and free-allowance checks still apply.',
     defaultEnabled: false,
     category: 'platform',
   },

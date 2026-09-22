@@ -12,10 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CtaSection } from '@/components/sections/cta-section';
 
-export async function generateStaticParams() {
-  const slugs = await programmesService.allSlugs();
-  return slugs.map((slug) => ({ slug }));
-}
+// Publication changes must take effect on the next public request.
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({
   params,
@@ -57,14 +55,14 @@ export default async function ProgrammeDetailPage({
           <div className="flex flex-col gap-8">
             <div>
               <h2 className="text-h2">About this programme</h2>
-              <p className="measure mt-4 text-lg text-muted-foreground">{programme.description}</p>
+              <p className="measure text-muted-foreground mt-4 text-lg">{programme.description}</p>
             </div>
             <div>
               <h3 className="text-h3">What&apos;s included</h3>
               <ul className="mt-4 grid gap-3 sm:grid-cols-2">
                 {programme.includes.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 text-foreground">
-                    <Check className="mt-1 size-4 shrink-0 text-secondary" />
+                  <li key={i} className="text-foreground flex items-start gap-2">
+                    <Check className="text-secondary mt-1 size-4 shrink-0" />
                     {item}
                   </li>
                 ))}
@@ -77,9 +75,9 @@ export default async function ProgrammeDetailPage({
                   {pillars.map((p, i) => (
                     <span
                       key={i}
-                      className="inline-flex items-center gap-2 rounded-full bg-surface-muted px-4 py-2 text-sm text-foreground"
+                      className="bg-surface-muted text-foreground inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm"
                     >
-                      <span className="font-serif text-primary">{p.letter}</span> {p.name}
+                      <span className="text-primary font-serif">{p.letter}</span> {p.name}
                     </span>
                   ))}
                 </div>
@@ -89,12 +87,12 @@ export default async function ProgrammeDetailPage({
 
           <aside className="lg:sticky lg:top-[calc(var(--header-h)+2rem)] lg:h-fit">
             <Media image={programme.image} className="mb-5" />
-            <div className="rounded-2xl border border-border bg-surface p-6">
-              <p className="font-serif text-3xl text-foreground">{programme.priceLabel}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{programme.durationLabel}</p>
+            <div className="border-border bg-surface rounded-2xl border p-6">
+              <p className="text-foreground font-serif text-3xl">{programme.priceLabel}</p>
+              <p className="text-muted-foreground mt-1 text-sm">{programme.durationLabel}</p>
               <Button asChild size="lg" full className="mt-5">
-                <Link href={`/book?service=${programme.slug}`}>
-                  Book this programme <ArrowRight className="size-4" />
+                <Link href={`/contact?programme=${programme.slug}`}>
+                  Enquire about joining <ArrowRight className="size-4" />
                 </Link>
               </Button>
               <Button asChild intent="ghost" full className="mt-2">

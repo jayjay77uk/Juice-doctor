@@ -1,5 +1,9 @@
 # Current Limitations
 
+> For current code changes, verification boundaries and deployment prerequisites,
+> see [21 September implementation handover](08-implementation-handover.md).
+> Historical references below to live/provider status have not been reverified.
+
 The platform is live, but a number of capabilities are deliberately not yet connected, depend on
 client/provider decisions, or require production-governance work. This document lists every material
 limitation so nothing is over-claimed.

@@ -24,10 +24,12 @@ export interface OutboxRow {
   attempts: number;
   createdAt: string;
   sentAt: string | null;
+  dedupeKey: string | null;
 }
 
 /** True when the error means the outbox table has not been migrated yet. */
-const tableMissing = (error: { code?: string } | null): boolean => error?.code === 'PGRST205' || error?.code === '42P01';
+const tableMissing = (error: { code?: string } | null): boolean =>
+  error?.code === 'PGRST205' || error?.code === '42P01';
 
 function rowToOutbox(r: Record<string, unknown>): OutboxRow {
   return {
@@ -42,6 +44,7 @@ function rowToOutbox(r: Record<string, unknown>): OutboxRow {
     attempts: Number(r.attempts) || 0,
     createdAt: String(r.created_at),
     sentAt: (r.sent_at as string | null) ?? null,
+    dedupeKey: (r.dedupe_key as string | null) ?? null,
   };
 }
 
@@ -90,7 +93,15 @@ export const mailRepo = {
   },
 
   /** Update an outbox row after a delivery attempt. Best-effort. */
-  async markAttempt(id: string, outcome: { status: OutboxStatus; providerMessageId?: string | null; error?: string | null; attempts: number }): Promise<void> {
+  async markAttempt(
+    id: string,
+    outcome: {
+      status: OutboxStatus;
+      providerMessageId?: string | null;
+      error?: string | null;
+      attempts: number;
+    },
+  ): Promise<void> {
     const sb = createAdminClient();
     if (!sb) return;
     await sb
@@ -112,7 +123,13 @@ export const mailRepo = {
    * notices) must never flush stale days/weeks later when email is first
    * connected. Stale rows are left for the admin to review, never mass-sent.
    */
-  async deliverable(limit = 50, maxAgeHours = 72): Promise<{ available: boolean; rows: (OutboxRow & { bodyText: string; bodyHtml: string | null })[] }> {
+  async deliverable(
+    limit = 50,
+    maxAgeHours = 72,
+  ): Promise<{
+    available: boolean;
+    rows: (OutboxRow & { bodyText: string; bodyHtml: string | null })[];
+  }> {
     const sb = createAdminClient();
     if (!sb) return { available: false, rows: [] };
     const cutoff = new Date(Date.now() - maxAgeHours * 3_600_000).toISOString();
@@ -141,7 +158,9 @@ export const mailRepo = {
     if (!sb) return { available: false, rows: [] };
     const { data, error } = await sb
       .from('mail_outbox')
-      .select('id, to_address, template, subject, status, provider, provider_message_id, error, attempts, created_at, sent_at')
+      .select(
+        'id, to_address, template, subject, status, provider, provider_message_id, error, attempts, created_at, sent_at',
+      )
       .order('created_at', { ascending: false })
       .limit(limit);
     if (error) return { available: !tableMissing(error), rows: [] };

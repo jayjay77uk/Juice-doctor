@@ -21,11 +21,13 @@ export const dynamic = 'force-dynamic';
 const settingsColumns: Column<SystemSettingRow>[] = [
   {
     header: 'Key',
-    cell: (s) => <span className="font-mono text-sm text-foreground">{s.key}</span>,
+    cell: (s) => <span className="text-foreground font-mono text-sm">{s.key}</span>,
   },
   {
     header: 'Value',
-    cell: (s) => <span className="block max-w-md truncate text-sm text-muted-foreground">{s.preview}</span>,
+    cell: (s) => (
+      <span className="text-muted-foreground block max-w-md truncate text-sm">{s.preview}</span>
+    ),
   },
   {
     header: 'Visibility',
@@ -33,7 +35,7 @@ const settingsColumns: Column<SystemSettingRow>[] = [
   },
   {
     header: 'Updated',
-    cell: (s) => <span className="text-sm text-muted-foreground">{s.updatedAt.slice(0, 10)}</span>,
+    cell: (s) => <span className="text-muted-foreground text-sm">{s.updatedAt.slice(0, 10)}</span>,
   },
 ];
 
@@ -44,10 +46,16 @@ export default async function ConfigPage() {
   // The REAL runtime AI configuration — read from the same environment values
   // live inference uses (src/lib/env.ts).
   const aiRuntime: { label: string; value: string }[] = [
-    { label: 'Provider', value: `${env.aiProvider}${isAiConfigured() ? '' : ' (no API key configured)'}` },
+    {
+      label: 'Provider',
+      value: `${env.aiProvider}${isAiConfigured() ? '' : ' (no API key configured)'}`,
+    },
     { label: 'Model', value: env.aiModel },
     { label: 'Max output tokens', value: String(env.aiMaxOutputTokens) },
-    { label: 'Request timeout', value: `${Math.round(env.aiRequestTimeoutMs / 1000)}s per attempt` },
+    {
+      label: 'Request timeout',
+      value: `${Math.round(env.aiRequestTimeoutMs / 1000)}s per attempt`,
+    },
     { label: 'Daily limit per user', value: `${env.aiDailyUserLimit} messages` },
     { label: 'Monthly limit per user', value: `${env.aiMonthlyUserLimit} messages` },
   ];
@@ -62,33 +70,34 @@ export default async function ConfigPage() {
 
       <Panel
         title="Feature flags"
-        description="A registry of capability flags, stored and audit-logged. These flags are NOT yet checked by the features they name — toggling one does not currently switch anything on or off."
+        description="Live controls apply within 15 seconds. Capabilities without a connected implementation cannot be enabled."
         padded={false}
       >
-        <ul className="divide-y divide-border">
+        <ul className="divide-border divide-y">
           {flags.map((flag) => (
             <li key={flag.key} className="flex items-center justify-between gap-4 px-6 py-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm text-foreground">{flag.key}</span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  <span className="text-foreground font-mono text-sm">{flag.key}</span>
+                  <span className="bg-surface-muted text-muted-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium">
                     <Flag className="size-3" />
                     {flag.category}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">{flag.description}</p>
+                <p className="text-muted-foreground mt-1 text-sm">{flag.description}</p>
               </div>
               <form action={toggleFeatureFlagAction} className="shrink-0">
                 <input type="hidden" name="key" value={flag.key} />
                 <button
                   type="submit"
+                  disabled={!flag.operable}
                   className={
                     flag.enabled
-                      ? 'rounded-full bg-green-100 px-3 py-1.5 text-xs font-medium text-secondary'
-                      : 'rounded-full bg-surface-muted px-3 py-1.5 text-xs font-medium text-muted-foreground'
+                      ? 'text-secondary rounded-full bg-green-100 px-3 py-1.5 text-xs font-medium'
+                      : 'bg-surface-muted text-muted-foreground rounded-full px-3 py-1.5 text-xs font-medium'
                   }
                 >
-                  {flag.enabled ? 'On' : 'Off'}
+                  {!flag.operable ? 'Unavailable' : flag.enabled ? 'On' : 'Off'}
                 </button>
               </form>
             </li>
@@ -99,13 +108,13 @@ export default async function ConfigPage() {
       <Panel
         title="AI runtime configuration"
         description="The live values inference runs with right now (environment-configured). Per-specialist behaviour comes from each agent's published prompt version."
-        actions={<Cpu className="size-4 text-muted-foreground" />}
+        actions={<Cpu className="text-muted-foreground size-4" />}
       >
         <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
           {aiRuntime.map((item) => (
             <div key={item.label} className="flex flex-col gap-1">
-              <dt className="text-sm text-muted-foreground">{item.label}</dt>
-              <dd className="font-medium text-foreground">{item.value}</dd>
+              <dt className="text-muted-foreground text-sm">{item.label}</dt>
+              <dd className="text-foreground font-medium">{item.value}</dd>
             </div>
           ))}
         </dl>
@@ -114,19 +123,19 @@ export default async function ConfigPage() {
       <Panel
         title="System settings"
         description="Live key/value settings from the platform database (system_settings)."
-        actions={<Settings2 className="size-4 text-muted-foreground" />}
+        actions={<Settings2 className="text-muted-foreground size-4" />}
         padded={false}
       >
         {settingRows.length ? (
           <DataTable columns={settingsColumns} rows={settingRows} getKey={(s) => s.key} />
         ) : (
-          <p className="px-6 py-8 text-sm text-muted-foreground">No settings stored yet.</p>
+          <p className="text-muted-foreground px-6 py-8 text-sm">No settings stored yet.</p>
         )}
       </Panel>
 
-      <p className="text-sm text-muted-foreground">
-        Every value on this page is live: flags and settings from the platform database, AI runtime values from the
-        deployment environment.
+      <p className="text-muted-foreground text-sm">
+        Every value on this page is live: flags and settings from the platform database, AI runtime
+        values from the deployment environment.
       </p>
     </div>
   );

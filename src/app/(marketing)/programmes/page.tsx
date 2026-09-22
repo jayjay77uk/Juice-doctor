@@ -8,8 +8,7 @@ import { CtaSection } from '@/components/sections/cta-section';
 
 export const metadata: Metadata = createMetadata({
   title: 'Our programmes',
-  description:
-    'This is placeholder text in clear English. Final wording will be supplied later.',
+  description: 'Explore available programmes and contact the team about joining.',
   path: '/programmes',
 });
 
@@ -22,7 +21,7 @@ export default async function ProgrammesPage() {
       <PageHero
         eyebrow="Our programmes"
         title="Browse our programmes"
-        lede="This is placeholder text in clear English. Final wording will be supplied later."
+        lede="Explore available programmes and contact the team about joining."
       />
       <Section tone="default" spacing="lg">
         {programmes.length > 0 ? (
@@ -33,7 +32,9 @@ export default async function ProgrammesPage() {
           </div>
         ) : (
           <p className="text-muted-foreground">
-            No programmes are available right now. Please check back later.
+            {result.ok
+              ? 'No programmes are available right now. Please check back later.'
+              : 'Programmes could not be loaded. Please try again later.'}
           </p>
         )}
       </Section>

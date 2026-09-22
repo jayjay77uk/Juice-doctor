@@ -1,3 +1,4 @@
+import { featureFlags } from './feature-flags';
 import 'server-only';
 
 import type { AiAgent } from '@/types/ai';
@@ -260,7 +261,7 @@ export const receptionist = {
       });
     }
 
-    const provider = getAiProvider();
+    const provider = await featureFlags.isEnabled('ai.chat') ? getAiProvider() : null;
     if (!provider) {
       const rec = unavailableRecommendation(settings);
       return ok({
@@ -361,7 +362,7 @@ export const receptionist = {
       if (a.answer.trim()) assessment[a.prompt] = a.answer.trim();
     }
 
-    const provider = getAiProvider();
+    const provider = await featureFlags.isEnabled('ai.chat') ? getAiProvider() : null;
     if (!provider) {
       // No AI configured — escalate honestly rather than fabricate a match.
       const rec = unavailableRecommendation(settings);

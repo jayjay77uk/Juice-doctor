@@ -5,10 +5,10 @@ import { env } from '@/lib/env';
 import { getSelfieScanProvider } from './provider';
 import { selfieScanSessions } from './sessions';
 import { auditRepo } from '@/services/repositories/audit-repo';
+import { featureFlags } from '@/services/feature-flags';
 
 export async function startSelfieScanAction(): Promise<
-  | { ok: true; launchUrl: string; sessionId: string }
-  | { ok: false; error: string }
+  { ok: true; launchUrl: string; sessionId: string } | { ok: false; error: string }
 > {
   let session;
   try {
@@ -17,9 +17,15 @@ export async function startSelfieScanAction(): Promise<
     return { ok: false, error: 'Please sign in to start a Remote Selfie Scan.' };
   }
 
+  if (!(await featureFlags.isEnabled('ai.selfie_scan_inference')))
+    return { ok: false, error: 'Remote Selfie Scan is currently disabled.' };
   const provider = getSelfieScanProvider();
   if (!provider) {
-    return { ok: false, error: 'Remote Selfie Scan is application-ready but no approved scan provider is connected yet.' };
+    return {
+      ok: false,
+      error:
+        'Remote Selfie Scan is application-ready but no approved scan provider is connected yet.',
+    };
   }
 
   try {

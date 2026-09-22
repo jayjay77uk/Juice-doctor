@@ -51,7 +51,8 @@ export interface Instalment {
   paidPaymentId: string | null;
 }
 
-export const paymentReference = (id: string): string => `PAY-${id.replace(/-/g, '').slice(0, 10).toUpperCase()}`;
+export const paymentReference = (id: string): string =>
+  `PAY-${id.replace(/-/g, '').slice(0, 10).toUpperCase()}`;
 
 function rowToPayment(r: Record<string, unknown>): PaymentRecord {
   return {
@@ -118,7 +119,10 @@ export const paymentsRepo = {
     return data ? rowToPayment(data) : null;
   },
 
-  async byProviderPaymentId(provider: string, providerPaymentId: string): Promise<PaymentRecord | null> {
+  async byProviderPaymentId(
+    provider: string,
+    providerPaymentId: string,
+  ): Promise<PaymentRecord | null> {
     const sb = createAdminClient();
     if (!sb) return null;
     const { data } = await sb
@@ -133,7 +137,12 @@ export const paymentsRepo = {
   async setStatus(id: string, status: PaymentStatus): Promise<PaymentRecord | null> {
     const sb = createAdminClient();
     if (!sb) return null;
-    const { data, error } = await sb.from('payments').update({ status }).eq('id', id).select('*').maybeSingle();
+    const { data, error } = await sb
+      .from('payments')
+      .update({ status })
+      .eq('id', id)
+      .select('*')
+      .maybeSingle();
     return !error && data ? rowToPayment(data) : null;
   },
 
@@ -181,10 +190,19 @@ export const paymentsRepo = {
     return (data ?? []).map(rowToPayment);
   },
 
-  async summary(): Promise<{ count: number; succeededMinor: number; refundedMinor: number; byCurrency: Record<string, number> }> {
+  async summary(): Promise<{
+    count: number;
+    succeededMinor: number;
+    refundedMinor: number;
+    byCurrency: Record<string, number>;
+  }> {
     const sb = createAdminClient();
     if (!sb) return { count: 0, succeededMinor: 0, refundedMinor: 0, byCurrency: {} };
-    const { data } = await sb.from('payments').select('amount, currency, status').eq('organisation_id', ORG).limit(5000);
+    const { data } = await sb
+      .from('payments')
+      .select('amount, currency, status')
+      .eq('organisation_id', ORG)
+      .limit(5000);
     const rows = data ?? [];
     const byCurrency: Record<string, number> = {};
     let succeededMinor = 0;
@@ -245,9 +263,17 @@ export const paymentsRepo = {
     async planById(id: string): Promise<{ available: boolean; plan: InstalmentPlan | null }> {
       const sb = createAdminClient();
       if (!sb) return { available: false, plan: null };
-      const { data, error } = await sb.from('payment_instalment_plans').select('*').eq('id', id).maybeSingle();
+      const { data, error } = await sb
+        .from('payment_instalment_plans')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
       if (error || !data) return { available: !error, plan: null };
-      const { data: items } = await sb.from('payment_instalments').select('*').eq('plan_id', id).order('sequence');
+      const { data: items } = await sb
+        .from('payment_instalments')
+        .select('*')
+        .eq('plan_id', id)
+        .order('sequence');
       return {
         available: true,
         plan: {
@@ -263,18 +289,31 @@ export const paymentsRepo = {
       };
     },
 
-    async list(opts?: { memberId?: string }): Promise<{ available: boolean; plans: InstalmentPlan[] }> {
+    async list(opts?: {
+      memberId?: string;
+      all?: boolean;
+    }): Promise<{ available: boolean; plans: InstalmentPlan[] }> {
       const sb = createAdminClient();
       if (!sb) return { available: false, plans: [] };
-      let query = sb.from('payment_instalment_plans').select('*').order('created_at', { ascending: false }).limit(50);
-      if (opts?.memberId) query = query.eq('member_id', opts.memberId);
-      const { data, error } = await query;
-      if (error) return { available: false, plans: [] };
       const plans: InstalmentPlan[] = [];
-      for (const row of data ?? []) {
-        const { plan } = await paymentsRepo.instalments.planById(String(row.id));
-        if (plan) plans.push(plan);
-      }
+      let cursor = '';
+      do {
+        let query = sb
+          .from('payment_instalment_plans')
+          .select('*')
+          .order(opts?.all ? 'id' : 'created_at', { ascending: Boolean(opts?.all) })
+          .limit(opts?.all ? 200 : 50);
+        if (opts?.memberId) query = query.eq('member_id', opts.memberId);
+        if (cursor) query = query.gt('id', cursor);
+        const { data, error } = await query;
+        if (error) return { available: false, plans: [] };
+        if (!data.length) break;
+        for (const row of data ?? []) {
+          const { plan } = await paymentsRepo.instalments.planById(String(row.id));
+          if (plan) plans.push(plan);
+        }
+        cursor = String(data[data.length - 1]!.id);
+      } while (opts?.all);
       return { available: true, plans };
     },
 
@@ -302,8 +341,17 @@ export const paymentsRepo = {
     async cancelPlan(planId: string): Promise<boolean> {
       const sb = createAdminClient();
       if (!sb) return false;
-      const { error: itemsError } = await sb.from('payment_instalments').update({ status: 'cancelled' }).eq('plan_id', planId).eq('status', 'pending');
-      const { data, error } = await sb.from('payment_instalment_plans').update({ status: 'cancelled' }).eq('id', planId).select('id').maybeSingle();
+      const { error: itemsError } = await sb
+        .from('payment_instalments')
+        .update({ status: 'cancelled' })
+        .eq('plan_id', planId)
+        .eq('status', 'pending');
+      const { data, error } = await sb
+        .from('payment_instalment_plans')
+        .update({ status: 'cancelled' })
+        .eq('id', planId)
+        .select('id')
+        .maybeSingle();
       return !itemsError && !error && Boolean(data);
     },
   },
@@ -317,7 +365,12 @@ export const paymentsRepo = {
      * reclaimed (its id returned) so the event is retried — an event is never
      * silently dropped on the strength of an unfinished first attempt.
      */
-    async recordOnceReclaimable(input: { provider: string; externalEventId: string; eventType: string; payload: unknown }): Promise<{ available: boolean; alreadyProcessed: boolean; id: string | null }> {
+    async recordOnceReclaimable(input: {
+      provider: string;
+      externalEventId: string;
+      eventType: string;
+      payload: unknown;
+    }): Promise<{ available: boolean; alreadyProcessed: boolean; id: string | null }> {
       const sb = createAdminClient();
       if (!sb) return { available: false, alreadyProcessed: false, id: null };
       const { data, error } = await sb
@@ -341,22 +394,48 @@ export const paymentsRepo = {
         .eq('external_event_id', input.externalEventId)
         .maybeSingle();
       if (!existing) return { available: false, alreadyProcessed: false, id: null };
-      if (String(existing.status) === 'processed') return { available: true, alreadyProcessed: true, id: null };
+      if (String(existing.status) === 'processed')
+        return { available: true, alreadyProcessed: true, id: null };
       // Reclaim: reset to 'received' for a fresh processing attempt.
-      await sb.from('provider_webhook_events').update({ status: 'received', error: null }).eq('id', String(existing.id));
+      await sb
+        .from('provider_webhook_events')
+        .update({ status: 'received', error: null })
+        .eq('id', String(existing.id));
       return { available: true, alreadyProcessed: false, id: String(existing.id) };
     },
 
-    async markProcessed(id: string, outcome: { status: 'processed' | 'failed'; error?: string | null }): Promise<void> {
+    async markProcessed(
+      id: string,
+      outcome: { status: 'processed' | 'failed'; error?: string | null },
+    ): Promise<void> {
       const sb = createAdminClient();
       if (!sb) return;
-      await sb.from('provider_webhook_events').update({ status: outcome.status, error: outcome.error ?? null }).eq('id', id);
+      await sb
+        .from('provider_webhook_events')
+        .update({ status: outcome.status, error: outcome.error ?? null })
+        .eq('id', id);
     },
 
-    async recent(provider?: string, limit = 10): Promise<{ available: boolean; rows: { id: string; provider: string; eventType: string; status: string; createdAt: string }[] }> {
+    async recent(
+      provider?: string,
+      limit = 10,
+    ): Promise<{
+      available: boolean;
+      rows: {
+        id: string;
+        provider: string;
+        eventType: string;
+        status: string;
+        createdAt: string;
+      }[];
+    }> {
       const sb = createAdminClient();
       if (!sb) return { available: false, rows: [] };
-      let query = sb.from('provider_webhook_events').select('id, provider, event_type, status, created_at').order('created_at', { ascending: false }).limit(limit);
+      let query = sb
+        .from('provider_webhook_events')
+        .select('id, provider, event_type, status, created_at')
+        .order('created_at', { ascending: false })
+        .limit(limit);
       if (provider) query = query.eq('provider', provider);
       const { data, error } = await query;
       if (error) return { available: false, rows: [] };

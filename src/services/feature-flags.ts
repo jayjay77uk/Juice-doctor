@@ -6,7 +6,6 @@ import {
   type FeatureFlagKey,
   type FeatureFlagDef,
 } from '@/config/feature-flags';
-import type { AppRole } from '@/lib/auth/roles';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 /**
@@ -16,12 +15,6 @@ import { createAdminClient } from '@/lib/supabase/admin';
  * apply across instances. An in-process cache keeps evaluation cheap; the
  * registry default is the fallback when the database is unavailable.
  */
-export interface FlagContext {
-  userId?: string;
-  role?: AppRole;
-  organisationId?: string | null;
-}
-
 const ORG = '00000000-0000-0000-0000-000000000001';
 
 const cache = new Map<FeatureFlagKey, boolean>();
@@ -30,18 +23,28 @@ const CACHE_TTL_MS = 15_000;
 
 async function load(): Promise<void> {
   const sb = createAdminClient();
-  if (!sb) return;
+  if (!sb) {
+    cache.clear();
+    for (const key of ALL_FEATURE_FLAG_KEYS) cache.set(key, false);
+    loadedAt = 0;
+    return;
+  }
   try {
-    const { data, error } = await sb.from('feature_flags').select('key, enabled').eq('organisation_id', ORG);
+    const { data, error } = await sb
+      .from('feature_flags')
+      .select('key, enabled')
+      .eq('organisation_id', ORG);
     if (error) throw error;
     cache.clear();
     for (const row of data ?? []) {
       const key = String(row.key);
-      if ((ALL_FEATURE_FLAG_KEYS as string[]).includes(key)) cache.set(key as FeatureFlagKey, Boolean(row.enabled));
+      if ((ALL_FEATURE_FLAG_KEYS as string[]).includes(key))
+        cache.set(key as FeatureFlagKey, Boolean(row.enabled));
     }
     loadedAt = Date.now();
   } catch {
     cache.clear();
+    for (const key of ALL_FEATURE_FLAG_KEYS) cache.set(key, false);
     loadedAt = 0;
   }
 }
@@ -49,23 +52,36 @@ async function load(): Promise<void> {
 async function persist(key: FeatureFlagKey, enabled: boolean): Promise<void> {
   const sb = createAdminClient();
   if (!sb) throw new Error('Feature flag storage unavailable.');
-    const existing = await sb.from('feature_flags').select('id').eq('organisation_id', ORG).eq('key', key).maybeSingle();
-    if (existing.error) throw new Error('Feature flag could not be read.');
-    if (existing.data?.id) {
-      const { data, error } = await sb.from('feature_flags').update({ enabled, updated_at: new Date().toISOString() }).eq('id', existing.data.id).select('id').single();
-      if (error || !data) throw new Error('Feature flag could not be saved.');
-    } else {
-      const { error } = await sb.from('feature_flags').insert({ organisation_id: ORG, key, description: FEATURE_FLAGS[key].description, enabled });
-      if (error) throw new Error('Feature flag could not be saved.');
-    }
+  const existing = await sb
+    .from('feature_flags')
+    .select('id')
+    .eq('organisation_id', ORG)
+    .eq('key', key)
+    .maybeSingle();
+  if (existing.error) throw new Error('Feature flag could not be read.');
+  if (existing.data?.id) {
+    const { data, error } = await sb
+      .from('feature_flags')
+      .update({ enabled, updated_at: new Date().toISOString() })
+      .eq('id', existing.data.id)
+      .select('id')
+      .single();
+    if (error || !data) throw new Error('Feature flag could not be saved.');
+  } else {
+    const { error } = await sb
+      .from('feature_flags')
+      .insert({ organisation_id: ORG, key, description: FEATURE_FLAGS[key].description, enabled });
+    if (error) throw new Error('Feature flag could not be saved.');
+  }
 }
 
 function resolve(key: FeatureFlagKey): boolean {
+  if (!FEATURE_FLAGS[key].operable) return false;
   return cache.get(key) ?? FEATURE_FLAGS[key].defaultEnabled;
 }
 
 export const featureFlags = {
-  async isEnabled(key: FeatureFlagKey, _ctx: FlagContext = {}): Promise<boolean> {
+  async isEnabled(key: FeatureFlagKey): Promise<boolean> {
     if (Date.now() - loadedAt >= CACHE_TTL_MS) await load();
     return resolve(key);
   },
@@ -78,6 +94,8 @@ export const featureFlags = {
     }));
   },
   async toggle(key: FeatureFlagKey): Promise<boolean> {
+    if (!FEATURE_FLAGS[key].operable)
+      throw new Error('This capability is not connected and cannot be enabled.');
     await load();
     const next = !resolve(key);
     await persist(key, next);

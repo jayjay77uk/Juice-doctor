@@ -59,8 +59,14 @@ export type NavVariant = 'admin' | 'dashboard';
  */
 const NAV: Record<NavVariant, ShellNavSection[]> = {
   admin: [
-    { title: 'Business', items: [{ label: 'Business Dashboard', href: '/admin', icon: LayoutDashboard }] },
-    { title: 'Receptionist AI', items: [{ label: 'The Receptionist', href: '/admin/receptionist', icon: Sparkles }] },
+    {
+      title: 'Business',
+      items: [{ label: 'Business Dashboard', href: '/admin', icon: LayoutDashboard }],
+    },
+    {
+      title: 'Receptionist AI',
+      items: [{ label: 'The Receptionist', href: '/admin/receptionist', icon: Sparkles }],
+    },
     {
       title: 'Specialist AIs',
       items: [
@@ -79,7 +85,14 @@ const NAV: Record<NavVariant, ShellNavSection[]> = {
         { label: 'Shared DNA', href: '/admin/herne/dna', icon: ShieldCheck },
       ],
     },
-    { title: 'CRM', items: [{ label: 'Leads', href: '/admin/crm', icon: ContactRound }, { label: 'Appointments', href: '/admin/appointments', icon: CalendarDays }, { label: 'Messages', href: '/admin/messages', icon: Inbox }] },
+    {
+      title: 'CRM',
+      items: [
+        { label: 'Leads', href: '/admin/crm', icon: ContactRound },
+        { label: 'Appointments', href: '/admin/appointments', icon: CalendarDays },
+        { label: 'Messages', href: '/admin/messages', icon: Inbox },
+      ],
+    },
     {
       title: 'Administration',
       items: [
@@ -93,6 +106,7 @@ const NAV: Record<NavVariant, ShellNavSection[]> = {
         { label: 'Agent config', href: '/admin/ai/agents', icon: Wrench },
         { label: 'Consultations', href: '/admin/consultations', icon: Stethoscope },
         { label: 'Users', href: '/admin/users', icon: Users },
+        { label: 'Programmes', href: '/admin/programmes', icon: BookOpen },
         { label: 'Integrations', href: '/admin/integrations', icon: Plug },
         { label: 'Configuration', href: '/admin/config', icon: Settings2 },
         { label: 'Audit Logs', href: '/admin/audit', icon: ScrollText },
@@ -120,6 +134,7 @@ const NAV: Record<NavVariant, ShellNavSection[]> = {
         { label: 'Assessments', href: '/dashboard/assessments', icon: ClipboardList },
         { label: 'Journey', href: '/dashboard/journey', icon: Route },
         { label: 'Journal', href: '/dashboard/journal', icon: BookOpen },
+        { label: 'Programmes', href: '/dashboard/programmes', icon: BookOpen },
         { label: 'Bookings', href: '/dashboard/bookings', icon: CalendarDays },
         { label: 'Notifications', href: '/dashboard/notifications', icon: Bell },
         { label: 'Settings', href: '/dashboard/settings', icon: Settings },
@@ -144,7 +159,7 @@ export function SidebarNav({ variant, ariaLabel }: { variant: NavVariant; ariaLa
       {sections.map((section, i) => (
         <div key={section.title ?? i} className="flex flex-col gap-1">
           {section.title && (
-            <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <p className="text-muted-foreground px-3 pb-1 text-xs font-semibold tracking-[0.14em] uppercase">
               {section.title}
             </p>
           )}
@@ -158,7 +173,7 @@ export function SidebarNav({ variant, ariaLabel }: { variant: NavVariant; ariaLa
                 className={cn(
                   'flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
                   active
-                    ? 'bg-teal-50 text-primary'
+                    ? 'text-primary bg-teal-50'
                     : 'text-muted-foreground hover:bg-surface-muted hover:text-foreground',
                 )}
               >

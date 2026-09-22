@@ -1,3 +1,4 @@
+import { featureFlags } from './feature-flags';
 import { runtimeOptions, recallForAgent } from './agent-runtime';
 import { fitHistory } from '@/lib/ai/history';
 import { env } from '@/lib/env';
@@ -69,7 +70,7 @@ export async function specialistReply(
   if (safety.blocked || safety.escalate) {
     return { text: safety.userMessage ?? UNSUPPORTED_CLAIM_MESSAGE, citations: [], grounded: false, available: true };
   }
-  const provider = getAiProvider();
+  const provider = await featureFlags.isEnabled('ai.chat') ? getAiProvider() : null;
   if (!provider) {
     return {
       text: `I'm sorry — ${agent.name} is temporarily unavailable. Please try again shortly, or I can connect you with a member of the team.`,

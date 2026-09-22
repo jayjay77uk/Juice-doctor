@@ -21,9 +21,14 @@ This document records only rebuilt work.
 
 ## Still pending
 
-Programme delivery and progress; permission-override administration UI; follow-up producers; runtime feature-flag consumers;
-approved public content and final client handover documentation. Flag persistence
-and readiness reporting are fixed, but this does not mean every flag has a consumer.
+The four remaining code workstreams (programme delivery, permission overrides,
+follow-up producers and runtime controls) are implemented in the 21 September
+release. Live migration/application acceptance, approved public content and
+unconnected providers remain pending. See `docs/client/08-implementation-handover.md`.
+
+Final local verification on 22 September: 250 tests passed; type-check, lint and
+clean production build passed. HTTP checks confirmed protected programme routes
+emit login redirects. Browser/production acceptance is still unverified.
 
 ## Subsequent implementation checkpoints
 
@@ -66,7 +71,7 @@ hierarchy tests. Type-checking, lint and the production build passed.
 User access administration now includes role/status editing with a reason,
 permission checks, organisation scoping, optimistic concurrency and protected
 self/peer/owner accounts. Invitations also enforce subordinate roles and effective
-permissions. Permission-override editing remains pending. Audit logging uses the
+permissions. Permission-override editing is now implemented for owners. Audit logging uses the
 existing best-effort repository; this is not a claim of transactional audit logging.
 
 Deployment prerequisites: apply the Journal/Journey migration to the correct

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Users, ShieldCheck, Stethoscope, User } from 'lucide-react';
 import { createMetadata } from '@/config/metadata';
 import { AdminHeader } from '@/components/admin/admin-header';
@@ -27,8 +28,10 @@ const columns: Column<Profile>[] = [
     header: 'Name',
     cell: (u) => (
       <div className="min-w-0">
-        <p className="truncate font-medium text-foreground">{u.fullName ?? '—'}</p>
-        {u.email ? <p className="truncate font-mono text-xs text-muted-foreground">{u.email}</p> : null}
+        <p className="text-foreground truncate font-medium">{u.fullName ?? '—'}</p>
+        {u.email ? (
+          <p className="text-muted-foreground truncate font-mono text-xs">{u.email}</p>
+        ) : null}
       </div>
     ),
   },
@@ -44,7 +47,10 @@ const columns: Column<Profile>[] = [
 
 export default async function UsersPage() {
   const { user } = await requirePermission('users.read', '/admin/users');
-  const result = await admin.users.list({}, user.organisationId ?? '00000000-0000-0000-0000-000000000000');
+  const result = await admin.users.list(
+    {},
+    user.organisationId ?? '00000000-0000-0000-0000-000000000000',
+  );
   const items = result.ok ? result.data.items : [];
   const loadError = result.ok ? null : result.error.message;
 
@@ -62,22 +68,47 @@ export default async function UsersPage() {
       />
 
       {loadError && (
-        <p className="rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger" role="alert">
-          {loadError} The figures below are unavailable — this is a loading problem, not an empty platform.
+        <p
+          className="border-danger/30 bg-danger/5 text-danger rounded-xl border px-4 py-3 text-sm"
+          role="alert"
+        >
+          {loadError} The figures below are unavailable — this is a loading problem, not an empty
+          platform.
         </p>
       )}
 
       <StatGrid>
         <StatCard label="Total users" value={loadError ? '—' : items.length} icon={Users} />
         <StatCard label="Members" value={loadError ? '—' : members} icon={User} />
-        <StatCard label="Practitioners" value={loadError ? '—' : practitioners} icon={Stethoscope} />
+        <StatCard
+          label="Practitioners"
+          value={loadError ? '—' : practitioners}
+          icon={Stethoscope}
+        />
         <StatCard label="Staff+" value={loadError ? '—' : staff} icon={ShieldCheck} />
       </StatGrid>
 
       <Panel padded={false}>
         <DataTable
-          columns={[...columns, { header: 'Access', cell: (profile) => mayManageUser(user, profile, profile.role)
-            ? <UserAccessForm profile={profile} actorRole={user.role} /> : <span className="text-muted-foreground">Protected</span> }]}
+          columns={[
+            ...columns,
+            {
+              header: 'Access',
+              cell: (profile) =>
+                mayManageUser(user, profile, profile.role) ? (
+                  <div className="space-y-3">
+                    <UserAccessForm profile={profile} actorRole={user.role} />
+                    {user.role === 'super_administrator' && (
+                      <Link href={`/admin/users/${profile.id}`} className="text-primary">
+                        Permissions
+                      </Link>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">Protected</span>
+                ),
+            },
+          ]}
           rows={items}
           getKey={(u) => u.id}
           empty={
@@ -94,7 +125,7 @@ export default async function UsersPage() {
         />
       </Panel>
 
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         Live data from the platform database — real user accounts.
       </p>
     </div>

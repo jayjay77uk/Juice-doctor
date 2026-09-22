@@ -1,3 +1,4 @@
+import { featureFlags } from '../feature-flags';
 import 'server-only';
 
 import type { AiAgent } from '@/types/ai';
@@ -245,7 +246,7 @@ interface PreparedTurn {
  */
 async function prepareTurn(agent: AiAgent, history: ChatMessage[], query: string, ctx?: HerneCtx): Promise<{ kind: 'blocked'; reply: HerneReply } | PreparedTurn> {
   const profile = herneProfile(agent.slug);
-  const provider = getAiProvider();
+  const provider = await featureFlags.isEnabled('ai.chat') ? getAiProvider() : null;
   const specialistName = profile?.name ?? agent.name;
   const pref = await resolvePreference(ctx);
 

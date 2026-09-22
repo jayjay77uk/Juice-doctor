@@ -1,13 +1,8 @@
 import 'server-only';
 
-import type {
-  Consultation,
-  PodcastEpisode,
-  Programme,
-  Resource,
-  Testimonial,
-} from '@/types/content';
-import { programmes as programmeData, consultations as consultationData } from '@/content/programmes';
+import type { Consultation, PodcastEpisode, Resource, Testimonial } from '@/types/content';
+import { consultations as consultationData } from '@/content/programmes';
+import { programmeCatalogue } from './programme-catalogue';
 import { testimonials as testimonialData } from '@/content/testimonials';
 import { podcastEpisodes as podcastData } from '@/content/podcast';
 import { resources as resourceData } from '@/content/resources';
@@ -43,21 +38,7 @@ export interface ListQuery {
 }
 
 /* ── Programmes ──────────────────────────────────────────────────────────── */
-export const programmes = {
-  async list(q: ListQuery = {}): Promise<Result<Page<Programme>>> {
-    return ok(paginate(programmeData, q.limit, q.cursor));
-  },
-  async featured(): Promise<Result<Programme[]>> {
-    return ok(programmeData.filter((p) => p.featured));
-  },
-  async bySlug(slug: string): Promise<Result<Programme>> {
-    const match = programmeData.find((p) => p.slug === slug);
-    return match ? ok(match) : err({ code: 'not_found', message: 'Programme not found.' });
-  },
-  async allSlugs(): Promise<string[]> {
-    return programmeData.map((p) => p.slug);
-  },
-};
+export const programmes = programmeCatalogue;
 
 /* ── Consultations ───────────────────────────────────────────────────────── */
 export const consultations = {

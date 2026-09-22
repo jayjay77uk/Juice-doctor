@@ -18,7 +18,9 @@ function layout(title: string, lines: string[]): { text: string; html: string } 
   const html = [
     `<div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1a1a1a">`,
     `<h2 style="font-size:18px;margin:0 0 16px">${escapeHtml(title)}</h2>`,
-    ...lines.map((l) => `<p style="font-size:14px;line-height:1.6;margin:0 0 10px">${escapeHtml(l)}</p>`),
+    ...lines.map(
+      (l) => `<p style="font-size:14px;line-height:1.6;margin:0 0 10px">${escapeHtml(l)}</p>`,
+    ),
     `<p style="font-size:12px;color:#6b7280;margin-top:24px">— ${escapeHtml(APP_NAME)} · <a href="${env.siteUrl}" style="color:#6b7280">${env.siteUrl}</a></p>`,
     `</div>`,
   ].join('');
@@ -26,10 +28,16 @@ function layout(title: string, lines: string[]): { text: string; html: string } 
 }
 
 const dt = (iso: string): string =>
-  new Date(iso).toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Europe/London' });
+  new Date(iso).toLocaleString('en-GB', {
+    dateStyle: 'full',
+    timeStyle: 'short',
+    timeZone: 'Europe/London',
+  });
 
 /** Parameter shapes per template — the compiler enforces complete render calls. */
 export interface MailTemplateParams {
+  'member.weekly_checkin': Record<string, never>;
+  'payment.instalment_reminder': { dueDate: string };
   'contact.staff_copy': { name: string; email: string; subject: string; message: string };
   'newsletter.welcome': Record<string, never>;
   'account.welcome': { name: string };
@@ -56,6 +64,21 @@ export interface RenderedMail {
 type Renderers = { [K in MailTemplateKey]: (p: MailTemplateParams[K]) => RenderedMail };
 
 const renderers: Renderers = {
+  'member.weekly_checkin': () => ({
+    subject: 'Your weekly check-in',
+    ...layout('Your weekly check-in', [
+      'Take a moment to reflect on your goals and record how your week went.',
+      `Open your dashboard: ${env.siteUrl}/dashboard`,
+      `Manage or stop email check-ins: ${env.siteUrl}/dashboard/settings`,
+    ]),
+  }),
+  'payment.instalment_reminder': (p) => ({
+    subject: 'Instalment reminder',
+    ...layout('Instalment reminder', [
+      `An instalment scheduled for ${p.dueDate} is awaiting a payment record. If you have already paid, contact the team so they can check it.`,
+      `View your account: ${env.siteUrl}/dashboard/subscriptions`,
+    ]),
+  }),
   'contact.staff_copy': (p) => ({
     subject: `New contact message: ${p.subject || '(no subject)'}`,
     ...layout('New contact-form message', [
@@ -139,7 +162,9 @@ const renderers: Renderers = {
     subject: 'A member conversation was escalated for human review',
     ...layout('Escalation — human review needed', [
       `Escalated by: ${p.specialist}`,
-      p.leadId ? `Review queue lead: ${env.siteUrl}/admin/crm/${p.leadId}` : `Review queue: ${env.siteUrl}/admin/herne/referrals`,
+      p.leadId
+        ? `Review queue lead: ${env.siteUrl}/admin/crm/${p.leadId}`
+        : `Review queue: ${env.siteUrl}/admin/herne/referrals`,
       'Details are in the admin area — this alert deliberately contains no member or conversation content.',
     ]),
   }),
@@ -162,6 +187,9 @@ const renderers: Renderers = {
   }),
 };
 
-export function renderMailTemplate<K extends MailTemplateKey>(key: K, params: MailTemplateParams[K]): RenderedMail {
+export function renderMailTemplate<K extends MailTemplateKey>(
+  key: K,
+  params: MailTemplateParams[K],
+): RenderedMail {
   return renderers[key](params);
 }

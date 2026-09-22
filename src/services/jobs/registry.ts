@@ -9,6 +9,9 @@ import { businessAddresses } from '@/config/addresses';
 import { isWearableProviderConfigured } from '../herne/wearable/provider';
 import { listConnections, resyncForUser } from '../herne/wearable/connections';
 import { consultations } from '@/content/programmes';
+import { memberFollowups } from './member-followups';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { featureFlags } from '../feature-flags';
 
 /**
  * Background-job registry — the work an external scheduler triggers through
@@ -28,7 +31,11 @@ export interface JobResult {
   detail: string;
 }
 
-const LOCATION_LABELS: Record<string, string> = { video: 'Video call', phone: 'Phone call', in_person: 'In person' };
+const LOCATION_LABELS: Record<string, string> = {
+  video: 'Video call',
+  phone: 'Phone call',
+  in_person: 'In person',
+};
 
 async function crmFollowUpReminders(): Promise<JobResult> {
   const name = 'crm-follow-up-reminders';
@@ -37,7 +44,12 @@ async function crmFollowUpReminders(): Promise<JobResult> {
   if (!due.ok) return { name, status: 'skipped', processed: 0, detail: 'CRM unavailable.' };
   if (!due.data.length) return { name, status: 'ran', processed: 0, detail: 'No due follow-ups.' };
   if (!staffAlerts) {
-    return { name, status: 'skipped', processed: 0, detail: `${due.data.length} due follow-up(s), but no STAFF_ALERTS_ADDRESS is configured.` };
+    return {
+      name,
+      status: 'skipped',
+      processed: 0,
+      detail: `${due.data.length} due follow-up(s), but no STAFF_ALERTS_ADDRESS is configured.`,
+    };
   }
   let queued = 0;
   for (const lead of due.data) {
@@ -48,49 +60,107 @@ async function crmFollowUpReminders(): Promise<JobResult> {
       params: { leadName: lead.name, leadId: lead.id, dueIso: lead.reminderAt },
       dedupeKey: `crm-reminder:${lead.id}:${lead.reminderAt}`,
     });
-    if (result.reason !== 'duplicate') queued += 1;
+    if (result.recorded && result.reason !== 'duplicate') queued += 1;
   }
-  return { name, status: 'ran', processed: queued, detail: `${queued} reminder email(s) queued (${due.data.length} due).` };
+  return {
+    name,
+    status: 'ran',
+    processed: queued,
+    detail: `${queued} reminder email(s) queued (${due.data.length} due).`,
+  };
 }
 
 async function appointmentReminders(): Promise<JobResult> {
   const name = 'appointment-reminders';
   const upcoming = await appointmentsAdminRepo.confirmedWithin(24);
-  if (!upcoming.length) return { name, status: 'ran', processed: 0, detail: 'No confirmed appointments in the next 24 hours.' };
+  if (!upcoming.length)
+    return {
+      name,
+      status: 'ran',
+      processed: 0,
+      detail: 'No confirmed appointments in the next 24 hours.',
+    };
   let queued = 0;
   for (const appt of upcoming) {
     if (!appt.memberEmail) continue;
-    const service = consultations.find((c) => c.slug === appt.serviceSlug)?.title ?? appt.serviceSlug.replaceAll('-', ' ');
+    const service =
+      consultations.find((c) => c.slug === appt.serviceSlug)?.title ??
+      appt.serviceSlug.replaceAll('-', ' ');
     const result = await sendTemplateMail({
       to: appt.memberEmail,
       template: 'appointment.reminder',
-      params: { service, startIso: appt.scheduledStart, location: LOCATION_LABELS[appt.locationType] ?? appt.locationType },
+      params: {
+        service,
+        startIso: appt.scheduledStart,
+        location: LOCATION_LABELS[appt.locationType] ?? appt.locationType,
+      },
       dedupeKey: `appt-reminder:${appt.id}:${appt.scheduledStart}`,
     });
-    if (result.reason !== 'duplicate') queued += 1;
+    if (result.recorded && result.reason !== 'duplicate') queued += 1;
   }
-  return { name, status: 'ran', processed: queued, detail: `${queued} reminder email(s) queued (${upcoming.length} upcoming).` };
+  return {
+    name,
+    status: 'ran',
+    processed: queued,
+    detail: `${queued} reminder email(s) queued (${upcoming.length} upcoming).`,
+  };
 }
 
 async function instalmentOverdueCheck(): Promise<JobResult> {
   const name = 'instalment-overdue-check';
-  const plans = await paymentsRepo.instalments.list();
+  const plans = await paymentsRepo.instalments.list({ all: true });
   if (!plans.available) {
-    return { name, status: 'skipped', processed: 0, detail: 'Instalment tables not available (migration 0031 pending).' };
+    return {
+      name,
+      status: 'skipped',
+      processed: 0,
+      detail: 'Instalment tables not available (migration 0031 pending).',
+    };
   }
   const today = new Date().toISOString().slice(0, 10);
   let overdue = 0;
+  let queued = 0;
+  const sb = createAdminClient();
+  const remindersEnabled = await featureFlags.isEnabled('platform.notifications');
   for (const plan of plans.plans) {
     if (plan.status !== 'active') continue;
     overdue += plan.instalments.filter((i) => i.status === 'pending' && i.dueDate < today).length;
+    if (!sb || !remindersEnabled) continue;
+    const profile = await sb
+      .from('profiles')
+      .select('id')
+      .eq('id', plan.memberId)
+      .eq('status', 'active')
+      .maybeSingle();
+    if (profile.error || !profile.data) continue;
+    const auth = await sb.auth.admin.getUserById(plan.memberId);
+    const user = auth.data.user;
+    if (auth.error || !user?.email_confirmed_at || !user.email) continue;
+    for (const instalment of plan.instalments.filter(
+      (i) => i.status === 'pending' && i.dueDate <= today,
+    )) {
+      const result = await sendTemplateMail({
+        to: user.email,
+        template: 'payment.instalment_reminder',
+        params: { dueDate: instalment.dueDate },
+        dedupeKey: `instalment:${instalment.id}:${today}`,
+      });
+      if (result.recorded && result.reason !== 'duplicate') queued++;
+    }
   }
-  return { name, status: 'ran', processed: overdue, detail: `${overdue} overdue instalment(s). No state was changed automatically — review on /admin/payments.` };
+  return {
+    name,
+    status: 'ran',
+    processed: queued,
+    detail: `${overdue} overdue instalment(s); ${queued} new reminder(s) recorded. Payment states are unchanged.`,
+  };
 }
 
 async function subscriptionStateReport(): Promise<JobResult> {
   const name = 'subscription-state-report';
   const summary = await subscriptionsRepo.summary();
-  if (!summary.ok) return { name, status: 'skipped', processed: 0, detail: 'Subscriptions unavailable.' };
+  if (!summary.ok)
+    return { name, status: 'skipped', processed: 0, detail: 'Subscriptions unavailable.' };
   return {
     name,
     status: 'ran',
@@ -102,11 +172,30 @@ async function subscriptionStateReport(): Promise<JobResult> {
 async function mailOutboxDelivery(): Promise<JobResult> {
   const name = 'mail-outbox-delivery';
   const result = await deliverPendingMail();
-  if (!result.available) return { name, status: 'skipped', processed: 0, detail: 'Outbox table not available (migration 0031 pending).' };
+  if (!result.available)
+    return {
+      name,
+      status: 'skipped',
+      processed: 0,
+      detail: 'Outbox table not available (migration 0031 pending).',
+    };
   if (result.sent === 0 && result.failed === 0) {
-    return { name, status: 'ran', processed: 0, detail: result.pending > 0 ? `${result.pending} email(s) waiting for the email provider.` : 'Outbox empty.' };
+    return {
+      name,
+      status: 'ran',
+      processed: 0,
+      detail:
+        result.pending > 0
+          ? `${result.pending} email(s) waiting for the email provider.`
+          : 'Outbox empty.',
+    };
   }
-  return { name, status: 'ran', processed: result.sent, detail: `${result.sent} sent, ${result.failed} failed.` };
+  return {
+    name,
+    status: 'ran',
+    processed: result.sent,
+    detail: `${result.sent} sent, ${result.failed} failed.`,
+  };
 }
 
 async function wearableScheduledSync(): Promise<JobResult> {
@@ -122,10 +211,16 @@ async function wearableScheduledSync(): Promise<JobResult> {
     if (result.ok) synced += 1;
     else failed += 1;
   }
-  return { name, status: 'ran', processed: synced, detail: `${synced} connection(s) synced, ${failed} failed (recorded as sync jobs).` };
+  return {
+    name,
+    status: 'ran',
+    processed: synced,
+    detail: `${synced} connection(s) synced, ${failed} failed (recorded as sync jobs).`,
+  };
 }
 
 export const JOBS: Record<string, () => Promise<JobResult>> = {
+  'member-follow-ups': memberFollowups,
   'crm-follow-up-reminders': crmFollowUpReminders,
   'appointment-reminders': appointmentReminders,
   'instalment-overdue-check': instalmentOverdueCheck,
@@ -141,7 +236,12 @@ export async function runJobs(only?: string): Promise<JobResult[]> {
     try {
       results.push(await JOBS[jobName]!());
     } catch (e) {
-      results.push({ name: jobName, status: 'skipped', processed: 0, detail: `Error: ${e instanceof Error ? e.message.slice(0, 200) : 'unknown'}` });
+      results.push({
+        name: jobName,
+        status: 'skipped',
+        processed: 0,
+        detail: `Error: ${e instanceof Error ? e.message.slice(0, 200) : 'unknown'}`,
+      });
     }
   }
   return results;

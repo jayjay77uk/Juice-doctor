@@ -1,5 +1,8 @@
 # Completion Report
 
+> Historical report: its delivery and verification claims are not a current
+> production sign-off. See [21 September implementation handover](08-implementation-handover.md).
+
 **Product:** Ask Juice Doctor AI — HERNE Multi-Specialist Wellbeing Platform
 **Environment:** `https://juice-doctor.vercel.app` — live deployment
 **Status:** Delivered and live
